@@ -32,7 +32,13 @@ function Tiles({ tiles, cols = 3 }: { tiles: Tile[]; cols?: number }) {
   );
 }
 
-export function ResultsView({ runId }: { runId: string }) {
+type Props = {
+  runId: string;
+  /** How many report parts to show, for the home page replay. Shows everything when omitted. */
+  reveal?: number;
+};
+
+export function ResultsView({ runId, reveal }: Props) {
   const run = runs[runId];
   const report = reportFor(runId);
   if (!run || !report) {
@@ -46,10 +52,9 @@ export function ResultsView({ runId }: { runId: string }) {
 
   const start = run.series.find((s) => s.focus)!.data[0].value;
 
-  return (
-    <div className="report-desk" data-tour="results">
-      <article className="report" aria-label={`Backtest report: ${report.title}`}>
-        <header className="report__head">
+  const parts = [
+    (
+      <header className="report__head">
           <h2>{report.title}</h2>
           <p className="report__meta">{report.meta}</p>
           <p className="report__verdict">{run.verdict}</p>
@@ -58,18 +63,21 @@ export function ResultsView({ runId }: { runId: string }) {
             <CheckCircle2 size={13} aria-hidden /> Every number here comes from the run, not from the model.
           </p>
         </header>
-
-        <Tiles tiles={report.tiles} />
-
-        <section className="report__section" aria-labelledby={`eq-${runId}`}>
+    ),
+    (
+      <Tiles tiles={report.tiles} />
+    ),
+    (
+      <section className="report__section" aria-labelledby={`eq-${runId}`}>
           <h3 id={`eq-${runId}`}>Equity</h3>
           <p className="report__sub">
             Growth of the starting money against {report.compareText}, with the drawdown from each peak underneath.
           </p>
           <EquityPlot series={run.series} dd={run.drawdown} start={start} />
         </section>
-
-        <section className="report__section" aria-labelledby={`rg-${runId}`}>
+    ),
+    (
+      <section className="report__section" aria-labelledby={`rg-${runId}`}>
           <h3 id={`rg-${runId}`}>P&amp;L by market regime</h3>
           <p className="report__sub">Cumulative profit and loss, colored by the market regime on each entry day.</p>
           <Tiles tiles={report.regimeTiles} />
@@ -84,8 +92,9 @@ export function ResultsView({ runId }: { runId: string }) {
           <RegimePlot report={report} />
           <p className="report__insight">{report.regimeInsight}</p>
         </section>
-
-        <section className="report__section" aria-labelledby={`tr-${runId}`}>
+    ),
+    (
+      <section className="report__section" aria-labelledby={`tr-${runId}`}>
           <h3 id={`tr-${runId}`}>Every trade</h3>
           <p className="report__sub">
             {report.featureLabel}, {report.heldLabel.toLowerCase()}, and each trade's return. Drag to turn it.
@@ -101,8 +110,9 @@ export function ResultsView({ runId }: { runId: string }) {
           <TradesPlot3D report={report} />
           <p className="report__insight">{report.scatterInsight}</p>
         </section>
-
-        <div className="report__pair">
+    ),
+    (
+      <div className="report__pair">
           <section className="report__section" aria-labelledby={`mo-${runId}`}>
             <h3 id={`mo-${runId}`}>Monthly returns</h3>
             <p className="report__sub">Each cell is that month's return, in percent.</p>
@@ -114,8 +124,9 @@ export function ResultsView({ runId }: { runId: string }) {
             <ReturnsHistogram report={report} />
           </section>
         </div>
-
-        <section className="report__section" aria-labelledby={`ck-${runId}`}>
+    ),
+    (
+      <section className="report__section" aria-labelledby={`ck-${runId}`}>
           <h3 id={`ck-${runId}`}>Honesty checks</h3>
           <p className="report__sub">Each check tries to break the result.</p>
           <ul className="report-checks">
@@ -131,9 +142,9 @@ export function ResultsView({ runId }: { runId: string }) {
             ))}
           </ul>
         </section>
-
-        {run.readings && (
-          <section className="report__section" aria-labelledby={`rd-${runId}`}>
+    ),
+    run.readings ? (
+      <section className="report__section" aria-labelledby={`rd-${runId}`}>
             <h3 id={`rd-${runId}`}>{run.readings.rule} was ambiguous</h3>
             <p className="report__sub">Both readings were tested. The label uses the first.</p>
             <table className="report-table">
@@ -147,16 +158,33 @@ export function ResultsView({ runId }: { runId: string }) {
               </tbody>
             </table>
           </section>
-        )}
-
-        <section className="report__receipt" aria-labelledby={`rc-${runId}`}>
+    ) : null,
+    (
+      <section className="report__receipt" aria-labelledby={`rc-${runId}`}>
           <h3 id={`rc-${runId}`}>The receipt</h3>
           <p className="report__sub">The whole test on one label. Claimed numbers are struck through when the test disagrees.</p>
           <div className="report__label">
             <FactsLabel facts={run.facts} />
           </div>
         </section>
+    ),
+  ].filter(Boolean);
+  const shown = reveal === undefined ? parts : parts.slice(0, reveal);
+
+  return (
+    <div className="report-desk" data-tour="results">
+      <article className="report" aria-label={`Backtest report: ${report.title}`}>
+        {shown.map((part, i) => (
+          <div key={i} className={reveal === undefined ? undefined : "report__part"}>
+            {part}
+          </div>
+        ))}
       </article>
     </div>
   );
+}
+
+/** How many parts a run's report has, so the home page replay knows when it's finished. */
+export function resultParts(runId: string): number {
+  return runs[runId]?.readings ? 9 : 8;
 }

@@ -78,8 +78,24 @@
   border-top: var(--rule-hair) solid var(--ink);
 }
 
-.report__head + .tiles {
-  margin-top: 22px;
+.report__head {
+  margin-bottom: 22px;
+}
+
+/* Home page replay: each part prints in as the agent finishes it */
+.report__part {
+  animation: part-in 460ms var(--ease-out) both;
+}
+
+@keyframes part-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .tile {

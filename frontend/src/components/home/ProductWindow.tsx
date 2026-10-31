@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { Check, FileCode2, FileText, Paperclip, RotateCcw } from "lucide-react";
 import { APP_NAME } from "../../config";
 import { acmeResearch, cashflowPython, moonResearch, rsiPine, rsiThread, type ThreadStep } from "../../data/examples";
-import { ResultsView } from "../../ide/ResultsView";
-import { ResearchSheet } from "./ResearchSheet";
+import { ResultsView, resultParts } from "../../ide/ResultsView";
+import { RESEARCH_PARTS, ResearchSheet } from "./ResearchSheet";
 import "./window.css";
 
 type Replay = {
@@ -101,71 +101,106 @@ const replays: Replay[] = [
   },
 ];
 
-/** The working part of each replay takes this long, however many steps it has. */
-const WORK_MS = 2400;
-/** Then the results stay up this long before the next example. */
-const HOLD_MS = 9000;
+/** Total time for the agent's steps, spread evenly, within these per-step bounds. */
+const WORK_MS = 5200;
+const STEP_MIN_MS = 480;
+const STEP_MAX_MS = 800;
+/** Pause between the last step and the results opening. */
+const OPEN_DELAY_MS = 500;
+/** Each part of the results prints in this far apart. */
+const PART_MS = 750;
+/** Then the finished results stay up this long before the next example. */
+const HOLD_MS = 7000;
+const CLOCK_MS = 100;
 
 function prefersReducedMotion() {
   return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
+function timeline(r: Replay) {
+  const total = r.steps.length;
+  const stepMs = Math.min(STEP_MAX_MS, Math.max(STEP_MIN_MS, WORK_MS / total));
+  const workEnd = total * stepMs;
+  const openAt = workEnd + OPEN_DELAY_MS;
+  const parts = r.result.kind === "backtest" ? resultParts(r.result.runId) : RESEARCH_PARTS;
+  const printedAt = openAt + (parts - 1) * PART_MS;
+  return { total, stepMs, workEnd, openAt, parts, printedAt, endAt: printedAt + HOLD_MS };
+}
+
 export function ProductWindow() {
   const [active, setActive] = useState(0);
   const replay = replays[active];
-  const total = replay.steps.length;
-  const [tick, setTick] = useState(() => (prefersReducedMotion() ? total : 0));
-  const [view, setView] = useState<"code" | "results">("code");
+  const t = timeline(replay);
+  const [elapsed, setElapsed] = useState(() => (prefersReducedMotion() ? Infinity : 0));
+  const [userView, setUserView] = useState<"code" | "results" | null>(null);
   const [paused, setPaused] = useState(false);
   const [visible, setVisible] = useState(false);
   const frameRef = useRef<HTMLDivElement>(null);
   const threadRef = useRef<HTMLElement>(null);
-  const done = tick >= total;
+  const viewRef = useRef<HTMLDivElement>(null);
+  const userScrolled = useRef(false);
 
-  // Only play while the window is on screen.
+  // Start only once most of the window is actually on screen, and pause when it isn't.
   useEffect(() => {
     const el = frameRef.current;
     if (!el) return;
-    const io = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting), { threshold: 0.25 });
+    const io = new IntersectionObserver(([entry]) => setVisible(entry.intersectionRatio >= 0.6), {
+      threshold: [0, 0.6, 1],
+    });
     io.observe(el);
     return () => io.disconnect();
   }, []);
 
-  // Reveal the steps quickly, flip to the results, hold, then move on.
+  // One clock drives everything. Hovering only holds the finished results; the work keeps playing.
+  const holding = elapsed >= t.printedAt;
   useEffect(() => {
-    if (!visible || prefersReducedMotion()) return;
-    if (!done) {
-      const t = window.setTimeout(() => setTick((v) => v + 1), WORK_MS / total);
-      return () => window.clearTimeout(t);
-    }
-    if (paused) return;
-    const t = window.setTimeout(() => choose((active + 1) % replays.length), HOLD_MS);
-    return () => window.clearTimeout(t);
-  }, [tick, total, done, visible, paused, active]);
+    if (!visible || !Number.isFinite(elapsed)) return;
+    if (holding && paused) return;
+    const id = window.setInterval(() => setElapsed((v) => v + CLOCK_MS), CLOCK_MS);
+    return () => window.clearInterval(id);
+  }, [visible, holding, paused, elapsed]);
 
   useEffect(() => {
-    if (done) setView("results");
-  }, [done]);
+    if (Number.isFinite(elapsed) && elapsed >= t.endAt) choose((active + 1) % replays.length);
+  }, [elapsed, t.endAt, active]);
+
+  const shownSteps = Math.min(t.total, Math.floor(elapsed / t.stepMs));
+  const done = shownSteps >= t.total;
+  const opened = elapsed >= t.openAt;
+  const reveal = opened ? Math.min(t.parts, Math.floor((elapsed - t.openAt) / PART_MS) + 1) : 0;
+  const view = userView ?? (opened ? "results" : "code");
 
   // Keep the newest step in view while the agent works.
   useEffect(() => {
     const el = threadRef.current;
-    if (el && !done) el.scrollTop = el.scrollHeight;
-  }, [tick, done]);
+    if (el && !done) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }, [shownSteps, done]);
+
+  // Follow each part of the results as it prints, until the visitor scrolls on their own.
+  useEffect(() => {
+    if (view !== "results" || userScrolled.current || reveal < 2) return;
+    const desk = viewRef.current?.querySelector<HTMLElement>(".report-desk");
+    const parts = desk?.querySelectorAll<HTMLElement>(".report__part");
+    const last = parts?.[parts.length - 1];
+    if (desk && last) desk.scrollTo({ top: Math.max(0, last.offsetTop - 12), behavior: "smooth" });
+  }, [reveal, view]);
 
   function choose(i: number) {
     setActive(i);
-    setView("code");
-    setTick(prefersReducedMotion() ? replays[i].steps.length : 0);
+    setUserView(null);
+    setElapsed(prefersReducedMotion() ? Infinity : 0);
+    userScrolled.current = false;
     if (threadRef.current) threadRef.current.scrollTop = 0;
   }
 
-  const shownSteps = Math.min(tick, total);
   const lines = replay.code.split("\n");
-  const writeProgress =
-    tick <= replay.writesAt ? 0 : Math.min(1, (tick - replay.writesAt) / Math.max(1, total - replay.writesAt));
+  const writeStart = replay.writesAt * t.stepMs;
+  const writeProgress = Math.min(1, Math.max(0, (elapsed - writeStart) / Math.max(1, t.workEnd - writeStart)));
   const shownLines = Math.round(lines.length * writeProgress);
   const FileIcon = replay.result.kind === "research" ? FileText : FileCode2;
+  const markUserScroll = () => {
+    userScrolled.current = true;
+  };
 
   return (
     <div className="pw">
@@ -238,8 +273,8 @@ export function ProductWindow() {
               ))}
               {!done && <li className="pw__working">Working…</li>}
             </ol>
-            {done && (
-              <button className="pw__open" onClick={() => setView("results")}>
+            {opened && (
+              <button className="pw__open" onClick={() => setUserView("results")}>
                 Open the results
               </button>
             )}
@@ -251,7 +286,7 @@ export function ProductWindow() {
                 role="tab"
                 aria-selected={view === "code"}
                 className={view === "code" ? "is-on" : ""}
-                onClick={() => setView("code")}
+                onClick={() => setUserView("code")}
               >
                 <FileIcon size={13} aria-hidden />
                 {replay.file}
@@ -260,16 +295,22 @@ export function ProductWindow() {
                 role="tab"
                 aria-selected={view === "results"}
                 className={view === "results" ? "is-on" : ""}
-                onClick={() => setView("results")}
-                disabled={!done}
-                title={done ? undefined : "Results appear after a clean run"}
+                onClick={() => setUserView("results")}
+                disabled={!opened}
+                title={opened ? undefined : "Results appear after a clean run"}
               >
                 <Check size={13} aria-hidden />
                 Results
               </button>
             </div>
 
-            <div className="pw__view">
+            <div
+              className="pw__view"
+              ref={viewRef}
+              onWheel={markUserScroll}
+              onTouchMove={markUserScroll}
+              onPointerDown={markUserScroll}
+            >
               {view === "code" ? (
                 <pre className="pw__code" aria-label={`${replay.file} contents`}>
                   {lines.slice(0, done ? lines.length : shownLines).map((line, i) => (
@@ -279,11 +320,12 @@ export function ProductWindow() {
                       {"\n"}
                     </span>
                   ))}
+                  {!done && shownLines > 0 && <span className="pw__caret" aria-hidden />}
                 </pre>
               ) : replay.result.kind === "backtest" ? (
-                <ResultsView key={replay.id} runId={replay.result.runId} />
+                <ResultsView key={replay.id} runId={replay.result.runId} reveal={reveal || t.parts} />
               ) : (
-                <ResearchSheet key={replay.id} which={replay.result.which} />
+                <ResearchSheet key={replay.id} which={replay.result.which} reveal={reveal || t.parts} />
               )}
             </div>
           </div>

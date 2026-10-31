@@ -353,3 +353,13 @@
     padding: 10px 12px;
   }
 }
+
+/* The cursor while the agent types the file */
+.pw__caret {
+  display: inline-block;
+  width: 7px;
+  height: 14px;
+  margin-left: 52px;
+  background: var(--desk-text);
+  animation: pw-pulse 0.9s steps(2) infinite;
+}

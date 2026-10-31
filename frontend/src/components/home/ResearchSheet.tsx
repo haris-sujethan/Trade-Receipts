@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import type { Data, Layout } from "plotly.js-dist-min";
 import { FactsLabel } from "../FactsLabel";
 import { acme, acmeFacts, moonFacts } from "../../data/examples";
@@ -90,21 +90,41 @@ function HBars({ rows, label }: { rows: { name: string; value: number; color: st
   return <Plot data={data} layout={layout} height={40 + rows.length * 38} label={label} />;
 }
 
-export function ResearchSheet({ which }: { which: "acme" | "moon" }) {
+function Sheet({ label, parts, reveal }: { label: string; parts: ReactNode[]; reveal?: number }) {
+  const shown = reveal === undefined ? parts : parts.slice(0, reveal);
+  return (
+    <div className="report-desk">
+      <article className="report" aria-label={label}>
+        {shown.map((part, i) => (
+          <div key={i} className={reveal === undefined ? undefined : "report__part"}>
+            {part}
+          </div>
+        ))}
+      </article>
+    </div>
+  );
+}
+
+/** Research sheets have four parts: header, claims, charts, receipt. */
+export const RESEARCH_PARTS = 4;
+
+export function ResearchSheet({ which, reveal }: { which: "acme" | "moon"; reveal?: number }) {
   if (which === "acme") {
     return (
-      <div className="report-desk">
-        <article className="report" aria-label="Stock research report: ACME Robotics">
+      <Sheet
+        label="Stock research report: ACME Robotics"
+        reveal={reveal}
+        parts={[
           <header className="report__head">
             <h2>ACME Robotics · ACME</h2>
             <p className="report__meta">Latest quarterly report · a made-up company · example values</p>
             <p className="report__verdict">{acme.answer}</p>
-          </header>
+          </header>,
           <section className="report__section">
             <h3>Claims vs. facts</h3>
             <p className="report__sub">Each claim from the clip, checked against the company's reported numbers.</p>
             <ClaimsTable claims={acme.claims} factsHeader="Reported" />
-          </section>
+          </section>,
           <div className="report__pair">
             <section className="report__section">
               <h3>Revenue by quarter</h3>
@@ -116,21 +136,23 @@ export function ResearchSheet({ which }: { which: "acme" | "moon" }) {
               <p className="report__sub">In millions. Up 9% in a year, so each share owns less.</p>
               <Bars x={quarters} y={acme.shares} label="Diluted shares by quarter" unit="M" color={LOSS} />
             </section>
-          </div>
+          </div>,
           <section className="report__receipt">
             <h3>The receipt</h3>
             <div className="report__label">
               <FactsLabel facts={acmeFacts} title="Company Facts" />
             </div>
-          </section>
-        </article>
-      </div>
+          </section>,
+        ]}
+      />
     );
   }
 
   return (
-    <div className="report-desk">
-      <article className="report" aria-label="Crypto research report: MOON">
+    <Sheet
+      label="Crypto research report: MOON"
+      reveal={reveal}
+      parts={[
         <header className="report__head">
           <h2>MOON · Solana</h2>
           <p className="report__meta">Checked 9 days after launch · a made-up token · example values</p>
@@ -138,12 +160,12 @@ export function ResearchSheet({ which }: { which: "acme" | "moon" }) {
             The clip says liquidity is locked. On-chain, it isn't: the creator can still withdraw the pool. Fourteen
             wallets funded by one address hold 23% of the supply.
           </p>
-        </header>
+        </header>,
         <section className="report__section">
           <h3>Claims vs. chain</h3>
           <p className="report__sub">Each claim from the clip, checked against on-chain data.</p>
           <ClaimsTable claims={moonClaims} factsHeader="On-chain" />
-        </section>
+        </section>,
         <div className="report__pair">
           <section className="report__section">
             <h3>Who holds the supply</h3>
@@ -171,14 +193,14 @@ export function ResearchSheet({ which }: { which: "acme" | "moon" }) {
               ]}
             />
           </section>
-        </div>
+        </div>,
         <section className="report__receipt">
           <h3>The receipt</h3>
           <div className="report__label">
             <FactsLabel facts={moonFacts} title="Coin Facts" />
           </div>
-        </section>
-      </article>
-    </div>
+        </section>,
+      ]}
+    />
   );
 }
