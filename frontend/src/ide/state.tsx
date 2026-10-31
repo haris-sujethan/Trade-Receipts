@@ -1,10 +1,12 @@
 import { createContext, useContext, useEffect, useMemo, useReducer, type ReactNode } from "react";
 import { TOUR_DONE_KEY } from "../config";
 import {
+  moonOutput,
+  moonProblems,
   projectFiles,
   rsiOutput,
   rsiProblems,
-  rsiThread,
+  rugThread,
   runs,
   type Problem,
   type ProjectFile,
@@ -17,8 +19,8 @@ export type TabId = string;
 
 export type Message = { kind: "user" | "agent"; text: string };
 export type UserThread = { id: number; title: string; messages: Message[] };
-/** "example" is the replayed demo thread; numbers are threads started in this session. */
-export type ThreadRef = "example" | number;
+/** The two example threads (the replayed rug check and the finished backtest), then threads started in this session. */
+export type ThreadRef = "rug" | "backtest" | number;
 
 type State = {
   workTab: WorkTab;
@@ -68,12 +70,15 @@ type Action =
   | { type: "newThread" }
   | { type: "selectThread"; thread: ThreadRef };
 
-const STEP_COUNT = rsiThread.flatMap((m) => (m.kind === "steps" ? m.steps : [])).length;
-/** The step where the agent writes rsi_dip.pine. */
-export const WRITE_STEP = 5;
+const REPLAY_STEPS = rugThread.flatMap((m) => (m.kind === "steps" ? m.steps : []));
+const STEP_COUNT = REPLAY_STEPS.length;
+/** The step where the agent writes the token's report, counted from 1. */
+export const WRITE_STEP = REPLAY_STEPS.findIndex((s) => s.text.startsWith("Wrote")) + 1;
+/** The file that step writes. */
+export const WRITTEN_FILE = "moon";
 
 export const PREVIEW_REPLY =
-  "This preview runs on example data, so I can't run new strategies or research new tickers yet. Open a file in strategies or research to see a finished example.";
+  "This preview runs on example data, so I can't check new tokens or run new strategies yet. Open a file in tokens or strategies to see a finished example.";
 
 function readDone(): boolean {
   try {
@@ -103,7 +108,7 @@ function demoState(): State {
     openSeq: 0,
     draft: "",
     threads: [],
-    thread: "example",
+    thread: "rug",
   };
 }
 
@@ -116,7 +121,7 @@ function initialState(): State {
 function modeOf(id: TabId): WorkTab | null {
   const file = fileById(fileOf(id));
   if (!file || file.kind === "clip") return null;
-  return file.kind === "markdown" ? "Analyze" : "Backtest";
+  return file.kind === "token" || file.kind === "markdown" ? "Analyze" : "Backtest";
 }
 
 function withTab(s: State, id: TabId): State {
@@ -125,7 +130,7 @@ function withTab(s: State, id: TabId): State {
 }
 
 function finishReplay(s: State): State {
-  const ranRuns = s.ranRuns.includes("rsi") ? s.ranRuns : [...s.ranRuns, "rsi"];
+  const ranRuns = s.ranRuns.includes(WRITTEN_FILE) ? s.ranRuns : [...s.ranRuns, WRITTEN_FILE];
   const next: State = {
     ...s,
     revealed: STEP_COUNT,
@@ -135,7 +140,7 @@ function finishReplay(s: State): State {
     edit: "accepted",
     ranRuns,
   };
-  return withTab(withTab(next, "rsi"), "results:rsi");
+  return withTab(next, WRITTEN_FILE);
 }
 
 function titleFrom(text: string) {
@@ -157,7 +162,7 @@ function reducer(s: State, a: Action): State {
       if (s.active && fits(s.active)) return { ...s, workTab: a.tab };
       // Show the most recent tab of that kind, or the matching example.
       const recent = [...s.openTabs].reverse().find(fits);
-      const fallback = a.tab === "Analyze" ? "acme" : s.ranRuns.includes("rsi") ? "results:rsi" : "rsi";
+      const fallback = a.tab === "Analyze" ? WRITTEN_FILE : s.ranRuns.includes("rsi") ? "results:rsi" : "rsi";
       return { ...withTab(s, recent ?? fallback), openSeq: s.openSeq + 1 };
     }
     case "split":
@@ -175,12 +180,12 @@ function reducer(s: State, a: Action): State {
         openTabs: [],
         active: null,
         ranRuns: [],
-        thread: "example",
+        thread: "rug",
       };
     case "revealStep": {
       const revealed = Math.min(STEP_COUNT, s.revealed + 1);
       if (revealed !== WRITE_STEP) return { ...s, revealed };
-      const written = withTab({ ...s, revealed }, "rsi");
+      const written = withTab({ ...s, revealed }, WRITTEN_FILE);
       return s.autoAccept ? { ...written, edit: "accepted" } : { ...written, awaitingEdit: true };
     }
     case "finishReplay":
@@ -188,8 +193,8 @@ function reducer(s: State, a: Action): State {
     case "acceptEdit":
       return { ...s, awaitingEdit: false, edit: "accepted" };
     case "rejectEdit": {
-      // The agent stops: no file, no run.
-      const openTabs = s.openTabs.filter((t) => t !== "rsi");
+      // The agent stops: no report, no score.
+      const openTabs = s.openTabs.filter((t) => t !== WRITTEN_FILE);
       return { ...s, awaitingEdit: false, edit: "rejected", replaying: false, openTabs, active: openTabs.at(-1) ?? null };
     }
     case "autoAccept":
@@ -214,8 +219,8 @@ function reducer(s: State, a: Action): State {
       if (!text) return s;
       let threads = s.threads;
       let thread = s.thread;
-      // The example thread is a replay, so a new message starts a thread of your own.
-      if (thread === "example") {
+      // The example threads are replays, so a new message starts a thread of your own.
+      if (typeof thread !== "number") {
         thread = threads.length + 1;
         threads = [...threads, { id: thread, title: "", messages: [] }];
       }
@@ -268,14 +273,18 @@ const extraProblems: Record<string, Problem[]> = {
 };
 
 export function problemsFor(ranRuns: string[]): Problem[] {
-  return ranRuns.flatMap((id) => (id === "rsi" ? rsiProblems : (extraProblems[id] ?? [])));
+  return ranRuns.flatMap((id) =>
+    id === "rsi" ? rsiProblems : id === WRITTEN_FILE ? moonProblems : (extraProblems[id] ?? []),
+  );
 }
 
 export function outputFor(ranRuns: string[]): string[] {
   return ranRuns.flatMap((id) =>
     id === "rsi"
       ? rsiOutput
-      : [
+      : id === WRITTEN_FILE
+        ? moonOutput
+        : [
           `09:52:10  lint        ${fileById(id)?.name ?? id}  0 errors, 0 warnings`,
           "09:52:11  engine      S&P 500 members as of each date  2010-01 → 2026-10  202 rebalances",
           "09:52:14  red team    8 checks  0 fails  2 cautions",
@@ -287,8 +296,13 @@ export function hasRun(fileId: string): boolean {
   return fileId in runs;
 }
 
+export const exampleThreadTitle: Record<"rug" | "backtest", string> = {
+  rug: "Is this token legit?",
+  backtest: "Code the strategy in this clip",
+};
+
 export function threadTitle(state: State): string {
-  if (state.thread === "example") return "Code the strategy in this clip";
+  if (typeof state.thread !== "number") return exampleThreadTitle[state.thread];
   return state.threads.find((t) => t.id === state.thread)?.title || "New thread";
 }
 

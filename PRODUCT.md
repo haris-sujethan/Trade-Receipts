@@ -8,11 +8,11 @@ web
 
 ## Stack
 
-React + Vite + TypeScript, with Monaco (the VS Code editor) for code files and Plotly for report charts (a custom bundle with only the chart types the reports use). Backend (later): Python FastAPI on Modal. Confirmed by the user during spec review (SPEC.md, decisions log).
+React + Vite + TypeScript, with Monaco (the VS Code editor) for code files and Plotly for report charts (a custom bundle with only the chart types the reports use). The rug model is Meta's open-weight Muse Glimmer, fine-tuned and then trained with reinforcement learning on past pump.fun launches, on Modal GPUs. Backend (later): Python FastAPI on Modal. Confirmed by the user during spec review (SPEC.md, decisions log).
 
 ## Users
 
-Anyone who trades or invests, whether or not they can code; most are retail traders. They arrive with an idea (their own, a friend's, something they read or watched) and want to know if it works. Explanations match the depth of the question, and the agent simplifies on request.
+Anyone who trades or invests, whether or not they can code; most are retail traders. The rug check is aimed at new crypto traders: they are the ones who get rugged, and a manipulated chart looks real to them. They arrive with an idea (their own, a friend's, something they read or watched) and want to know if it works. Explanations match the depth of the question, and the agent simplifies on request.
 
 Secondary audience during the hackathon: judges, who watch a 3-minute demo video and try the live product without signing up.
 
@@ -20,13 +20,13 @@ Secondary audience during the hackathon: judges, who watch a 3-minute demo video
 
 Tagline: "An agent-native IDE for financial research and automated backtesting."
 
-The main selling points are backtesting and research of stocks and crypto, in one IDE. Build and test trading strategies without writing code. The agent turns plain English, a screenshot, or a video clip into Pine Script v6 (single-chart strategies) or Python (multi-stock, fundamentals, macro), fixes its own compile and lint errors in a visible loop, and backtests honestly against the S&P 500. Users keep the code. A second tab researches stocks from SEC filings.
+The main feature (since Oct 31) is the crypto rug check. It shows every on-chain signal for a new coin and scores its rug chance with a model trained on past pump.fun launches that did and didn't rug. The real chart and the bubble map show what's fake. Backtesting and stock research are the second half, in the same IDE: build and test trading strategies without writing code. The agent turns plain English, a screenshot, or a video clip into Pine Script v6 (single-chart strategies) or Python (multi-stock, fundamentals, macro), fixes its own compile and lint errors in a visible loop, and backtests honestly against the S&P 500. Users keep the code. A second tab researches stocks from SEC filings.
 
-Success: a user with no coding background goes from an idea to clean, tested code they can paste into TradingView, and understands honestly how it would have performed.
+Success: a new trader sees through a manipulated coin before buying it. A user with no coding background goes from an idea to clean, tested code they can paste into TradingView, and understands honestly how it would have performed.
 
 ## Positioning
 
-An IDE for trading. Strategies are files; running them produces results; errors and honesty problems (repainting, look-ahead, zero trading costs) show up as problems in the code. Every rule links to where it came from, and every number comes from real data, never from the model.
+An IDE for trading, led by a rug check that learns from past launches instead of applying fixed limits ruggers can dodge. Coins get research files; strategies are files; running them produces results; errors and honesty problems (repainting, look-ahead, zero trading costs) show up as problems in the code. Every rule links to where it came from, and every number comes from real data, never from the model.
 
 Clean compiles are expected, not the selling point. Video of trading gurus is only the demo's hook: the product is not framed around gurus or copy-trading, and product copy makes no competitor comparisons.
 
@@ -44,8 +44,10 @@ Clean compiles are expected, not the selling point. Video of trading gurus is on
 - Stock prices from Tiingo using each user's own free key; daily bars only for stocks. Major-coin prices for the tour and no-key runs from Binance's public archive (credit required, non-commercial). Fundamentals from SEC EDGAR.
 - No TradingView data is used, and TradingView's site is never automated.
 - Markets: US stocks, ETFs, and crypto. No options, forex, or futures. No live trading for now.
-- Crypto analysis is designed but parked until the equities experience works.
+- The first rug model covers pump.fun on Solana only, scoring coins from launch; other launchpads and chains come later. Its headline number is "Rug chance," always shown with the model's measured accuracy, and a low score never says "safe." The rug check describes wallet behavior, not people.
+- On-chain data is public; pump.fun history comes from BigQuery's public Solana dataset, live data from Helius, and security fields from GoPlus (credited). Labels are computed from raw chain data.
 - The IDE is built for laptops and desktops. Below 900px it shows one pane at a time (thread, files, editor, problems) with a light read-only code view instead of Monaco, and the demo plays without the tour. The home page works on any screen.
+- The public site is crypto only for now (Oct 31): the rug check leads, crypto backtesting follows, and stocks aren't mentioned. Stock examples stay in the code for later.
 - Until the backend exists, the IDE is a preview on example data: anything that can't run yet is disabled with a visible reason or a "coming soon" label, and a "Preview · example data" note in the top bar lists what works now.
 - Full product spec: SPEC.md. Data and tooling research: notes/data-sources.md.
 

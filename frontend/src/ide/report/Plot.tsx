@@ -90,8 +90,10 @@ export function Plot({ data, layout, narrowLayout, height, label, table }: Props
       if (now !== narrow && narrowLayout) {
         narrow = now;
         void draw();
-      } else {
-        plotly.Plots.resize(node);
+      } else if (node.offsetParent) {
+        // Hidden charts (a closed tab, a collapsed pane) can't be resized; they redraw when shown.
+        const done = plotly.Plots.resize(node) as unknown as Promise<void> | undefined;
+        done?.catch(() => undefined);
       }
     });
     ro.observe(node);

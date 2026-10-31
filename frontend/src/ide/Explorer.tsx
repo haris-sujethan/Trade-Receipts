@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight, FileCode2, FileText, FileVideo, Lock } from "lucide-react";
 import { projectFiles, type ProjectFile } from "../data/examples";
-import { useIde, WRITE_STEP } from "./state";
+import { useIde, WRITE_STEP, WRITTEN_FILE } from "./state";
 
-const folders: ProjectFile["folder"][] = ["strategies", "research", "clips"];
+const folders: ProjectFile["folder"][] = ["tokens", "strategies", "clips"];
 
 function FileIcon({ kind }: { kind: ProjectFile["kind"] }) {
   if (kind === "clip") return <FileVideo size={15} aria-hidden />;
-  if (kind === "markdown") return <FileText size={15} aria-hidden />;
+  if (kind === "markdown" || kind === "token") return <FileText size={15} aria-hidden />;
   return <FileCode2 size={15} aria-hidden />;
 }
 
@@ -42,8 +42,8 @@ export function Explorer() {
               {open && (
                 <ul className="tree">
                   {files.map((f) => {
-                    // The file the agent just wrote, until its results are opened.
-                    const isNew = f.id === "rsi" && state.revealed >= WRITE_STEP && !state.openTabs.includes("results:rsi");
+                    // The report the agent is writing, until the check finishes.
+                    const isNew = f.id === WRITTEN_FILE && state.revealed >= WRITE_STEP && !state.replayed;
                     return (
                       <li key={f.id}>
                         <button

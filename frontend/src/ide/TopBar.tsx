@@ -95,15 +95,15 @@ function PreviewNote() {
           <p className="preview__title">This preview runs on example data</p>
           <p className="preview__head">Works now</p>
           <ul>
-            <li>The example project: a clip coded into a strategy, a stock check and a coin check</li>
-            <li>Reading, copying and downloading the code</li>
+            <li>Two example rug checks: one from a shill clip, one from a pasted mint</li>
+            <li>An example backtest: a strategy from a clip, coded and tested</li>
             <li>The full reports, with every chart and its numbers</li>
           </ul>
           <p className="preview__head">Coming next</p>
           <ul>
+            <li>Live rug checks on any pump.fun token, scored by a model trained on thousands of past tokens</li>
             <li>Running your own strategies on real prices</li>
             <li>Attaching clips and screenshots</li>
-            <li>Research on any stock or coin</li>
             <li>Saving your own projects</li>
           </ul>
         </div>

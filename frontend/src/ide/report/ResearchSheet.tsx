@@ -200,7 +200,7 @@ export function ResearchSheet({ which, reveal }: { which: "acme" | "moon"; revea
         <section className="report__receipt">
           <h3>The receipt</h3>
           <div className="report__label">
-            <FactsLabel facts={moonFacts} title="Coin Facts" />
+            <FactsLabel facts={moonFacts} title="Token Facts" />
           </div>
         </section>,
       ]}

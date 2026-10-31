@@ -4,18 +4,18 @@ import { ArrowRight } from "lucide-react";
 import { APP_NAME, TAGLINE } from "../config";
 import { FactsLabel } from "../components/FactsLabel";
 import { ProductWindow } from "../components/home/ProductWindow";
-import { acmeFacts, moonFacts, rsiFacts } from "../data/examples";
+import { rsiFacts } from "../data/examples";
+import { tokenChecks } from "../data/tokens";
 import { onTablistKeyDown } from "../lib/tabs";
 import "./home.css";
 
 const heroLabels = [
+  { id: "rug", tab: "Rug check", title: "Token Facts", facts: tokenChecks.moon.facts },
   { id: "backtest", tab: "Backtest", title: "Strategy Facts", facts: rsiFacts },
-  { id: "stock", tab: "Stock research", title: "Company Facts", facts: acmeFacts },
-  { id: "crypto", tab: "Crypto research", title: "Coin Facts", facts: moonFacts },
 ];
 
 export function Home() {
-  // Opens on the backtest label; the other two show on click.
+  // Opens on the rug check label; the backtest label shows on click.
   const [active, setActive] = useState(0);
   const current = heroLabels[active];
 
@@ -40,11 +40,12 @@ export function Home() {
       <main id="main" tabIndex={-1}>
         <section className="hero" aria-labelledby="hero-title">
           <div className="hero__copy">
-            <h1 id="hero-title">Backtest any strategy. Research any stock or coin.</h1>
+            <h1 id="hero-title">Check the token before you buy it.</h1>
             <p className="hero__tagline">{TAGLINE}</p>
             <p className="hero__sub">
-              Describe what you want to test or check. The agent writes the code, runs it on real data, and shows you
-              the receipts.
+              Paste a pump.fun token or drop in the clip shilling it. The agent traces every wallet, splits independent
+              buyers from the team and the bots, and scores the rug chance with a model trained on thousands of past
+              tokens. It backtests crypto strategies too.
             </p>
             <div className="hero__ctas">
               <Link to="/signup" className="btn btn--ink btn--lg">
@@ -84,8 +85,8 @@ export function Home() {
           <div className="section-head">
             <h2 id="showcase-title">Watch the agent work.</h2>
             <p>
-              Each example replays a session in the IDE: a strategy backtested, a stock checked, a coin checked. Every
-              answer comes with its receipts.
+              Each example replays a session in the IDE: a token checked from a shill clip, a token checked from its
+              mint, and a strategy backtested. Every answer comes with its receipts.
             </p>
           </div>
           <ProductWindow />
@@ -99,29 +100,31 @@ export function Home() {
             <li>
               <h3>Ask</h3>
               <p>
-                Describe a strategy to backtest, or name a stock or coin to research. Plain English, a chart
-                screenshot, or a short clip all work.
+                Paste a pump.fun token's mint, drop in the clip shilling it, or describe a crypto strategy to backtest
+                in plain English.
               </p>
             </li>
             <li>
               <h3>The agent does the work</h3>
               <p>
-                It writes the code, fixes its own errors, and pulls the data, in a workspace you can watch. Strategies
-                come out as Pine Script for TradingView or Python.
+                It pulls the token's history from launch, traces who funded every wallet, and separates the team and the
+                bots from independent buyers, in a workspace you can watch. Strategies come out as Pine Script for
+                TradingView or Python, and get tested.
               </p>
             </li>
             <li>
               <h3>You get the receipts</h3>
               <p>
-                Backtests with trading costs included and compared with the S&amp;P 500. Research where every number
-                shows where it came from. The code is yours to keep.
+                A verdict and rug chance from a model trained on thousands of past tokens, explained in plain words,
+                with the real chart and the bubble map as evidence. Backtests include trading costs and are compared
+                with simply holding. The code is yours to keep.
               </p>
             </li>
           </ol>
         </section>
 
         <section className="close" aria-labelledby="close-title">
-          <h2 id="close-title">Test it before you trade it.</h2>
+          <h2 id="close-title">See who's selling before you buy.</h2>
           <Link to="/signup" className="btn btn--paper">
             Launch IDE
             <ArrowRight size={20} strokeWidth={2.5} aria-hidden />
@@ -132,7 +135,7 @@ export function Home() {
       <footer className="home-foot">
         <p className="home-foot__name">{APP_NAME}</p>
         <p>For research and education. Not financial advice.</p>
-        <p>Data from Tiingo · Crypto data: Binance Vision</p>
+        <p>Crypto data: Binance Vision</p>
         <p>Built for the Meta Global AI Developer Hackathon, 2026.</p>
       </footer>
     </div>

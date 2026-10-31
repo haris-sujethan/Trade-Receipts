@@ -14,6 +14,12 @@ colors:
   regime-volatile-up: "#4a86c8"
   regime-calm-down: "#2f4f99"
   regime-volatile-down: "#b0559a"
+  group-team: "#eb6834"
+  group-likely-team: "#6250d6"
+  group-sniper: "#1baf7a"
+  group-bot: "#2a78d6"
+  group-fresh: "#eda100"
+  group-independent: "#a9a9ae"
   desk-0: "#0b0b0c"
   desk-1: "#111113"
   desk-2: "#17171a"
@@ -155,6 +161,7 @@ Ink on white, plus one red, plus a dark desk for the IDE; chart color appears on
 
 ### Tertiary
 - **Regime palette** (#1f7a4d, #4a86c8, #2f4f99, #b0559a): The four market regimes in the P&L chart, in that fixed order (calm uptrend, volatile uptrend, calm downtrend, volatile downtrend). Validated for lightness, chroma, color-vision deficiency and contrast on white. Never reordered or cycled.
+- **Wallet groups** (team #eb6834, likely team #6250d6, snipers #1baf7a, bots and wash trades #2a78d6, fresh wallets #eda100, independent buyers #a9a9ae): Who traded, in the rug check's real chart, in that fixed stack order. Validated for adjacent pairs; independent buyers are deliberately neutral, so color marks only the wallets worth worrying about. Likely team is also hatched. The bubble map is a scatter, so only team, likely team and snipers get color there (the three pass every pair); everyone else is grey, and wallets under a day old are hollow rings.
 
 ### Neutral
 - **Soft Ink** (#444447): Secondary paper text: sublines, report subtitles, footnotes.
@@ -183,7 +190,7 @@ Ink on white, plus one red, plus a dark desk for the IDE; chart color appears on
 ### Hierarchy
 - **Display** (900, clamp(48px, 6.4vw, 88px), 0.95): The home hero headline only. Balanced wrap, max 13ch.
 - **Headline** (900, clamp(36px, 4.4vw, 60px), 1): Home section titles and the closing band.
-- **Label title** (900, 56px full, 36px compact, 1): "Strategy Facts", "Company Facts", "Coin Facts".
+- **Label title** (900, 56px full, 36px compact, 1): "Strategy Facts", "Company Facts", "Token Facts".
 - **Title** (900, clamp(26px, 3vw, 36px), 1.05): Report headers and tour card titles (24px).
 - **Body** (400, 19px home and 14px reports, 1.55): Paragraphs, max 34–38em on paper and 62ch for report verdicts. Paragraphs wrap with `text-wrap: pretty`.
 - **Label row** (700 values, 400 names, 17px full and 14px compact): Facts label rows, with tabular figures and values right-aligned.
@@ -250,6 +257,17 @@ Square corners throughout (0px), on paper and on the desk, including buttons, in
 
 ### Facts Label (signature)
 The product's proof and its signature object. White stock with a 4px ink border, an 18px pad, a Black title over a hairline, the subject and test window, then a 14px slab. The claimed row prints in ink; 650ms after it appears a 4px red bar draws across the claimed value from left to right over 520ms and the row fades to muted ink. The tested value sits below on a mid rule. Rows follow with hairlines, using the mid and bar weights to group them, and a footnote closes the label. It renders identically on paper and on the desk, at full or compact size. Screen readers hear "Contradicted by the test" before the struck value.
+
+### Rug Check Report
+A white report sheet that leads with the verdict in Black type: "Likely rug" in red, "Possible rug" and "Unlikely rug" in ink. The rug chance sits beside it, with a line saying it comes from a model trained on past pump.fun tokens. Under it:
+- the plain explanation, with the model's own terse reasoning folded away;
+- the real chart: ink candles, hollow when they closed up and solid when down, over volume stacked by wallet group, with team sells as orange down-triangles;
+- the bubble map;
+- every signal as pass, caution, red flag or can't check;
+- claims vs. the chain, similar past tokens, the model's receipt;
+- the Token Facts label as the receipt.
+
+The keys for both charts are HTML above the chart, so they wrap at any width. A launch bundle that dwarfs later volume is clipped at the axis and labeled with its real size.
 
 ### Product Window
 A working slice of the dark IDE framed by a 4px ink border on paper, with example tabs above it. It replays an agent session: steps appear in the thread, the file types itself in, and then the report prints one part at a time. It starts only when it is on screen, holds the finished results while hovered, focused or touched, and has Pause and Replay controls. With reduced motion, it shows each example finished.

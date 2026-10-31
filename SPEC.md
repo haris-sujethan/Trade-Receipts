@@ -1,12 +1,12 @@
 # Trade Receipts — product spec
 
-> **An agent-native IDE for financial research and automated backtesting.** Backtest any strategy and research any stock or coin, with receipts for every result.
+> **An agent-native IDE for financial research and automated backtesting.** Check any new token for a rug with a model trained on past launches, backtest any strategy, and research any stock, with receipts for every result.
 
 - **Builder:** Haris Sujethan (solo)
 - **Event:** Meta Global AI Developer Hackathon, Indie Developer track
 - **Theme:** Build for Your World
 - **Submission deadline:** Wed Nov 4, 2026, 9:00 PM ET ([submit](https://cerebralvalley.ai/e/meta-ai-developer-hackathon/hackathon/submit))
-- **Status (Oct 30, 2026):** spec settled for the IDE and equities. Crypto is designed but its details are parked until equities works. Nothing is built yet.
+- **Status (Oct 31, 2026):** pivot. The crypto rug check (section 7) is now the main feature: pump.fun first, scored by a model trained on past launches. Backtesting and stock research stay as the second half. The frontend is built as a preview on example data; the backend isn't started.
 - **Name:** Trade Receipts.
 
 The research behind the data and tooling choices is in [notes/data-sources.md](notes/data-sources.md). Items marked **(verify)** couldn't be confirmed and must be checked before they're relied on; they're collected in [Open questions](#14-open-questions).
@@ -21,27 +21,37 @@ Everyday traders and investors make decisions from ideas they can't easily test:
 - **Testing it** usually means trusting a backtest that quietly cheats: signals that repaint, data that wasn't public yet, no trading costs, today's winners picked in hindsight.
 - **Comparing it** with something simpler, like holding the S&P 500 for 10 years, rarely happens, and that's usually the comparison that matters.
 - **Researching a stock** means piecing together filings and finance sites by hand.
-- **Researching a coin** is harder still: the data that matters is on-chain and hard to read.
+- **Researching crypto** is harder still: the data that matters is on-chain and hard to read. New tokens are the worst case:
+  - Bundled launches, linked wallets, wash-trading bots and fake holders can make a token look busy and healthy.
+  - Its chart can look completely real.
+  - New traders are the ones who get rugged, and they can't tell.
+  - Today's rug checkers show a few surface stats against fixed limits, and ruggers stay under the limits.
 
-The product is for coding and testing any idea, wherever it came from.
+The product is for checking any token and testing any idea, wherever it came from.
 
 ## 2. Product
 
 ### In one paragraph
 
-A Cursor-style IDE for trading research with two tabs. **Backtest**: describe a strategy in plain English, or drop in a clip or screenshot. The agent pulls out the exact rules (with timestamps for where each came from), writes the strategy as Pine Script v6 or Python, compiles and lints it, fixes its own errors in a loop you can watch, and runs it on real historical data. Results come with honesty checks and a comparison with the S&P 500, and the code is yours to copy into TradingView or keep. **Analyze**: give it a ticker, or a clip pitching one, and it builds a research file from SEC filings: growth, cash flow, dilution, debt, the pitch's claims checked against the facts, and what happened to similar companies in the past. It never says buy or sell.
+A Cursor-style IDE for trading research. **Rug check** (the main feature): give it a new token's name or mint, a screenshot, or a clip shilling it. The agent finds the right token and pulls its on-chain history from launch. It traces who funded whom and shows a bubble map of linked wallets. It separates independent buyers from the team, snipers and bots on the chart, and scores the token's rug chance with Meta's Muse Glimmer, which we train with fine-tuning and then reinforcement learning on thousands of past pump.fun launches that did and didn't rug. The report leads with a verdict such as "Likely rug · 87% rug chance", explained in plain language, with similar past tokens, and every signal links to the chain as evidence. **Backtest**: describe a strategy in plain English, or drop in a clip or screenshot. The agent pulls out the exact rules (with timestamps for where each came from), writes the strategy as Pine Script v6 or Python, compiles and lints it, fixes its own errors in a loop you can watch, and runs it on real historical data. Results come with honesty checks and a comparison with the S&P 500, and the code is yours to copy into TradingView or keep. **Analyze**: give it a ticker, or a clip pitching one, and it builds a research file from SEC filings: growth, cash flow, dilution, debt, the pitch's claims checked against the facts, and what happened to similar companies in the past. It never says buy or sell.
 
 ### Main selling points
 
-**Backtesting and research (stocks and crypto), in one agent-native IDE.** Describe a strategy and the agent writes the code, fixes its own errors, and backtests it honestly; name a stock or coin and it researches it with real data. No coding required, and you keep the code. Clean compiles are expected, not the selling point. A clip of a trading guru is the demo's hook, not the product's positioning.
+1. **A rug check that learns.**
+   - Every on-chain signal is shown with its evidence.
+   - A model trained on what actually happened to past launches scores the token, instead of fixed limits ruggers can dodge.
+   - The real chart and the bubble map show new traders what's fake.
+2. **Backtesting and research in the same agent-native IDE.** Describe a strategy and the agent writes the code, fixes its own errors, and backtests it honestly; name a stock and it researches it with real data. No coding required, and you keep the code.
+
+Clean compiles are expected, not the selling point. A clip of a shill or a trading guru is the demo's hook, not the product's positioning.
 
 ### Use cases
 
-1. **Code my own idea:** "Buy QQQ when it's 10% off its high, sell after a 20% gain."
-2. **Code a strategy from a clip or screenshot:** the demo's hook.
-3. **Compare strategies:** this strategy vs. the S&P 500 vs. my other strategy, same period, same costs.
-4. **Research a stock:** filings-based facts, claims checked, similar companies' outcomes.
-5. **Check a coin** (parked until equities works): risk signals and how similar past tokens turned out.
+1. **Check a new token before buying:** paste its mint, or drop in the clip shilling it. Get the verdict and rug chance, a plain explanation, the real chart, and the bubble map.
+2. **Code my own idea:** "Buy QQQ when it's 10% off its high, sell after a 20% gain."
+3. **Code a strategy from a clip or screenshot.**
+4. **Compare strategies:** this strategy vs. the S&P 500 vs. my other strategy, same period, same costs.
+5. **Research a stock:** filings-based facts, claims checked, similar companies' outcomes.
 
 ### How this scores
 
@@ -49,10 +59,10 @@ Stage 1 is pass/fail on theme fit and real use of Meta's models. Stage 2 scores 
 
 | Criterion | Weight | What earns it here |
 |---|---|---|
-| Impact | 30% | Anyone can turn a trading idea into working, honestly tested code without knowing how to code, and research the companies behind it with real data |
-| Use of Meta AI tooling | 25% | Video and image understanding turns clips into code. Voice Transcribe gives timestamped receipts. Structured output drives extraction. Muse Spark writes and fixes code, with Muse Wonder for hard cases. Evals show what each part adds |
-| Technical depth | 20% | Compile-lint-run fix loop with measured results, honesty lints from TradingView's own docs, Pine engine accuracy measured against TradingView, a point-in-time Python engine with a future-leak test, numbers audit |
-| Demo | 25% | An idea becomes clean, tested code live; a repainting script gets caught; a strategy vs. the S&P over 10 years; a stock's claims checked against its filings |
+| Impact | 30% | New traders, the people most often rugged, can see through a manipulated token before buying. Anyone can turn a trading idea into honestly tested code without knowing how to code |
+| Use of Meta AI tooling | 25% | The rug model is Muse Glimmer, trained by us with fine-tuning and then reinforcement learning on real rug outcomes. Video understanding reads a token's mint and claims off a shill clip. Voice Transcribe gives timestamped receipts. Muse Spark runs the agent, explains the evidence, and writes and fixes strategy code, with Muse Wonder for hard cases. Evals show what each part adds |
+| Technical depth | 20% | Our own pump.fun indexer, wallet-linking graph, and point-in-time snapshots. Muse Glimmer is trained with GRPO against real outcomes, with a calibration reward. A time-split evaluation tests it against gradient-boosted trees and the checklist. Plus the compile-lint-run fix loop, Pine engine accuracy vs. TradingView, and the numbers audit |
+| Demo | 25% | A shilled token that looks great is taken apart live: bundled launch, the wallet spider, fake volume removed from the chart, rug chance with reasons; then a clip becomes tested code |
 
 It stays clear of the hackathon's anti-project list (the kickoff slides add "Streamlit apps" and "Dashboards as the main feature" to the written guide). It's not a basic RAG app, a simple image analyzer, or a Streamlit app; it's an IDE where results are the output of code the agent writes and runs; and it gives no advice.
 
@@ -65,12 +75,22 @@ It stays clear of the hackathon's anti-project list (the kickoff slides add "Str
 3. **Honest by default.** Costs always included, benchmark always shown, look-ahead and repainting flagged. If the data can't support an honest answer, say so.
 4. **Facts and flags, not advice.** No buy/sell ratings, no price targets. Risk estimates describe what happened to similar past cases and are shown with the model's measured accuracy.
 5. **Show the work.** The thread streams each step as it happens, including every fix round.
-6. **Learn from history.** Models learn from past outcomes (past companies now; past tokens when crypto is built). Tracking new predictions forward is a future feature.
+6. **Learn from history.** Models learn from past outcomes: past pump.fun launches for the rug check, past companies for stocks. Tracking new predictions forward is a future feature.
 7. **It's an IDE.** Strategies are files. Running them produces results. Errors and honesty issues are problems in the code. The agent does the work; follow-up questions lead to new code and new runs.
 
 ---
 
 ## 4. Experience
+
+> **Oct 31 (built):** the preview site is now crypto only, with no stock mentions for now; the stock examples stay in the code, unplugged.
+> - **Home page:** leads with the rug check. The headline is "Check the token before you buy it.", the subline says the model is trained on thousands of past tokens, and the label tabs are Rug check and Backtest.
+> - **Demo replays:** MOON (a likely rug, from a shill clip), KITE (an unlikely rug, from its mint), and the BTC backtest.
+> - **IDE modes:** Backtest and Analyze; token checks live in Analyze.
+> - **Demo project:** `tokens/`, `strategies/` and `clips/`.
+> - **Tour:** five steps through the MOON check, ending on its Token Facts label. The BTC backtest is a finished example thread.
+> - **Settings:** the Tiingo key setting is removed.
+>
+> The descriptions below are from before the pivot.
 
 ### 4.1 First visit
 
@@ -447,85 +467,230 @@ Each claim maps to a metric and gets **supported**, **contradicted**, or **can't
 
 ---
 
-## 7. Analyze: crypto (parked)
+## 7. Rug check: crypto (main feature)
 
-**Status:** designed, but its details (data stack, chain order, launchpads, model specifics) will be settled after equities works. The research is in [notes/data-sources.md](notes/data-sources.md). Decisions still open are listed in 7.9.
+**Status (Oct 31):** the main feature. Crypto comes first and stocks and backtesting stay as the second half (decision log, Oct 31). Terms used here are defined in [GLOSSARY.md](GLOSSARY.md). The label definition and the choice of model are recorded in [docs/adr](docs/adr). The research behind it is in [notes/data-sources.md](notes/data-sources.md).
 
-**Key research finding:** on the major launchpads (pump.fun, Raydium LaunchLab, Clanker, Zora, likely four.meme), the creator usually can't pull liquidity; LP is burned or locked. The real rug is the creator, insiders, or bundled wallets selling into buyers. The checklist should weight holder and linked-wallet signals above "is liquidity locked." Pulled liquidity matters mainly for plain Uniswap-style pairs, mostly on Ethereum.
+**The gap:** rug checkers today show surface stats against fixed limits, such as the top holders' share or "bundled: yes". None of them learn from what actually happened to past tokens. Ruggers know the limits and stay under them. Trade Receipts shows every raw signal *and* scores the token with a model trained on past launches that did and didn't rug.
+
+**Who it's for:** new traders. They are the ones being rugged, and a manipulated chart looks real to them, so the product explains the chart as well as scoring it.
+
+**Scope of the first model:** pump.fun on Solana only. A token is scored from 1 minute to 24 hours after launch, on the bonding curve or after it graduates. Everything else is listed for later (7.12).
+
+**Key research finding:** on pump.fun, the creator can't pull the main pool. The bonding curve graduates into a canonical pool whose LP is burned (PumpSwap since March 2025, Raydium before that). The rug is the team selling into buyers. So the model weights holder, wallet-link and trading behavior above "is liquidity locked." Mint and freeze permissions are normally revoked on pump.fun tokens **(verify)**, so those checks mostly pass and can't be the edge.
 
 ### 7.1 Inputs and token resolution
 
-- A name, ticker, or contract address; a screenshot; or a clip shilling a token.
-- **Address from the clip:** Muse Spark reads it from the frames. Candidate: SAM 3.1 locates the text overlay so it can be cropped and read at full resolution (kept only if the eval shows it helps).
-- **Address validation:** Solana: valid base58, 32 bytes, an existing token mint. EVM: valid hex, EIP-55 checksum where mixed-case, has contract code.
-- **Copycats:** search pairs by name; when several tokens share a name, list candidates ranked by age and liquidity and ask the user to pick. Never choose silently.
-- **Chains (proposed order):** Solana, Base, BNB Chain, Ethereum.
+- A name, ticker or mint; a screenshot; or a clip shilling a token.
+- **Mint from the clip:** Muse Spark reads it from the frames. Candidate: SAM 3.1 finds the on-screen text so it can be cropped and read at full resolution (kept only if the eval shows it helps).
+- **Mint check:** valid base58, 32 bytes, an existing mint created through pump.fun.
+- **Copycats:** when several tokens share a name or ticker, the agent lists them by age, market cap and holders and asks which one. It never chooses silently.
 
-### 7.2 Three kinds of coins
+### 7.2 What it answers
 
-| Kind | How it's detected | Checks |
+The report is about the rug. The headline is a **verdict** with the **rug chance**, for example "Likely rug · 87% rug chance." Everything underneath supports it.
+
+- **Verdict bands** (starting values, reset after calibration): Likely rug at 60% and up, Possible rug at 25–60%, Unlikely rug below 25%. The receipt shows how often each verdict actually rugged in testing. No verdict ever says "safe."
+- **No faded or survived numbers anywhere.** The explanation says a token is likely to fade only when that matters.
+- **Special cases instead of a score:**
+  - **Already rugged:** the team has already rugged. The verdict says so, with the team's sells as evidence.
+  - **Below the activity floor:** "Too little activity to score," with the signals shown.
+  - **Older than 24 hours:** "This model covers a token's first day," with the signals, bubble map and real chart shown.
+
+### 7.3 Signals
+
+Every signal is a number the model learns from and a line the user can read. Each one is computed **as of the snapshot** (7.7), using only what was on-chain by then. Most of these come from the builder's own trading experience.
+
+| Family | Signal | How it's measured |
 |---|---|---|
-| Major coin | Large market cap and long history | Age, liquidity, supply schedule, network fees |
-| Protocol token | Maps to a DefiLlama protocol | Fees, revenue, holder payouts, TVL trend, dilution, holder mix |
-| New token | Everything else | Scam-risk checklist (7.3) |
+| Launch and bundling | Opens already at a high market cap | Market cap after the first block, first minute and first 5 minutes |
+| | Buys sent as one bundle at launch | Share of supply bought in the creation slot and the next few; buys in the same Jito bundle (tip transfers in the same block) **(verify)** |
+| | Many small, identical buys across wallets (such as 0.5 SOL each), then independent buyers arrive | Count and share of buys with the same SOL size; round-number sizes; when the first independent buyer arrives |
+| | Snipers | Wallets outside the team buying in the first seconds, especially wallets with a sniping history. A warning signal, not a rug (7.6) |
+| Supply control | 1–3 people holding a lot through many wallets | Supply held per **cluster of linked wallets** (7.4), not per wallet; the team's share |
+| | Any wallet or cluster at 4–5% or more | Number of wallets and clusters above 4% |
+| | Total team supply | The team's share, plus supply moved out by plain transfers |
+| | Hidden supply | Tokens that reached holders by transfer instead of a buy |
+| Balance shape | Many holders at the same share (0.23%, 0.23%, 0.23%) | Holders with near-identical balances; how evenly supply is spread (Gini, entropy) |
+| Wallet quality | Fresh wallets | Holder and buyer wallet age; share funded minutes before launch |
+| | Fake holders: high market cap, too few real holders | Independent buyers per $1M of market cap |
+| | Holders vs. experienced traders | Share of holders with real trading history and past profits on pump.fun |
+| | Recycled wallets | Wallets that appeared in earlier launches, especially as team in past rugs |
+| Trading behavior | The team selling into every buy | Team sells within seconds of buys, at matching sizes or prices |
+| | Wash-trading bots faking volume | Distinct traders vs. trades; the same wallets buying and selling repeatedly; clockwork trade timing; volume from the team |
+| | Wallets buying and selling to each other | Round trips between linked wallets |
+| Chart shape | All-green or mostly green candles, slow steady accumulation | Share of green candles; how smooth the climb is; how shallow the dips are; price path vs. independent buyer flow |
+| Fees | Total fees stay tiny (0.004 SOL where real trading would pay 20–30) | Priority fees and tips traders paid, per dollar of volume and per trader; whether fees grow as market cap grows |
+| Creator | Creator history | Tokens this creator, and the wallet that funded it, launched before, and how they ended |
+| | Where the money came from | Team funding: fresh wallets, exchanges, known rug funders |
+| | Getting ready to exit | Team wallets moving SOL or tokens to exchanges or fresh wallets |
+| Speed | How fast it filled the bonding curve and graduated | Minutes from launch to graduation; buyers needed to get there |
+| Pitch vs. chain | Price and wallets around the clip's post time | Who bought before the clip; who sold right after |
+| | Claims ("dev doxxed", "community token", "no team tokens") | Checked against chain data and web search |
 
-### 7.3 Scam-risk checklist (new tokens)
+### 7.4 Wallet links, the team, and the bubble map
 
-Each check answers: *can someone take the money and run?* Pass, caution, red flag, or can't check, with explorer links as evidence. The same signals are the features the risk model learns from (7.7).
+- For each top holder and early buyer, trace the earliest incoming SOL transfers, up to 2 hops back.
+- **The team** is the creator plus every wallet linked to it in any of these ways:
+  - funded by the creator, or by the same funder;
+  - sent tokens or SOL to or from the creator's wallets;
+  - bought in the creator's launch bundle.
+- **Likely team:** wallets funded from the same exchange with the same amount (within 1%) inside a 10-minute window, with no on-chain link. They're their own signal. They count as team for the rug label only when they also sell alongside the team.
+- **Never link through** exchange hot wallets, pump.fun's program accounts or popular trading-bot accounts. These are identified by very high transfer counts plus a known list.
+- **Clusters** of linked wallets are the units for supply control and trading behavior (7.3).
+- **Independent buyers** aren't team, likely team, snipers or wash traders. Their wallet is at least a day old, has traded tokens before, or was funded from outside the team.
+- **The bubble map** shows the top 50 holders and the first 50 buyers, sized by share of supply.
+  - Each team cluster has its own color.
+  - Likely-team links are dotted.
+  - Independent buyers are grey.
+  - One funder with many spokes is the "spider."
 
-| Check | What it looks at | Red flag example |
-|---|---|---|
-| Age | Contract and first pool creation | Created days ago |
-| Mint permission | Solana `mintAuthority`; EVM mint functions | Supply can be inflated |
-| Freeze / blacklist | Solana `freezeAuthority`; EVM blacklist and pause | Team can freeze your tokens |
-| Token-2022 extensions (Solana) | Transfer fee, permanent delegate, transfer hook | Permanent delegate can move anyone's tokens |
-| Sellability (EVM) | Simulate a buy then a sell on a local fork (`anvil --fork-url`); cross-check GoPlus | Sell fails or is heavily taxed |
-| Tax control | Can the owner change taxes later? | Tax is modifiable |
-| Ownership | Renounced? Upgradeable proxy? Hidden owner? Verified source? | Upgradeable with an active owner |
-| Holder concentration | Top 10 share, excluding pool, burn, locked, and vesting addresses | Top 10 hold over half |
-| Linked wallets | Group top holders by first funding source; flag same-block launch buyers | 14 wallets funded by one address hold 23% |
-| Creator history | Other tokens the creator (or its funder) deployed, and how they ended | 23 launched before; 21 rugged |
-| Liquidity | Pool size, liquidity vs. market cap, LP burned/locked/held by creator | Creator can withdraw the pool |
-| Volume quality | Share of volume from a few wallets | A handful of wallets trading back and forth |
-| Finances | Any fee revenue or real use | None: price depends on new buyers |
-| Timing vs. clip | Price and wallet activity around the clip's post date | Pumped before the clip; big wallets sold right after |
-| Claims vs. chain | "Liquidity locked," "dev doxxed," "audited" checked against chain data or search | Clip says locked; chain says not |
+### 7.5 The real chart
 
-**Linked-wallet tracing:** each top holder's earliest incoming funding transfer; group by funder up to 2 hops; don't link through exchange hot wallets (very high outgoing counts or a known list); show a funder → wallets → % of supply graph.
+The price chart, with the volume split by who traded:
+- the team;
+- likely team;
+- snipers;
+- bots and wash trades;
+- fresh wallets;
+- independent buyers.
 
-### 7.4 Protocol tokens
+Every team sell is marked on the chart. Two plain numbers sit beside it: how much of the buying came from independent buyers, and how much the team could sell into right now. A token that looks like it has a $3M market cap can be shown as a handful of independent buyers. This is the explanation new traders need.
 
-Fees, revenue, and holder revenue (30-day and annualized) from DefiLlama; TVL trend; FDV ÷ annualized fees; dilution via circulating ÷ max supply and FDV ÷ market cap (unlock schedules are paid-only); labeled top holders.
+### 7.6 Labels
 
-### 7.5 Major coins
+Labels are computed by us from raw chain data, so the model and its data are ours to use (9). The definition is recorded in [ADR 0001](docs/adr/0001-only-the-team-can-rug.md).
 
-Age, market cap, liquidity, supply schedule, network fee revenue. Scam checks are skipped, and the app says why.
+| Label | Meaning |
+|---|---|
+| Rugged | Within the label window, the team sold at least half of its peak holdings into buyers and the price fell at least 90% from its peak. It can happen at any stage, before or after graduating. Only the team can rug |
+| Faded | Trading died out without a rug, including collapses caused by unlinked snipers |
+| Survived | Still trading at the end of the label window with no 90% collapse |
 
-### 7.6 Own on-chain indexer
+- **Label window:** 7 days after launch. The first data pull measures the real time to rug: if almost all rugs land within a day, the window shrinks; if many land late, it grows. Published work suggests most dumps happen within minutes to hours. MELT labels from only the first 20 minutes after graduation, during which about 73% of graduated tokens fell below 40% of their graduation price.
+- **Thresholds** (half of peak holdings, a 90% fall) are tuned on a development split, then frozen before the final evaluation.
+- **References:** the MELT and SolRPDS datasets inform the definitions. MELT is non-commercial, so its definitions are referenced but its data isn't trained on.
+- **Why rugged vs. faded matters:** most pump.fun tokens simply die, and a model that only learns "new tokens go to zero" is useless.
 
-- **EVM:** token `Transfer` logs and pool `Swap` events through a free RPC (Ankr's 3,000-block log range is the best free option); replayed into balances and candles. Etherscan isn't used in the public app (its terms treat any app offered to others as commercial).
-- **Solana:** `getTokenLargestAccounts`, `getAccountInfo`, and full history through Helius's free tier.
-- **Point-in-time snapshots** ("who held what on day 3") produce the model's training data.
-- **Training data in bulk:** Google BigQuery public datasets for Solana, Ethereum, and Base; Coinbase's CDP SQL API for Base. No free bulk source for BNB Chain.
+### 7.7 Dataset and snapshots
 
-### 7.7 Learning from past tokens
+- **Launches:** pump.fun launches from May to October 2026, from BigQuery's public Solana dataset. Sampling across those months lets the model see different market moods. The newest 4 weeks are held back for the final test. Target: tens of thousands of launches above the activity floor, within the free query quota **(verify cost)**.
+- **Activity floor:** a token enters the dataset at a snapshot only once it has real activity by then. The starting floor is 20 independent buyers or $10k market cap, tuned from the data. Most launches never reach it; scoring them would make accuracy look high while measuring nothing.
+- **Activity pulled:**
+  - Each token's first 24 hours in full: every trade, transfer and funding transfer, decoded from pump.fun, PumpSwap and Raydium instructions with the public pump.fun IDL.
+  - Days 2–7: only the price and the team's sells, which is all the label needs.
+- **Snapshots:** each token is rebuilt at 1, 5, 15 and 30 minutes, then 1, 6 and 24 hours after launch, using only what had happened by then. A token scored 10 minutes after launch is compared with other tokens at 10 minutes. Snapshots taken after the token rugged are never trained on: they would teach the model to spot rugs after the fact.
+- **Wallet history:** a table of every wallet's past launches, trades and outcomes. Wallet reputation ("team in 3 past rugs") only counts rugs already known at the snapshot time.
 
-- **Dataset:** past launches per chain (several thousand), rebuilt as snapshots at 1 hour, 1, 3, 7, 14, and 30 days after launch, each using only what was knowable then.
-- **Labels:** hard rug (liquidity pulled), soft rug (insiders sold, price fell 90%+ from peak), faded (activity died), survived (90+ days of trading, no 90% collapse). Thresholds informed by the MELT and SolRPDS datasets, tuned, then frozen before the final eval.
-- **Features:** every checklist signal as a number, plus creator history.
-- **Models:** gradient-boosted trees with calibrated probabilities; logistic regression and the checklist score as baselines.
-- **Explanations:** top feature contributions as "top reasons," and similar past tokens with explorer links.
-- **No cheating:** split by launch date (train on older, test on newer); features only from snapshot data; creator history only counts outcomes known at the snapshot time.
-- **Token strategy backtests:** strategies across past launches ("buy every new token rated under 20% risk at day 3, sell after 14 days") use walk-forward model scores.
-- **Future feature:** tracking new tokens forward, labeling their outcomes after 30 and 90 days, retraining, and publishing a track record.
+### 7.8 The models
 
-### 7.8 Result view
+The main model is **Muse Glimmer**, Meta's open-weight 30B model (Apache 2.0, reads text and images). We train it in two stages: supervised fine-tuning, then reinforcement learning on real outcomes. Simpler models stay as baselines it has to beat.
 
-A research file per token (for example, `research/MOON-solana.md`) with refresh and a diff of changes: header (token, chain, address, kind, red-flag count), how it was resolved, the agent's answer, risk score with accuracy and similar past tokens, claims vs. chain, then evidence (checklist, holder breakdown, linked-wallet graph, price chart with the clip's date).
+**What Glimmer reads** for one token at one snapshot (7.7). It is mostly numbers:
+- **Signals:** the 7.3 signals as a compact block of numbers.
+- **Timeline:** every trade and transfer in order, bucketed and compressed to a fixed input length. Each event carries the wallet's cluster, wallet age, size in SOL, and fees paid. The order of events is the giveaway that hand-made signals miss: small identical buys, then independent buyers, then the team selling into every buy.
+- **Bubble map (7.4):** the one image, because shapes like the spider are read by eye.
 
-### 7.9 Crypto decisions still open
+**Stage 1: supervised fine-tuning**
+- LoRA on Glimmer over the training split, with the real outcome (rugged, faded or survived) as the answer.
+- It teaches the format and a first sense of what a rug looks like.
 
-Data stack details; whether Binance's archive (non-commercial license) is used for research only; chain order; token research files with refresh and diff; the three kinds of coins; the model's headline number (chance of a rug within 30 days); scoring only tokens up to 30 days old; launchpad bonding-curve tokens (starting with pump.fun); copycat handling; token strategy backtests; explanation format.
+**Stage 2: reinforcement learning**
+- Glimmer writes its reasoning, then a rug chance between 0 and 1.
+- **Reward:**
+  - Mostly a proper scoring rule against the real outcome: 1 − (p − y)², the Brier score. It rewards being right *and* being honestly confident, so always saying "rug" doesn't pay.
+  - A penalty when the reasoning cites a number that isn't in the input (the numbers audit rule, 8.4).
+  - A small reward for the expected format.
+- **Algorithm:** GRPO. Several answers are sampled per token and each is scored against the others.
+- **Tooling:** Unsloth, which has an official Glimmer guide.
+  - QLoRA fits in 24 GB, and LoRA needs more than 40 GB.
+  - Its GRPO supports vision models, with vLLM generating the samples. The image encoder stays frozen (vLLM can't put LoRA on vision layers, and Unsloth recommends freezing it first anyway).
+  - TorchTitan is the fallback.
+- **Training targets:** fine-tuning only on short answers is reported to weaken Glimmer's reasoning. So stage 1 stays small and its answers include a brief reasoning line built from the input signals, giving RL reasoning to improve on.
+- **Compute (estimates until the first run measures them):** on Modal, 4-bit QLoRA plus vLLM fits on one H100 ($3.95/hour) or A100 80 GB ($2.50/hour).
+  - Stage 1: about 5,000–10,000 examples of about 3,000 tokens, roughly 3–4 hours per pass.
+  - Stage 2: about 1,000–2,000 tokens with 4 samples each, roughly 4–6 hours.
+  - About $30–60 including retries.
+
+**Rug chance:** the probability Glimmer states. It is checked for calibration on the development split and adjusted (isotonic) if needed, so a rug chance of 80% comes true about 80% of the time.
+
+**Baselines it has to beat:**
+- The checklist score: what rug checkers do today.
+- Gradient-boosted trees (LightGBM) on the same signals.
+- Glimmer after fine-tuning only, to show what reinforcement learning adds.
+
+The score users see comes from whichever wins on the test split: Glimmer alone, or Glimmer combined with the trees. The receipt (7.9) shows all of them.
+
+- **The explanation:** Muse Spark writes the plain-language explanation from Glimmer's reasons and the token's signals, and the numbers audit (8.4) checks every number in it. Glimmer's own reasoning sits underneath under "How the model saw it." The tree model's per-signal contributions (SHAP) serve as a cross-check.
+- **Similar past tokens:** the 5 nearest in signal space, each with how it ended and an explorer link.
+- **No cheating:**
+  - Split by launch date: both training stages use older tokens, tuning uses a middle slice, and testing uses the newest 4 weeks.
+  - Inputs come only from snapshot data, and a leakage test makes sure none reads the future.
+  - The label window and thresholds are frozen before the final test.
+- **Retraining:** rug tactics change, so both stages are rerun on fresh launches. Tracking new tokens forward and publishing a track record is a future feature.
+
+### 7.9 The model's receipt
+
+Shown in the app and the README, and measured on the newest held-out launches. For each model (Glimmer after reinforcement learning, Glimmer after fine-tuning only, the trees, the checklist, and the combination if used):
+- how well it ranks rugs above non-rugs (AUC);
+- how often a high rug chance (80% or more) actually rugged;
+- the calibration curve;
+- the Brier score.
+
+Also shown: how often each verdict (Likely, Possible, Unlikely rug) actually rugged, which model the live score comes from, and the label window.
+
+No accuracy claim appears anywhere without these numbers behind it.
+
+### 7.10 Live scoring
+
+- **Token data:** Helius (free tier) for the token's transactions, holders and funding traces.
+- **Security fields:** GoPlus's Solana token security (free, credited) as a cross-check.
+- **Inputs:** the same code as training builds the signals, the timeline and the bubble map, so live scores match the evaluated model.
+- **Model:** Glimmer with the trained adapter merged into its weights, served with vLLM 0.28 or later (which supports Glimmer, including images) on Modal.
+  - The FP8 version (about 33 GB) fits an L40S ($1.95/hour) or an A100 80 GB.
+  - Merging avoids relying on vLLM's LoRA serving, which isn't documented for Glimmer.
+  - The trees run alongside it on CPU.
+- **Cold starts:** keeping a GPU warm all of Nov 4–9 would cost about $230–300. So the demo's example tokens are scored ahead of time and cached. Live checks stream every signal, the bubble map, and the tree score at once, while Glimmer starts up (minutes from cold; Modal memory snapshots could shorten that **(verify)**).
+- **Speed:** the first signals within 10 seconds and the full report within a minute when Glimmer is warm. From cold, the report says the model is starting. Results stream into the thread as each signal finishes, and repeat lookups are cached.
+
+### 7.11 Result view
+
+A research file per token (for example, `research/MOON-7xKX.md`) that can be checked again to show what changed since the last check. In order:
+1. The verdict and rug chance (7.2), with the token, mint, age and stage (bonding curve or graduated).
+2. The plain-language explanation (7.8).
+3. The real chart (7.5).
+4. The bubble map (7.4).
+5. Every signal, each marked pass, caution, red flag or can't check, with explorer links as evidence.
+6. Claims vs. the chain, when the token came from a clip.
+7. 5 similar past tokens.
+8. A link to the model's receipt (7.9).
+9. The Token Facts label as the receipt.
+
+### 7.12 Later
+
+- **Other launchpads and chains:**
+  - Solana: Raydium LaunchLab and bonk.fun.
+  - Base: Clanker and Zora.
+  - BNB Chain: four.meme.
+  - Ethereum: plain Uniswap pairs, where pulling the pool is possible and the sell simulation on a forked chain matters.
+- **Crypto that isn't a new launch:**
+  - Major coins: age, size, liquidity, supply schedule, network fees.
+  - Protocol tokens: fees, revenue and holder payouts from DefiLlama, deposit (TVL) trend, valuation vs. fees, dilution.
+- **Token strategy backtests:** for example, "buy every new token under 20% rug chance at 1 hour, sell after a day." These use rug chance from training that happened before each trade.
+- **Tracking new tokens forward,** labeling them as outcomes arrive, and publishing a track record.
+
+### 7.13 Still open
+
+- Label thresholds, the 7-day window and the activity floor, checked against the data.
+- Glimmer's input length for the timeline, and how busy tokens are compressed to fit it.
+- Measured training time and cost for both stages (the estimates in 7.8 come from published guides).
+- Glimmer's cold start on Modal, and whether memory snapshots cut it.
+- Snapshot ages.
+- Dataset size against the BigQuery quota.
+- The source of the exchange and bot wallet lists.
+- How Jito bundles are detected.
+- Whether GoPlus adds anything beyond our own signals for pump.fun tokens.
+- Which BigQuery Solana tables hold decoded instructions and token balances **(verify)**.
 
 ---
 
@@ -558,7 +723,18 @@ Muse Spark 1.3 with tool calling. It plans, calls tools, reads results, asks the
 | `web_check(claim)` | Off-chain claims | Muse Spark search grounding |
 | `audit_numbers(text, run_id)` | Numbers audit | Python |
 
-Crypto tools (token resolution, security checks, holders, funding traces, liquidity, protocol financials, token risk) come with section 7.
+**Rug check tools (section 7):**
+
+| Tool | Does | Backed by |
+|---|---|---|
+| `read_address(video_file_id or image)` | Mint address and on-screen claims from a clip or screenshot | Muse Spark 1.3 (SAM 3.1 crop as a candidate) |
+| `resolve_token(query)` | Name, ticker or mint to one pump.fun token, with copycats listed | Helius, pump.fun data |
+| `token_activity(mint, as_of)` | Trades, transfers, holders and fees up to a time | Helius live; our indexer for training |
+| `trace_funding(wallets, hops)` | Funding sources and wallet clusters | Helius; exchange and bot wallet lists |
+| `token_security(mint)` | Permission and authority fields | GoPlus |
+| `signals(mint, as_of)` | Every 7.3 signal, computed the same way as in training | Python |
+| `rug_model(mint, as_of)` | Rug chance, top reasons, similar past launches | Muse Glimmer trained by us (7.8), with the tree model alongside |
+| `real_chart(mint)` | Candles with volume split by who traded | Python |
 
 ### 8.3 Streaming
 
@@ -576,7 +752,8 @@ Before any explanation is shown, every number in the model's text is checked aga
 | `muse-wonder-1.0` | Takes over the fix loop after 3 failed rounds; always writes Python portfolio strategies ($4 / $20 per million input/output tokens) |
 | `muse-spark-1.3-contributor` | Development and evals (much cheaper; Meta may train on this data; 150 requests/min) |
 | `muse-voice-transcribe-1.0` | All speech (Muse Spark 1.3's audio understanding is "not fully supported" per Meta's docs, and receipts need timestamps) |
-| `sam-3.1` | Candidate for crypto address reading (7.1) |
+| `sam-3.1` | Candidate for finding the mint in a clip's frames (7.1) |
+| Muse Glimmer (open weights, 30B) | The rug model: fine-tuned and then trained with reinforcement learning by us on past pump.fun launches (7.8); served on Modal |
 
 ---
 
@@ -592,11 +769,14 @@ Before any explanation is shown, every number in the model's text is checked aga
 | Pine linting | `pine-lint` (pine-tools) | MIT, offline; never its `--tv` mode |
 | Pine execution | Resin (Apache-2.0) or PineTS (AGPL-3.0) | Chosen by the parity test (5.6) |
 | Charts | Plotly (`plotly.js-dist-min`) | Open source (MIT) |
-| Crypto | See section 7 and the notes | GoPlus requires "Powered by GoPlus"; Binance's archive is non-commercial |
+| pump.fun history for training | Google BigQuery public Solana dataset | Public chain data, queried in the free sandbox (1 TB a month). Google's terms for commercial use of query results **(verify)** |
+| Live token data and funding traces | Helius free tier | 1M credits a month; made for building apps |
+| Token security fields | GoPlus | Free; requires "Powered by GoPlus" |
+| Label definitions | MELT (definitions only, non-commercial) and SolRPDS (CC BY 4.0, credited) | We compute our own labels from raw chain data |
 
 **Not used:** Yahoo/yfinance (terms ban automated collection), Coinbase market data (personal or research use only, no apps for other users, no AI training), Alpaca, Massive/Polygon individual plans, EODHD, FMP, Alpha Vantage, Stooq, WRDS/CRSP (display not allowed for a public app), Etherscan (commercial terms), and any TradingView data.
 
-**Data rights:** the hackathon disqualifies projects using data without rights. Follow each source's terms; never commit third-party data, clips, or scraped content to the public repo.
+**Data rights:** the hackathon disqualifies projects using data without rights. Blockchain data is public and nobody owns transactions; the limits come from the services used to fetch it, listed above. Stock data is more limited: users' own Tiingo keys are allowed, but cached stock results can't be shown publicly without Tiingo's permission. Follow each source's terms; never commit third-party data, clips, or scraped content to the public repo.
 
 ---
 
@@ -604,7 +784,7 @@ Before any explanation is shown, every number in the model's text is checked aga
 
 ```
 frontend (React + Vite + TypeScript)
-   Monaco editor · lightweight-charts · IndexedDB storage · onboarding tour
+   Monaco editor · Plotly charts · IndexedDB storage · onboarding tour
    │  REST + server-sent events
 backend on Modal (Python, FastAPI; always on during judging)
    ├─ agent/      orchestrator, tool registry, numbers audit
@@ -614,7 +794,9 @@ backend on Modal (Python, FastAPI; always on during judging)
    ├─ engine/     Python backtest engine, red team, compare, sandbox runner
    ├─ data/       tiingo, edgar, fred, sp500 membership
    ├─ research/   stock metrics, claims, similar companies
-   └─ crypto/     (parked)
+   └─ crypto/     pump.fun indexer, wallet clusters, signals, labels,
+                  Glimmer fine-tuning and GRPO on Modal GPUs, baselines,
+                  evaluation, live scoring (merged Glimmer on vLLM)
 ```
 
 **Repo layout**
@@ -623,7 +805,7 @@ backend on Modal (Python, FastAPI; always on during judging)
 backtest-trades/
   SPEC.md
   README.md            (what was built during the hackathon, setup, demo link, eval numbers)
-  .env.example         (MODEL_API_KEY, FRED_API_KEY, SEC_USER_AGENT)
+  .env.example         (MODEL_API_KEY, HELIUS_API_KEY, GOOGLE_CLOUD_PROJECT, FRED_API_KEY, SEC_USER_AGENT)
   frontend/
   backend/
   examples/            (the tour's demo project and its cached runs)
@@ -652,13 +834,17 @@ Real numbers for Technical Depth, the README, and the video.
 | Comparisons | Benchmarks vs. published index total returns | Match within a small tolerance |
 | Similar companies | Later years held out | Calibration of outcome rates |
 | Numbers audit | All runs | First-try pass rate |
-| Crypto | Parked | Token risk model and address reading, with section 7 |
+| Rug model | Newest held-out pump.fun launches (time split) | For Glimmer after RL, Glimmer after fine-tuning only, the trees, and the checklist: AUC, how often 80%+ rug chance rugged, calibration, Brier score (7.9) |
+| Address reading | About 20 private shill clips and screenshots | Exact mint read; copycats caught |
+| Live vs. training signals | 50 tokens scored both ways | Identical signals (no training/serving drift) |
 
 ---
 
 ## 12. Guardrails
 
 - Every result: "For research and education. Not financial advice." No buy/sell/hold ratings or price targets.
+- Rug chance is a risk estimate from past launches, always shown with the model's receipt (7.9). A low rug chance never says "safe."
+- The rug check describes wallet behavior, not people. No names or accusations; wallets are shown as addresses with explorer links.
 - Pine results say "Tested in our engine. Verify in TradingView."
 - No TradingView data in our engine; no automation of TradingView's site or undocumented endpoints.
 - Demo clips are filmed by the builder as a mock guru; no real creators are named or shown.
@@ -675,16 +861,13 @@ Judges rank the top 5 by watching demos live, so this is the final exam. Show on
 
 | Time | Scene |
 |---|---|
-| 0:00–0:15 | **Hook:** the mock guru clip. "This RSI trick made me 300% this year." Cut to the IDE. |
-| 0:15–0:55 | **Clip to code:** drop the clip in the thread. Rules appear with timestamps; the Pine file is written; fix rounds clear the Problems panel. |
-| 0:55–1:20 | **Results:** verdict, equity curve vs. the S&P, honesty checks. Copy the code and paste it into TradingView, where it compiles. |
-| 1:20–1:45 | **Honesty lint:** paste a typical chatbot-written script that repaints. The agent flags the look-ahead, fixes it, and shows how much the "great" result shrinks. |
-| 1:45–2:10 | **Plain English to Python:** the S&P cash-flow strategy, naive vs. honest curves. |
-| 2:10–2:35 | **Analyze:** a research file for a pitched stock: claims vs. filings, similar companies, "Backtest companies like this." |
-| 2:35–2:52 | **How it works:** Meta models and their jobs; eval numbers (clean after the loop, engine accuracy vs. TradingView). |
-| 2:52–3:00 | **Close:** "Code and test any trading idea, honestly. No coding required." |
-
-A crypto scene replaces part of 2:10–2:35 if crypto is built by then.
+| 0:00–0:15 | **Hook:** a mock shill clip, filmed by the builder, for a real past pump.fun token from the test set. "Community token, dev is doxxed, this is going to 10x." The chart looks great. Cut to the IDE. |
+| 0:15–0:45 | **Clip to token:** drop the clip in the thread. The agent reads the mint off the screen, flags two copycats, and starts pulling the token's history as it stood 15 minutes after launch. |
+| 0:45–1:25 | **Taken apart:** a bundled launch at the open, the wallet spider on the bubble map, identical balances, and the real chart with team and bot volume split out. A $3M token turns out to be a few independent buyers. |
+| 1:25–1:50 | **The verdict, then the truth:** "Likely rug" with its rug chance, the plain explanation, and 5 similar past tokens. Then what actually happened: the team's sells hours later. The model's receipt: Muse Glimmer, trained by reinforcement learning on real outcomes, tested on newer tokens it never saw against the trees and a plain checklist. |
+| 1:50–2:30 | **Backtest:** a strategy from a clip becomes Pine code through the fix loop, then honest results vs. the S&P. |
+| 2:30–2:50 | **How it works:** Meta models and their jobs; eval numbers. |
+| 2:50–3:00 | **Close:** "Check the token before you buy it." |
 
 ---
 
@@ -695,29 +878,34 @@ A crypto scene replaces part of 2:10–2:35 if crypto is built by then.
 | 1 | Product name | Decided: Trade Receipts. Tagline still open |
 | 2 | Pine engine: Resin or PineTS | Decided by the parity test in phase 1; sets the license |
 | 3 | Tiingo permission | Not requested for now (draft ready in `notes/tiingo-email.md`). Without it: no cached stock results shown publicly, similar companies only for users with their own data, and the S&P showcase only in the demo video and for users with their own key |
-| 4 | Crypto details | Section 7.9 |
+| 4 | Rug check details | Section 7.13 |
 | 5 | Modal setup | Keeping it warm through judging; Sandboxes for running Python strategy code **(verify)** |
 | 6 | Tour and home page details | Tour library, copy, demo loop |
-| 7 | (verify) items | Tiingo delisted history pulls and browser access; FRED first-release parameter; Meta video size and length limits; `lightweight-charts` attribution; `pine-lint`, Resin, and PineTS v6 coverage; Modal Sandboxes limits |
+| 7 | (verify) items | Glimmer's measured training time and cold start on Modal; pump.fun mint and freeze authority revoked; Jito bundle detection; BigQuery Solana tables, query cost, and terms for commercial use; the 30-day label window; Tiingo delisted history pulls and browser access; FRED first-release parameter; Meta video size and length limits; `pine-lint`, Resin, and PineTS v6 coverage; Modal Sandboxes limits |
 
 ---
 
 ## 15. Build order
 
-Equities first. Each phase ends with something that works on its own. The deadline is fixed: Nov 4, 9 PM ET.
+Rug check first, then backtesting and stocks. Each phase ends with something that works on its own. The work is sequenced, not cut; the deadline is fixed: Nov 4, 9 PM ET.
 
-1. **Foundations.** Repo and Modal app; Meta API smoke tests (video in, transcribe, structured output, code writing); Tiingo key and test pulls, including delisted names; start the S&P 500 price download (500 symbols in October, the rest from Nov 1); download BTC and ETH daily candles from Binance's archive for the tour and no-key runs; SEC and FRED adapters; install `pine-lint`, Resin, and PineTS.
-2. **IDE shell.** Top bar and tabs, explorer, Monaco tabs, thread, Problems and Output, browser storage, zip import and export.
-3. **Code agent and fix loop (Pine).** Plain English first, then screenshots and clips; lints and honesty rules; runs on the Pine engine; diffs with Accept and Reject.
-4. **Pine engine parity test.** Pick the engine and the license.
-5. **Python engine and Python strategies.** Point-in-time S&P universe, filing-date fundamentals, first-release macro; future-leak and known-answer tests.
-6. **Red team, Compare, Results, Export.**
-7. **Stock research files and similar companies.**
-8. **Onboarding.** Home page, sign-up screen, guided tour over the cached demo, Examples folder, Tiingo key prompt, usage limits.
-9. **Evals and numbers audit.** Record numbers for the README and video.
-10. **Deploy and cache demo runs** on Modal.
-11. **Demo video, README, submission.** The README states that everything was built during the hackathon, lists the Meta models used, and links the video.
-12. **Crypto** (after equities works): settle the parked decisions, then build.
+1. **Foundations.** Repo and Modal app; Meta API smoke tests (video in, transcribe, structured output, code writing); BigQuery sandbox; Helius key; GoPlus test calls.
+2. **pump.fun data pull.** Sampled launches from BigQuery; decode pump.fun, PumpSwap, and Raydium trades and transfers; funding transfers for early buyers and top holders; the wallet history table.
+3. **Signals, clusters, and labels.** The 7.3 signals at every snapshot age; wallet clusters (7.4); rugged / faded / survived labels (7.6).
+4. **Models and the receipt.** Do these in order (7.8, 7.9):
+   1. Baselines: the checklist and the trees.
+   2. Glimmer inputs: the signals, the compressed timeline, and the bubble map image.
+   3. Glimmer fine-tuning.
+   4. GRPO reinforcement learning.
+   5. Calibration, the time-split evaluation, and the leakage test.
+5. **Live scoring.** Helius and GoPlus for any mint, the same signal code, a check that live and training signals match.
+6. **Agent.** Clip or screenshot to address, copycats, streamed evidence, explanation, numbers audit.
+7. **Rug check UI.** The research file, the real chart, the bubble map, and the Token Facts label. The home page, tour, and demo project lead with a rug check.
+8. **Backtesting.** Code agent and fix loop (Pine), the Pine engine parity test, the Python engine, red team, Compare, Results, Export.
+9. **Stock research files and similar companies.**
+10. **Evals and numbers audit.** Record numbers for the README and video.
+11. **Deploy and cache demo runs** on Modal.
+12. **Demo video, README, submission.** The README states that everything was built during the hackathon, lists the Meta models used, and links the video.
 
 ---
 
@@ -745,3 +933,32 @@ Equities first. Each phase ends with something that works on its own. The deadli
 - **Oct 30:** Product name: Trade Receipts. Tagline: "An agent-native IDE for financial research and automated backtesting." ("multi-agent" dropped because the product isn't built as separate agents).
 - **Oct 30:** IDE results become a full backtest report with charts (equity, regimes, 3D trades, monthly returns, histogram); the Strategy Facts label moves to the end as the receipt. Charts use Plotly.
 - **Oct 30:** The home page sells backtesting plus stock and crypto research. No strategy input or example prompts in the hero, and no SEC or filing jargon.
+- **Oct 31:** Pivot: the crypto rug check is the main feature; backtesting and stocks stay as the second half. Why:
+  - Existing rug checkers show surface stats against fixed limits and train no models; ours learns from past launches and shows every signal.
+  - New traders, the target, can't read a manipulated chart.
+  - Stock data can't be cached and shown publicly without Tiingo's permission, while chain data is public.
+
+  This reverses the Oct 30 decision to park crypto.
+- **Oct 31:** The first model covers pump.fun only; other launchpads and chains come later (7.12).
+- **Oct 31:** Tokens are scored from launch, on the bonding curve, and rescored after they graduate.
+- **Oct 31:** The headline is "Rug chance," with no time limit shown. The labels use the first 30 days, stated in the model's receipt.
+- **Oct 31:** The signals in 7.3 come largely from the builder's own trading experience.
+- **Oct 31:** Labels are computed from raw chain data. MELT's data isn't trained on, because it's non-commercial.
+- **Oct 31:** The main rug model is Meta's Muse Glimmer, trained by us. The hosted Model API models can't be trained, and Muse Spark Open (816B) is too big for the deadline.
+  - It's trained mostly on numbers: the signals and the trade timeline as text. The bubble map is the only image.
+  - Training is supervised fine-tuning, then reinforcement learning (GRPO). The reward is mainly a Brier-score match with the real outcome, with a penalty for citing numbers not in the input.
+  - The checklist, gradient-boosted trees, and fine-tuning-only Glimmer are baselines. Users see the score from whichever wins on the test split.
+  - Tagging tokens' names and logos was dropped as a forced use of Meta.
+- **Oct 31 (grilling session):** terms are in GLOSSARY.md, and the two hardest-to-reverse choices are in docs/adr.
+  - **Wording:** "token", never "coin", for what the rug check scores. The receipt label becomes Token Facts.
+  - **Who can rug:** only the team, meaning the creator plus linked wallets, and likely team when it sells alongside. Unlinked sniper collapses are labeled faded (ADR 0001).
+  - **What a rug is:** the team sells at least half of its peak holdings and the price falls at least 90%, at any stage of the token, within a 7-day label window. The window is checked against the measured time to rug.
+  - **Data pulled:** each token's first 24 hours in full; days 2–7 only the price and the team's sells.
+  - **Scoring:** snapshots from 1 minute to 24 hours, and no training on snapshots taken after a rug. Older tokens get evidence without a score; already-rugged tokens get the verdict "Already rugged."
+  - **Activity floor:** starting at 20 independent buyers or $10k market cap.
+  - **Training data:** launches from May to October 2026, with the newest 4 weeks held back for testing.
+  - **Headline:** a verdict plus the rug chance. The bands are 60% and 25%, adjusted after calibration and shown with their real rug rates. No faded or survived numbers.
+  - **Explanation:** written by Muse Spark from Glimmer's reasons and the signals, with every number audited.
+  - **Report:** order as in 7.11. The bubble map shows the top 50 holders and first 50 buyers, and 5 similar past tokens are listed.
+  - **Speed:** the first signals within 10 seconds, the full report within a minute when warm.
+  - **Demo:** a real past token from the test set, scored at 15 minutes, then its outcome revealed.

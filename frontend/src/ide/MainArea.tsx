@@ -1,11 +1,12 @@
 import { lazy, Suspense, useState } from "react";
 import { Check, Columns2, Copy, Download, FileCode2, FileText, FileVideo, Play, X } from "lucide-react";
 import { runs, type ProjectFile } from "../data/examples";
+import { tokenChecks, type TokenCheck } from "../data/tokens";
 import { onTablistKeyDown } from "../lib/tabs";
-import { fileById, fileOf, hasRun, useIde, type TabId } from "./state";
+import { fileById, fileOf, hasRun, useIde, WRITTEN_FILE, type TabId } from "./state";
 import { CodeView } from "./CodeView";
 import { ResultsView } from "./ResultsView";
-import { ResearchSheet } from "./report/ResearchSheet";
+import { TokenReport } from "./report/TokenReport";
 import { ClipView } from "./ClipView";
 import { useNarrow } from "./useNarrow";
 
@@ -28,7 +29,7 @@ function TabIcon({ id }: { id: TabId }) {
   if (id.startsWith("results:")) return <Check size={14} aria-hidden />;
   const kind = fileById(id)?.kind;
   if (kind === "clip") return <FileVideo size={14} aria-hidden />;
-  if (kind === "markdown") return <FileText size={14} aria-hidden />;
+  if (kind === "markdown" || kind === "token") return <FileText size={14} aria-hidden />;
   return <FileCode2 size={14} aria-hidden />;
 }
 
@@ -81,6 +82,7 @@ export function MainArea() {
       </div>
 
       {fileId && (isCode || active?.startsWith("results:")) && <RunBar fileId={fileId} />}
+      {file?.kind === "token" && <CheckBar token={tokenChecks[file.id as TokenCheck["id"]]} />}
 
       <div
         id="main-panel"
@@ -122,8 +124,12 @@ function TabContent({ id, split, narrow }: { id: TabId; split: boolean; narrow: 
   }
 
   if (!file) return <EmptyState />;
-  if (file.kind === "markdown") return <ResearchSheet which={file.id === "moon" ? "moon" : "acme"} />;
-  if (file.kind === "clip") return <ClipView />;
+  // While the replay writes the report, show it being written; the finished report prints when the check is done.
+  if (file.kind === "token") {
+    if (file.id === WRITTEN_FILE && state.replaying) return <CodeView file={file} />;
+    return <TokenReport id={file.id as TokenCheck["id"]} />;
+  }
+  if (file.kind === "clip") return <ClipView clipId={file.id} />;
   if (split && state.ranRuns.includes(file.id)) {
     return (
       <div className="split">
@@ -189,6 +195,33 @@ function RunBar({ fileId }: { fileId: string }) {
   );
 }
 
+/** What the check covered, stated as facts. Example checks can't be rerun in this preview. */
+function CheckBar({ token }: { token: TokenCheck }) {
+  return (
+    <div className="runbar">
+      <dl className="runbar__settings" aria-label="What this example check covered">
+        <div>
+          <dt>Mint</dt>
+          <dd className="mono">{token.mintShort}</dd>
+        </div>
+        <div>
+          <dt>Checked at</dt>
+          <dd className="mono">{token.age} after launch</dd>
+        </div>
+        <div>
+          <dt>Stage</dt>
+          <dd className="mono">{token.stage}</dd>
+        </div>
+      </dl>
+      <p className="runbar__note">Example check · live checks come with the backend</p>
+      <button className="run-btn" disabled>
+        <Play size={13} aria-hidden fill="currentColor" />
+        Check again
+      </button>
+    </div>
+  );
+}
+
 function ExportButtons({ file }: { file: ProjectFile }) {
   const [copy, setCopy] = useState<"idle" | "copied" | "failed">("idle");
 
@@ -238,7 +271,7 @@ function EmptyState() {
     <div className="empty">
       <p className="empty__title">Open a file to see it here.</p>
       <p className="empty__body">
-        Strategies open as code with their results next to them. Research files open as a report.
+        Tokens open as a rug check report. Strategies open as code with their results next to them.
       </p>
     </div>
   );

@@ -33,37 +33,36 @@ function scrollReportTo(target: string) {
 const steps: Step[] = [
   {
     target: "ask",
-    title: "Start with a clip or an idea",
-    body: "Someone dropped in a 48-second clip that claims 300% in a year. You can also describe a strategy in plain English.",
+    title: "Start with a token or a clip",
+    body: "Someone dropped in a clip shilling MOON. You can also paste a token's mint.",
   },
   {
     target: "thread",
-    title: "The agent writes and fixes the code",
-    body: "It finds the rules in the clip, picks Pine Script, writes the file, and fixes its own errors. Every step shows up here.",
+    title: "The agent traces every wallet",
+    body: "It reads the mint off the screen, pulls the token's first 15 minutes, traces who funded each wallet, and splits the team and the bots from independent buyers.",
     enter: startReplay,
   },
   {
     target: "problems",
-    title: "Problems it caught",
-    body: "Compile errors and honesty issues show up here and as underlines in the code, the way an editor shows errors.",
+    title: "Red flags, like errors in code",
+    body: "What the check found shows up here, the way an editor lists problems. Click one to jump to the evidence.",
     enter: (dispatch, state) => {
       if (!state.replayed) dispatch({ type: "finishReplay" });
-      dispatch({ type: "open", id: "rsi" });
       dispatch({ type: "bottomTab", tab: "problems" });
     },
   },
   {
     target: "results",
-    title: "The full backtest",
-    body: "The verdict, the equity curve against holding BTC and the S&P 500, results by market regime, and every trade. The code is yours to copy into TradingView.",
-    enter: (dispatch) => dispatch({ type: "open", id: "results:rsi" }),
+    title: "The verdict, with the evidence",
+    body: "Likely rug, with the rug chance from a model trained on thousands of past pump.fun tokens. Under it: a plain explanation, the real chart, and who holds the token.",
+    enter: (dispatch) => dispatch({ type: "open", id: "moon" }),
   },
   {
     target: "receipt",
     title: "Every report ends on a receipt",
-    body: "The clip's +300% is struck through by what the test found. Switch to Analyze at the top to check a stock or coin the same way.",
+    body: "The pitch said no team; the chain says the team holds 23%. Switch to Backtest at the top to test a trading strategy the same honest way.",
     enter: (dispatch) => {
-      dispatch({ type: "open", id: "results:rsi" });
+      dispatch({ type: "open", id: "moon" });
       scrollReportTo("receipt");
     },
   },

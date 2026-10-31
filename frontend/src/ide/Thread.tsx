@@ -1,20 +1,27 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { ArrowUp, Check, CircleCheck, History, ImagePlus, Paperclip, Plus } from "lucide-react";
-import { rsiThread, type ThreadStep } from "../data/examples";
-import { clearTourDone, threadTitle, useIde, type ThreadRef, type WorkTab } from "./state";
+import { projectFiles, rsiThread, rugThread, type ThreadMessage, type ThreadStep } from "../data/examples";
+import { clearTourDone, exampleThreadTitle, threadTitle, useIde, type ThreadRef, type WorkTab } from "./state";
 
 const suggestions: Record<WorkTab, string[]> = {
   Backtest: [
     "Buy BTC when RSI closes below 30, sell above 70",
-    "Compare QQQ with the S&P 500 over 10 years",
+    "Compare this strategy with holding ETH since 2021",
     "Code the strategy in this clip",
   ],
-  Analyze: ["Research AAPL", "Is this coin legit? 7xKX…9fQe", "Check the claims in this clip"],
+  Analyze: ["Is this token legit? 7xKX…gAsU", "Who holds this token?", "Check the claims in this clip"],
 };
 
 const placeholders: Record<WorkTab, string> = {
-  Backtest: "Describe a strategy, or drop in a screenshot or clip…",
-  Analyze: "Name a stock or coin, or drop in a clip…",
+  Backtest: "Describe a crypto strategy, or drop in a screenshot or clip…",
+  Analyze: "Paste a token's mint, or drop in the clip shilling it…",
+};
+
+type Example = "rug" | "backtest";
+
+const examples: Record<Example, { messages: ThreadMessage[]; clipId: string; opens: string; openLabel: string }> = {
+  rug: { messages: rugThread, clipId: "moonclip", opens: "moon", openLabel: "Open the report" },
+  backtest: { messages: rsiThread, clipId: "clip", opens: "results:rsi", openLabel: "Open the results" },
 };
 
 export function Thread() {
@@ -71,7 +78,7 @@ export function Thread() {
       </div>
 
       <div className="thread__scroll" ref={scrollRef} role="log" aria-label="Messages">
-        {state.thread === "example" && <DemoConversation />}
+        {typeof state.thread !== "number" && <ExampleConversation which={state.thread} />}
 
         {user && messages.length === 0 && (
           <div className="thread__start">
@@ -79,7 +86,7 @@ export function Thread() {
             <p className="thread__sub">
               {state.workTab === "Backtest"
                 ? "Describe a strategy, or drop in a chart screenshot or a short clip."
-                : "Name a stock or coin, or drop in a clip with a pitch to check."}
+                : "Paste a token's mint, or drop in the clip shilling it."}
             </p>
             <ul className="suggest">
               {suggestions[state.workTab].map((s) => (
@@ -149,7 +156,8 @@ function ThreadHistory() {
   const wrap = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
   const items: { ref: ThreadRef; title: string; note: string }[] = [
-    { ref: "example" as ThreadRef, title: "Code the strategy in this clip", note: "Example" },
+    { ref: "backtest" as ThreadRef, title: exampleThreadTitle.backtest, note: "Example" },
+    { ref: "rug" as ThreadRef, title: exampleThreadTitle.rug, note: "Example" },
     ...state.threads
       .filter((t) => t.messages.length > 0 || t.id === state.thread)
       .map((t) => {
@@ -216,20 +224,24 @@ function ThreadHistory() {
   );
 }
 
-function DemoConversation() {
+/** An example thread. The rug check replays step by step during the tour; the backtest is already finished. */
+function ExampleConversation({ which }: { which: Example }) {
   const { state, dispatch } = useIde();
-  const steps = rsiThread.flatMap((m) => (m.kind === "steps" ? m.steps : []));
-  const user = rsiThread.find((m) => m.kind === "user");
-  const agent = rsiThread.find((m) => m.kind === "agent");
-  const shown = steps.slice(0, state.revealed);
-  const working = state.replaying && !state.awaitingEdit && state.revealed < steps.length;
+  const ex = examples[which];
+  const replayed = which === "rug";
+  const steps = ex.messages.flatMap((m) => (m.kind === "steps" ? m.steps : []));
+  const user = ex.messages.find((m) => m.kind === "user");
+  const agent = ex.messages.find((m) => m.kind === "agent");
+  const shown = replayed ? steps.slice(0, state.revealed) : steps;
+  const working = replayed && state.replaying && !state.awaitingEdit && state.revealed < steps.length;
+  const finished = replayed ? state.replayed : true;
 
   return (
     <>
       {user && user.kind === "user" && (
-        <div className="msg msg--user" data-tour="ask">
+        <div className="msg msg--user" data-tour={replayed ? "ask" : undefined}>
           {user.clip && (
-            <button className="clip-chip" onClick={() => dispatch({ type: "open", id: "clip" })}>
+            <button className="clip-chip" onClick={() => dispatch({ type: "open", id: ex.clipId })}>
               <Paperclip size={13} aria-hidden />
               <span className="mono">
                 {user.clip.name} · {user.clip.length}
@@ -243,15 +255,15 @@ function DemoConversation() {
       {shown.length > 0 && (
         <ol className="steps" aria-label="Agent steps">
           {shown.map((s) => (
-            <Step key={s.id} step={s} />
+            <Step key={s.id} step={s} clipId={ex.clipId} live={replayed} />
           ))}
           {working && <li className="steps__working">Working…</li>}
         </ol>
       )}
 
-      {state.edit === "rejected" && (
+      {replayed && state.edit === "rejected" && (
         <div className="msg msg--agent">
-          <p>Stopped. You rejected rsi_dip.pine, so nothing was run.</p>
+          <p>Stopped. You rejected the report, so the token wasn't scored.</p>
           <button
             className="tool-btn"
             onClick={() => {
@@ -264,16 +276,16 @@ function DemoConversation() {
         </div>
       )}
 
-      {state.replayed && agent && agent.kind === "agent" && (
+      {finished && agent && agent.kind === "agent" && (
         <div className="msg msg--agent">
           <p>{agent.text}</p>
           {agent.audited && (
             <p className="msg__audit">
-              <CircleCheck size={13} aria-hidden /> Numbers checked against the run
+              <CircleCheck size={13} aria-hidden /> Numbers checked against the {which === "rug" ? "check" : "run"}
             </p>
           )}
-          <button className="tool-btn" onClick={() => dispatch({ type: "open", id: "results:rsi" })}>
-            Open the results
+          <button className="tool-btn" onClick={() => dispatch({ type: "open", id: ex.opens })}>
+            {ex.openLabel}
           </button>
         </div>
       )}
@@ -281,9 +293,13 @@ function DemoConversation() {
   );
 }
 
-function Step({ step }: { step: ThreadStep }) {
+/** One agent step. `live` steps belong to the replay, so their edit can still wait for Accept or Reject. */
+function Step({ step, clipId, live }: { step: ThreadStep; clipId: string; live: boolean }) {
   const { state, dispatch } = useIde();
   const wrote = step.text.startsWith("Wrote");
+  const writtenName = wrote ? step.text.split("/").pop()! : "";
+  const written = projectFiles.find((f) => f.name === writtenName);
+  const lines = written ? written.content.split("\n").length : 0;
   return (
     <li className="step">
       <Check size={14} strokeWidth={3} className="step__tick" aria-hidden />
@@ -302,7 +318,7 @@ function Step({ step }: { step: ThreadStep }) {
                   className="at"
                   title="Open the clip at this moment"
                   aria-label={`Open the clip at ${r.at}`}
-                  onClick={() => dispatch({ type: "open", id: "clip" })}
+                  onClick={() => dispatch({ type: "open", id: clipId })}
                 >
                   {r.at}
                 </button>
@@ -328,9 +344,9 @@ function Step({ step }: { step: ThreadStep }) {
         )}
         {wrote && (
           <div className="edit-card">
-            <span className="mono">rsi_dip.pine</span>
-            <span className="edit-card__count">+33 lines</span>
-            {state.awaitingEdit ? (
+            <span className="mono">{writtenName}</span>
+            <span className="edit-card__count">+{lines} lines</span>
+            {live && state.awaitingEdit ? (
               <span className="edit-card__actions">
                 <button className="tool-btn tool-btn--solid" onClick={() => dispatch({ type: "acceptEdit" })}>
                   Accept
@@ -340,8 +356,8 @@ function Step({ step }: { step: ThreadStep }) {
                 </button>
               </span>
             ) : (
-              <span className={`edit-card__state ${state.edit === "rejected" ? "is-rejected" : ""}`}>
-                {state.edit === "rejected" ? "Rejected" : "Accepted"}
+              <span className={`edit-card__state ${live && state.edit === "rejected" ? "is-rejected" : ""}`}>
+                {live && state.edit === "rejected" ? "Rejected" : "Accepted"}
               </span>
             )}
           </div>
