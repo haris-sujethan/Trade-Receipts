@@ -362,3 +362,63 @@
   color: var(--red);
   font-weight: 800;
 }
+
+/* The numbers behind each chart, folded away under it */
+
+.chart-data {
+  margin-top: 6px;
+}
+
+.chart-data summary {
+  display: inline-block;
+  padding: 4px 0;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink-2);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+
+.chart-data summary:hover {
+  color: var(--ink);
+}
+
+.chart-data summary::marker,
+.chart-data summary::-webkit-details-marker {
+  display: none;
+}
+
+.chart-data__scroll {
+  max-height: 320px;
+  overflow: auto;
+  margin-top: 6px;
+  border-top: var(--rule-mid) solid var(--ink);
+}
+
+.report-table--data {
+  max-width: none;
+  font-size: 12.5px;
+}
+
+.report-table--data thead th {
+  position: sticky;
+  top: 0;
+  background: var(--paper);
+  font-size: 12px;
+  font-weight: 700;
+  border-top: 0;
+  border-bottom: var(--rule-hair) solid var(--ink);
+  white-space: nowrap;
+}
+
+.report-table--data th,
+.report-table--data td {
+  padding: 5px 12px 5px 0;
+  white-space: nowrap;
+}
+
+.report-table--data thead th:not(:first-child) {
+  text-align: right;
+}

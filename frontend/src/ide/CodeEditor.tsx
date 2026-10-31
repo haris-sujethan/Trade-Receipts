@@ -4,7 +4,7 @@ import { monaco } from "../monaco/setup";
 import { type ProjectFile } from "../data/examples";
 import { problemsFor, useIde } from "./state";
 
-type Props = { file: ProjectFile; readOnly: boolean };
+type Props = { file: ProjectFile };
 
 const severity = {
   error: monaco.MarkerSeverity.Error,
@@ -12,7 +12,7 @@ const severity = {
   info: monaco.MarkerSeverity.Info,
 };
 
-export function CodeEditor({ file, readOnly }: Props) {
+export function CodeEditor({ file }: Props) {
   const { state } = useIde();
   const [editor, setEditor] = useState<monaco.editor.IStandaloneCodeEditor | null>(null);
   const language = file.kind === "pine" ? "pine" : file.kind === "python" ? "python" : "markdown";
@@ -41,7 +41,7 @@ export function CodeEditor({ file, readOnly }: Props) {
 
   return (
     <div className="code">
-      {readOnly && <div className="code__banner">Example file · read-only. Ask the agent to make a copy you can edit.</div>}
+      <p className="code__banner">Example file · read-only in this preview. Copy or download it to edit it anywhere.</p>
       <Editor
         path={file.name}
         defaultLanguage={language}
@@ -51,7 +51,9 @@ export function CodeEditor({ file, readOnly }: Props) {
         onMount={onMount}
         loading={<div className="code__loading">Loading editor…</div>}
         options={{
-          readOnly,
+          readOnly: true,
+          readOnlyMessage: { value: "Example files are read-only in this preview." },
+          ariaLabel: `${file.name}, read-only`,
           fontFamily: "JetBrains Mono, ui-monospace, monospace",
           fontSize: 13,
           lineHeight: 21,
@@ -66,6 +68,8 @@ export function CodeEditor({ file, readOnly }: Props) {
           wordWrap: "off",
           tabSize: 4,
           fixedOverflowWidgets: true,
+          // The examples use true minus signs and middle dots on purpose; don't box them as lookalikes.
+          unicodeHighlight: { ambiguousCharacters: false },
         }}
       />
     </div>

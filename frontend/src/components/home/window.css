@@ -44,6 +44,22 @@
   font-size: 13px;
 }
 
+/* Focus rings: light on the dark desk, ink on the white report sheet. */
+.pw__frame :focus-visible {
+  outline: 2px solid var(--desk-text);
+  outline-offset: -2px;
+}
+
+.pw__frame .report :focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.pw__frame .report-desk:focus-visible {
+  outline: 3px solid var(--desk-text);
+  outline-offset: -3px;
+}
+
 .pw__frame ::selection {
   background: var(--desk-text);
   color: var(--desk-0);
@@ -83,21 +99,26 @@
   color: #ffffff;
 }
 
-.pw__replay {
+.pw__controls {
   justify-self: end;
+  display: flex;
+  gap: 6px;
+}
+
+.pw__btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   background: transparent;
-  border: 1px solid var(--desk-line-2);
+  border: 1px solid var(--desk-field);
   color: var(--desk-text-2);
   font-size: 12px;
   padding: 4px 9px;
 }
 
-.pw__replay:hover {
+.pw__btn:hover {
   color: var(--desk-text);
-  border-color: var(--desk-text-3);
+  border-color: var(--desk-text-2);
 }
 
 .pw__body {
@@ -244,7 +265,7 @@
 }
 
 .pw__filetabs button:disabled {
-  color: #4f4f56;
+  color: #5c5c63;
   cursor: default;
 }
 
@@ -292,7 +313,7 @@
   width: 40px;
   padding-right: 12px;
   text-align: right;
-  color: #55555b;
+  color: var(--desk-ln);
   user-select: none;
 }
 
@@ -334,13 +355,14 @@
 }
 
 @media (max-width: 760px) {
+  /* Shorter than the screen, so there's always page around it to scroll by. */
   .pw__frame {
-    height: 760px;
+    height: clamp(520px, 78svh, 720px);
   }
 
   .pw__body {
     grid-template-columns: 1fr;
-    grid-template-rows: 200px minmax(0, 1fr);
+    grid-template-rows: minmax(150px, 30%) minmax(0, 1fr);
   }
 
   .pw__thread {
@@ -348,9 +370,48 @@
     border-bottom: 1px solid var(--desk-line);
   }
 
+  /* Four examples as a two-by-two block of tabs, not three ragged rows. */
+  .pw__tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+  }
+
   .pw__tabs button {
     font-size: 14px;
-    padding: 10px 12px;
+    padding: 10px 8px;
+    border-right: 0;
+  }
+
+  .pw__tabs button:nth-child(odd) {
+    border-right: 3px solid var(--ink);
+  }
+
+  .pw__tabs button:nth-child(-n + 2) {
+    border-bottom: 3px solid var(--ink);
+  }
+}
+
+@media (max-width: 560px) {
+  .pw__top {
+    grid-template-columns: 1fr auto;
+  }
+
+  .pw__modes {
+    display: none;
+  }
+
+  .pw__filetabs button {
+    padding: 0 10px;
+  }
+}
+
+/* On touch screens, let a swipe that reaches the end of a pane carry on scrolling the page. */
+@media (pointer: coarse) {
+  .pw__thread,
+  .pw__code,
+  .pw__view .report-desk {
+    overscroll-behavior: auto;
   }
 }
 

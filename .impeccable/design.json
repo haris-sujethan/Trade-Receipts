@@ -1,0 +1,614 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-31T06:11:54+00:00",
+  "title": "Design System: Trade Receipts",
+  "extensions": {
+    "colorMeta": {
+      "ink": {
+        "role": "primary",
+        "displayName": "Label Ink",
+        "canonical": "#111111",
+        "tonalRamp": [
+          "#121214",
+          "#121213",
+          "#111112",
+          "#111111",
+          "#323231",
+          "#737372",
+          "#b5b5b3",
+          "#f6f6f4"
+        ]
+      },
+      "red": {
+        "role": "primary",
+        "displayName": "Contradiction Red",
+        "canonical": "#c3261c",
+        "tonalRamp": [
+          "#121214",
+          "#451816",
+          "#771d19",
+          "#aa231b",
+          "#ca443b",
+          "#d97f79",
+          "#e7bbb6",
+          "#f6f6f4"
+        ]
+      },
+      "gain": {
+        "role": "secondary",
+        "displayName": "Gain Green",
+        "canonical": "#1f7a4d",
+        "tonalRamp": [
+          "#121214",
+          "#163024",
+          "#194d35",
+          "#1d6b45",
+          "#3e8c65",
+          "#7baf95",
+          "#b9d3c4",
+          "#f6f6f4"
+        ]
+      },
+      "regime-calm-up": {
+        "role": "tertiary",
+        "displayName": "Calm Uptrend",
+        "canonical": "#1f7a4d",
+        "tonalRamp": [
+          "#121214",
+          "#163024",
+          "#194d35",
+          "#1d6b45",
+          "#3e8c65",
+          "#7baf95",
+          "#b9d3c4",
+          "#f6f6f4"
+        ]
+      },
+      "regime-volatile-up": {
+        "role": "tertiary",
+        "displayName": "Volatile Uptrend",
+        "canonical": "#4a86c8",
+        "tonalRamp": [
+          "#121214",
+          "#223347",
+          "#32547b",
+          "#4275ae",
+          "#6396ce",
+          "#94b6db",
+          "#c5d6e7",
+          "#f6f6f4"
+        ]
+      },
+      "regime-calm-down": {
+        "role": "tertiary",
+        "displayName": "Calm Downtrend",
+        "canonical": "#2f4f99",
+        "tonalRamp": [
+          "#121214",
+          "#1a233a",
+          "#233560",
+          "#2b4686",
+          "#4b67a6",
+          "#8497c0",
+          "#bdc6da",
+          "#f6f6f4"
+        ]
+      },
+      "regime-volatile-down": {
+        "role": "tertiary",
+        "displayName": "Volatile Downtrend",
+        "canonical": "#b0559a",
+        "tonalRamp": [
+          "#121214",
+          "#3f253a",
+          "#6c3861",
+          "#994b87",
+          "#ba6ca7",
+          "#ce9ac1",
+          "#e2c8da",
+          "#f6f6f4"
+        ]
+      },
+      "ink-2": {
+        "role": "neutral",
+        "displayName": "Soft Ink",
+        "canonical": "#444447",
+        "tonalRamp": [
+          "#121214",
+          "#202023",
+          "#2f2f31",
+          "#3d3d40",
+          "#5d5d60",
+          "#909091",
+          "#c3c3c3",
+          "#f6f6f4"
+        ]
+      },
+      "ink-3": {
+        "role": "neutral",
+        "displayName": "Muted Ink",
+        "canonical": "#66666b",
+        "tonalRamp": [
+          "#121214",
+          "#2a2a2d",
+          "#424246",
+          "#5a5a5f",
+          "#7b7b7f",
+          "#a4a4a6",
+          "#cdcdcd",
+          "#f6f6f4"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Label Stock",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#121214",
+          "#565657",
+          "#99999a",
+          "#dddddd",
+          "#fefefd",
+          "#fbfbfa",
+          "#f9f9f7",
+          "#f6f6f4"
+        ]
+      },
+      "paper-2": {
+        "role": "neutral",
+        "displayName": "Stock Tint",
+        "canonical": "#f2f2ef",
+        "tonalRamp": [
+          "#121214",
+          "#525253",
+          "#929291",
+          "#d2d2d0",
+          "#f3f3f0",
+          "#f4f4f1",
+          "#f5f5f3",
+          "#f6f6f4"
+        ]
+      },
+      "paper-3": {
+        "role": "neutral",
+        "displayName": "Stock Rule",
+        "canonical": "#e6e6e2",
+        "tonalRamp": [
+          "#121214",
+          "#4f4f4f",
+          "#8b8b8a",
+          "#c8c8c5",
+          "#e8e8e5",
+          "#ededea",
+          "#f1f1ef",
+          "#f6f6f4"
+        ]
+      },
+      "desk-0": {
+        "role": "neutral",
+        "displayName": "Editor Desk",
+        "canonical": "#0b0b0c",
+        "tonalRamp": [
+          "#121214",
+          "#101012",
+          "#0e0e0f",
+          "#0c0c0d",
+          "#2d2d2d",
+          "#70706f",
+          "#b3b3b2",
+          "#f6f6f4"
+        ]
+      },
+      "desk-1": {
+        "role": "neutral",
+        "displayName": "Panel Desk",
+        "canonical": "#111113",
+        "tonalRamp": [
+          "#121214",
+          "#121214",
+          "#111113",
+          "#111113",
+          "#323233",
+          "#737373",
+          "#b5b5b4",
+          "#f6f6f4"
+        ]
+      },
+      "desk-2": {
+        "role": "neutral",
+        "displayName": "Raised Desk",
+        "canonical": "#17171a",
+        "tonalRamp": [
+          "#121214",
+          "#131316",
+          "#151517",
+          "#161619",
+          "#373739",
+          "#777777",
+          "#b6b6b6",
+          "#f6f6f4"
+        ]
+      },
+      "desk-3": {
+        "role": "neutral",
+        "displayName": "Selected Desk",
+        "canonical": "#1f1f23",
+        "tonalRamp": [
+          "#121214",
+          "#161618",
+          "#19191d",
+          "#1d1d21",
+          "#3e3e41",
+          "#7b7b7d",
+          "#b9b9b8",
+          "#f6f6f4"
+        ]
+      },
+      "desk-line": {
+        "role": "neutral",
+        "displayName": "Desk Line",
+        "canonical": "#26262b",
+        "tonalRamp": [
+          "#121214",
+          "#18181b",
+          "#1d1d21",
+          "#232328",
+          "#444448",
+          "#7f7f81",
+          "#bbbbbb",
+          "#f6f6f4"
+        ]
+      },
+      "desk-line-2": {
+        "role": "neutral",
+        "displayName": "Desk Line Strong",
+        "canonical": "#36363d",
+        "tonalRamp": [
+          "#121214",
+          "#1c1c20",
+          "#27272b",
+          "#313137",
+          "#515157",
+          "#88888b",
+          "#bfbfc0",
+          "#f6f6f4"
+        ]
+      },
+      "desk-field": {
+        "role": "neutral",
+        "displayName": "Desk Field Border",
+        "canonical": "#66666b",
+        "tonalRamp": [
+          "#121214",
+          "#2a2a2d",
+          "#424246",
+          "#5a5a5f",
+          "#7b7b7f",
+          "#a4a4a6",
+          "#cdcdcd",
+          "#f6f6f4"
+        ]
+      },
+      "desk-ln": {
+        "role": "neutral",
+        "displayName": "Line Number",
+        "canonical": "#7a7a80",
+        "tonalRamp": [
+          "#121214",
+          "#303033",
+          "#4d4d52",
+          "#6b6b71",
+          "#8c8c91",
+          "#afafb2",
+          "#d3d3d3",
+          "#f6f6f4"
+        ]
+      },
+      "desk-text": {
+        "role": "neutral",
+        "displayName": "Desk Text",
+        "canonical": "#ededeb",
+        "tonalRamp": [
+          "#121214",
+          "#515151",
+          "#8f8f8f",
+          "#cececc",
+          "#eeeeec",
+          "#f1f1ef",
+          "#f3f3f1",
+          "#f6f6f4"
+        ]
+      },
+      "desk-text-2": {
+        "role": "neutral",
+        "displayName": "Desk Text Soft",
+        "canonical": "#a6a6ab",
+        "tonalRamp": [
+          "#121214",
+          "#3c3c3f",
+          "#67676a",
+          "#919195",
+          "#b1b1b5",
+          "#c8c8ca",
+          "#dfdfdf",
+          "#f6f6f4"
+        ]
+      },
+      "desk-text-3": {
+        "role": "neutral",
+        "displayName": "Desk Text Muted",
+        "canonical": "#85858b",
+        "tonalRamp": [
+          "#121214",
+          "#333336",
+          "#545458",
+          "#75757a",
+          "#95959a",
+          "#b5b5b8",
+          "#d6d6d6",
+          "#f6f6f4"
+        ]
+      },
+      "desk-amber": {
+        "role": "neutral",
+        "displayName": "Desk Warning",
+        "canonical": "#e3a53c",
+        "tonalRamp": [
+          "#121214",
+          "#4e3c1f",
+          "#89662b",
+          "#c59036",
+          "#e6b156",
+          "#ebc88b",
+          "#f1dfbf",
+          "#f6f6f4"
+        ]
+      },
+      "desk-red": {
+        "role": "neutral",
+        "displayName": "Desk Error",
+        "canonical": "#f0675c",
+        "tonalRamp": [
+          "#121214",
+          "#512a29",
+          "#91433d",
+          "#d05b52",
+          "#f17b72",
+          "#f3a49d",
+          "#f4cdc9",
+          "#f6f6f4"
+        ]
+      },
+      "desk-green": {
+        "role": "neutral",
+        "displayName": "Desk Added",
+        "canonical": "#6cc287",
+        "tonalRamp": [
+          "#121214",
+          "#2c4435",
+          "#457756",
+          "#5fa977",
+          "#80c997",
+          "#a7d8b6",
+          "#cfe7d5",
+          "#f6f6f4"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "The home hero headline only."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Home section titles and the closing band."
+      },
+      "label-title": {
+        "displayName": "Label title",
+        "purpose": "Facts label titles; 36px at compact size."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Report headers and tour card titles."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Paragraphs on paper and in reports."
+      },
+      "label-row": {
+        "displayName": "Label row",
+        "purpose": "Facts label rows; values bold and right-aligned."
+      },
+      "ui": {
+        "displayName": "UI",
+        "purpose": "IDE chrome."
+      },
+      "code": {
+        "displayName": "Code",
+        "purpose": "Code, file names, timestamps and run settings."
+      }
+    },
+    "rules": [
+      {
+        "name": "rule-hair",
+        "value": "1px",
+        "purpose": "Row dividers in labels; page chrome such as the nav and section breaks."
+      },
+      {
+        "name": "rule-bar",
+        "value": "4px",
+        "purpose": "Label, label tab and report borders; grouping inside labels."
+      },
+      {
+        "name": "rule-mid",
+        "value": "7px",
+        "purpose": "Under the tested value and between label groups."
+      },
+      {
+        "name": "rule-slab",
+        "value": "14px",
+        "purpose": "Under a label's serving line and a report's header. Never on page chrome."
+      }
+    ],
+    "shadows": [
+      {
+        "name": "desk-popover",
+        "value": "0 12px 32px rgba(0, 0, 0, 0.45)",
+        "purpose": "Preview note and thread history floating over desk panes."
+      },
+      {
+        "name": "tour-dimmer",
+        "value": "0 0 0 200vmax rgba(5, 5, 6, 0.72)",
+        "purpose": "Spotlight cut-out around the tour's target."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Every transition: hovers, the strike, the tour spotlight."
+      },
+      {
+        "name": "strike",
+        "value": "650ms delay, 520ms transform scaleX",
+        "purpose": "The red bar drawn across a claimed value."
+      },
+      {
+        "name": "report-print",
+        "value": "750ms per part",
+        "purpose": "The home replay prints a report one part at a time."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "phone",
+        "value": "560px"
+      },
+      {
+        "name": "demo-stack",
+        "value": "760px"
+      },
+      {
+        "name": "ide-panes",
+        "value": "900px"
+      },
+      {
+        "name": "hero-stack",
+        "value": "960px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Ink Button",
+      "kind": "button",
+      "refersTo": "button-ink",
+      "description": "The primary action on paper: Launch IDE.",
+      "html": "<button class=\"ds-btn-ink\">Launch IDE <svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12h14\"/><path d=\"m12 5 7 7-7 7\"/></svg></button>",
+      "css": ".ds-btn-ink { display: inline-flex; align-items: center; gap: 10px; font-family: 'Public Sans Variable', 'Public Sans', system-ui, sans-serif; font-size: 18px; font-weight: 800; padding: 15px 24px; background: #111111; color: #ffffff; border: 3px solid #111111; border-radius: 0; cursor: pointer; transition: background-color 160ms cubic-bezier(0.16, 1, 0.3, 1), color 160ms cubic-bezier(0.16, 1, 0.3, 1); } .ds-btn-ink:hover { background: #ffffff; color: #111111; } .ds-btn-ink:focus-visible { outline: 3px solid #111111; outline-offset: 3px; }"
+    },
+    {
+      "name": "Line Button",
+      "kind": "button",
+      "refersTo": "button-line",
+      "description": "The secondary action on paper: See it work.",
+      "html": "<button class=\"ds-btn-line\">See it work</button>",
+      "css": ".ds-btn-line { font-family: 'Public Sans Variable', 'Public Sans', system-ui, sans-serif; font-size: 18px; font-weight: 800; padding: 15px 24px; background: #ffffff; color: #111111; border: 3px solid #111111; border-radius: 0; cursor: pointer; transition: background-color 160ms cubic-bezier(0.16, 1, 0.3, 1), color 160ms cubic-bezier(0.16, 1, 0.3, 1); } .ds-btn-line:hover { background: #111111; color: #ffffff; } .ds-btn-line:focus-visible { outline: 3px solid #111111; outline-offset: 3px; }"
+    },
+    {
+      "name": "Label Tabs",
+      "kind": "nav",
+      "refersTo": "label-tab",
+      "description": "Tabs set in the label's own rules, sitting on top of a facts label.",
+      "html": "<div class=\"ds-label-tabs\" role=\"tablist\"><button role=\"tab\" aria-selected=\"true\" class=\"is-on\">Backtest</button><button role=\"tab\" aria-selected=\"false\">Stock research</button><button role=\"tab\" aria-selected=\"false\">Crypto research</button></div>",
+      "css": ".ds-label-tabs { display: flex; width: 420px; border: 4px solid #111111; } .ds-label-tabs button { flex: 1; font-family: 'Public Sans Variable', 'Public Sans', system-ui, sans-serif; font-size: 15px; font-weight: 700; padding: 10px 8px; background: #ffffff; color: #111111; border: 0; border-right: 3px solid #111111; cursor: pointer; } .ds-label-tabs button:last-child { border-right: 0; } .ds-label-tabs button:hover { background: #f2f2ef; } .ds-label-tabs button.is-on { background: #111111; color: #ffffff; } .ds-label-tabs button:focus-visible { outline: 3px solid #111111; outline-offset: 3px; }"
+    },
+    {
+      "name": "Facts Label",
+      "kind": "custom",
+      "refersTo": "",
+      "description": "The signature object: claimed value struck through in red beside the tested one.",
+      "html": "<section class=\"ds-facts\"><h2>Strategy Facts</h2><p class=\"ds-facts__subject\">RSI dip · BTC-USD · 4-hour</p><p class=\"ds-facts__serving\">Tested Jan 2021 – Oct 2026 · example values</p><div class=\"ds-facts__big ds-facts__claimed\"><span>Claimed, best 12 months</span><span class=\"ds-facts__struck\">+300%</span></div><div class=\"ds-facts__big ds-facts__tested\"><span>Tested, best 12 months</span><span>+38%</span></div><dl><div><dt>Total return</dt><dd>+41%</dd></div><div><dt>vs. holding BTC</dt><dd class=\"is-bad\">−221 pts</dd></div><div class=\"is-mid\"><dt>vs. S&amp;P 500</dt><dd class=\"is-bad\">−45 pts</dd></div><div><dt>Max drawdown</dt><dd>−38%</dd></div></dl><p class=\"ds-facts__foot\">Example values. Not financial advice.</p></section>",
+      "css": ".ds-facts { width: 420px; background: #ffffff; color: #111111; border: 4px solid #111111; padding: 10px 18px 14px; font-family: 'Public Sans Variable', 'Public Sans', system-ui, sans-serif; font-feature-settings: 'tnum' 1, 'lnum' 1; } .ds-facts h2 { margin: 0; font-size: 56px; font-weight: 900; line-height: 1; letter-spacing: -0.02em; padding-bottom: 4px; border-bottom: 1px solid #111111; } .ds-facts p { margin: 0; } .ds-facts__subject { font-size: 19px; font-weight: 700; padding-top: 7px; } .ds-facts__serving { font-size: 17px; padding: 2px 0 8px; border-bottom: 14px solid #111111; } .ds-facts__big { display: flex; justify-content: space-between; gap: 16px; font-size: 25px; font-weight: 900; padding: 7px 0 6px; border-bottom: 1px solid #111111; } .ds-facts__claimed { color: #66666b; } .ds-facts__struck { position: relative; } .ds-facts__struck::after { content: ''; position: absolute; left: -4px; right: -4px; top: 52%; height: 4px; background: #c3261c; } .ds-facts__tested { border-bottom: 7px solid #111111; } .ds-facts dl { margin: 0; } .ds-facts dl div { display: flex; justify-content: space-between; font-size: 17px; padding: 5px 0 4px; border-bottom: 1px solid #111111; } .ds-facts dl div.is-mid { border-bottom: 7px solid #111111; } .ds-facts dd { margin: 0; font-weight: 700; } .ds-facts dd.is-bad { color: #c3261c; } .ds-facts__foot { font-size: 14px; color: #444447; padding-top: 8px; }"
+    },
+    {
+      "name": "Desk Tool Button",
+      "kind": "button",
+      "refersTo": "desk-tool-button",
+      "description": "Quiet IDE actions such as Copy, Download and Split.",
+      "html": "<div class=\"ds-desk\"><button class=\"ds-tool-btn\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect width=\"14\" height=\"14\" x=\"8\" y=\"8\" rx=\"2\"/><path d=\"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2\"/></svg>Copy</button></div>",
+      "css": ".ds-desk { background: #111113; padding: 16px; } .ds-tool-btn { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; font-family: 'Public Sans Variable', 'Public Sans', system-ui, sans-serif; font-size: 12px; font-weight: 600; background: transparent; color: #a6a6ab; border: 1px solid #36363d; border-radius: 0; cursor: pointer; transition: color 140ms cubic-bezier(0.16, 1, 0.3, 1), border-color 140ms cubic-bezier(0.16, 1, 0.3, 1); } .ds-tool-btn:hover { color: #ededeb; border-color: #85858b; } .ds-tool-btn:focus-visible { outline: 2px solid #ededeb; outline-offset: -2px; }"
+    },
+    {
+      "name": "Desk Run Button",
+      "kind": "button",
+      "refersTo": "desk-run-button",
+      "description": "Replays an example run; when it can't run, the reason prints beside it.",
+      "html": "<div class=\"ds-desk-run\"><span class=\"ds-run-note\">Example run · settings are fixed</span><button class=\"ds-run-btn\"><svg width=\"13\" height=\"13\" viewBox=\"0 0 24 24\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M6 3l14 9-14 9z\"/></svg>Replay run</button></div>",
+      "css": ".ds-desk-run { display: flex; align-items: center; gap: 18px; background: #0b0b0c; padding: 8px 12px; font-family: 'Public Sans Variable', 'Public Sans', system-ui, sans-serif; } .ds-run-note { font-size: 12px; color: #a6a6ab; } .ds-run-btn { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 14px; font-family: 'Public Sans Variable', 'Public Sans', system-ui, sans-serif; font-size: 12px; font-weight: 700; background: #ededeb; color: #0b0b0c; border: 0; border-radius: 0; cursor: pointer; } .ds-run-btn:hover { background: #ffffff; } .ds-run-btn:focus-visible { outline: 2px solid #ededeb; outline-offset: 2px; } .ds-run-btn:disabled { background: #1f1f23; color: #85858b; cursor: not-allowed; }"
+    },
+    {
+      "name": "Desk Input",
+      "kind": "input",
+      "refersTo": "desk-input",
+      "description": "Text fields on the desk, such as the Tiingo key.",
+      "html": "<div class=\"ds-desk-field\"><input class=\"ds-desk-input\" placeholder=\"Paste your Tiingo key…\" /></div>",
+      "css": ".ds-desk-field { background: #17171a; padding: 14px; } .ds-desk-input { width: 280px; height: 30px; padding: 0 8px; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12px; background: #0b0b0c; color: #ededeb; border: 1px solid #66666b; border-radius: 0; } .ds-desk-input::placeholder { color: #85858b; } .ds-desk-input:focus { border-color: #ededeb; outline: 2px solid #ededeb; outline-offset: -2px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Strategy Facts Label",
+    "overview": "Every result in Trade Receipts is printed as a facts label, modeled on the FDA Nutrition Facts panel: white stock, near-black ink, rows set name-left and value-right, grouped by black rules of fixed weights. The claimed number is struck through in red beside the tested one. The label is the product's proof and its signature, so the rest of the system exists to frame it and never to outshout it.\n\nThe system has two surfaces that share one ink. Paper is the home page and sign-up: bold, white, typographic, built from the label's own rules and type. Desk is the IDE: a quiet near-black workspace in the manner of a code editor, where reports and labels print as white sheets. Wherever a label appears, on paper or on the desk, it is the same object at the same weight.\n\nIt refuses the category default of a dark fintech hero with glowing charts, and the headline-over-screenshot template. No shadows on paper, no gradients, no pills, no glows, no rounded corners.",
+    "keyCharacteristics": [
+      "One grotesque, Public Sans, from Regular to Black, with tabular figures everywhere.",
+      "Black rules in four fixed weights: hairline (1px), bar (4px), mid (7px), slab (14px).",
+      "One red, used only for contradicted, failed or trailing values.",
+      "Square corners on everything.",
+      "Paper for persuasion, desk for work; the label is identical on both."
+    ],
+    "rules": [
+      {
+        "name": "The One Red Rule",
+        "body": "Red means the test disagreed. If a value isn't contradicted, failed or trailing, it isn't red.",
+        "section": "colors"
+      },
+      {
+        "name": "The Label Owns the Ink Rule",
+        "body": "Heavy rules (bar, mid, slab) live inside labels and boxed objects, where they group data. Page chrome such as the nav and section breaks takes a hairline at column width.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tabular Rule",
+        "body": "Every number is set in tabular lining figures (\"tnum\" 1, \"lnum\" 1 on body), so columns of results align without help.",
+        "section": "typography"
+      },
+      {
+        "name": "The True Minus Rule",
+        "body": "Negative values print with a real minus sign (−), never a hyphen.",
+        "section": "typography"
+      },
+      {
+        "name": "The Paper Is Flat Rule",
+        "body": "Nothing printed on white casts a shadow. A label is ink on stock.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do print every result as a facts label or a report that ends on one.",
+      "Do keep heavy rules (4px, 7px, 14px) inside labels, report sheets and boxed objects; give page chrome a 1px hairline at column width.",
+      "Do set every number in tabular figures, with a true minus sign.",
+      "Do pair every chart color with a second cue (marker shape, sign, legend or label), and put a \"Show the numbers\" table under every chart.",
+      "Do state why a control can't act, in visible text next to it.",
+      "Do label example values as examples wherever they appear."
+    ],
+    "donts": [
+      "Don't use red for anything but a contradicted, failed or trailing value.",
+      "Don't add shadows, gradients, glows, pills or rounded corners on paper.",
+      "Don't run a heavy rule edge to edge across the page.",
+      "Don't use a dark fintech hero with glowing charts, or a headline over a product screenshot.",
+      "Don't let anything on paper outweigh the facts label.",
+      "Don't leave a control that looks live but does nothing; disable it and say \"coming soon\", or remove it."
+    ]
+  }
+}

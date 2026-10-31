@@ -1,10 +1,10 @@
 import { useMemo, type ReactNode } from "react";
-import type { Data, Layout } from "plotly.js-dist-min";
-import { FactsLabel } from "../FactsLabel";
+import type { Data, Layout } from "plotly.js";
+import { FactsLabel } from "../../components/FactsLabel";
 import { acme, acmeFacts, moonFacts } from "../../data/examples";
 import { GAIN, LOSS } from "../../data/report";
-import { axis, INK, INK_2, Plot } from "../../ide/report/Plot";
-import "../../ide/report/report.css";
+import { axis, INK, INK_2, Plot, type ChartTable } from "./Plot";
+import "./report.css";
 
 type Claim = { claim: string; at: string; facts: string; verdict: string };
 
@@ -14,6 +14,23 @@ const moonClaims: Claim[] = [
   { claim: "“Liquidity is locked”", at: "0:18", facts: "The creator can still withdraw the pool", verdict: "Contradicted" },
   { claim: "“Fair launch, no team tokens”", at: "0:27", facts: "23% sits in wallets with one funder", verdict: "Contradicted" },
   { claim: "“This can't rug”", at: "0:40", facts: "84% of similar launches did", verdict: "Contradicted" },
+];
+
+type BarRow = { name: string; value: number; color: string };
+
+// Module-level so the charts keep the same data between renders and don't redraw.
+const holders: BarRow[] = [
+  { name: "Wallets with one funder", value: 23, color: LOSS },
+  { name: "Other top 10", value: 38, color: "#7a7a80" },
+  { name: "Trading pool", value: 18, color: "#b4b4b9" },
+  { name: "Everyone else", value: 21, color: "#b4b4b9" },
+];
+
+const launches: BarRow[] = [
+  { name: "Soft rug", value: 53, color: LOSS },
+  { name: "Hard rug", value: 31, color: LOSS },
+  { name: "Faded", value: 9, color: "#7a7a80" },
+  { name: "Survived", value: 7, color: GAIN },
 ];
 
 function ClaimsTable({ claims, factsHeader }: { claims: Claim[]; factsHeader: string }) {
@@ -42,7 +59,7 @@ function ClaimsTable({ claims, factsHeader }: { claims: Claim[]; factsHeader: st
 }
 
 function Bars({ x, y, label, unit, color, height = 220 }: { x: string[]; y: number[]; label: string; unit: string; color: string; height?: number }) {
-  const { data, layout } = useMemo(() => {
+  const { data, layout, table } = useMemo(() => {
     const data: Data[] = [
       {
         type: "bar",
@@ -58,13 +75,14 @@ function Bars({ x, y, label, unit, color, height = 220 }: { x: string[]; y: numb
       xaxis: axis({ showgrid: false, tickfont: { size: 10, color: INK_2 } }),
       yaxis: axis({ ticksuffix: unit }),
     };
-    return { data, layout };
-  }, [x, y, unit, color]);
-  return <Plot data={data} layout={layout} height={height} label={label} />;
+    const table: ChartTable = { columns: ["Quarter", label], rows: () => x.map((q, i) => [q, `${y[i]}${unit}`]) };
+    return { data, layout, table };
+  }, [x, y, unit, color, label]);
+  return <Plot data={data} layout={layout} height={height} label={label} table={table} />;
 }
 
-function HBars({ rows, label }: { rows: { name: string; value: number; color: string }[]; label: string }) {
-  const { data, layout } = useMemo(() => {
+function HBars({ rows, label }: { rows: BarRow[]; label: string }) {
+  const { data, layout, table } = useMemo(() => {
     const data: Data[] = [
       {
         type: "bar",
@@ -85,15 +103,16 @@ function HBars({ rows, label }: { rows: { name: string; value: number; color: st
       xaxis: axis({ ticksuffix: "%", range: [0, Math.max(...rows.map((r) => r.value)) * 1.25] }),
       yaxis: axis({ autorange: "reversed", showgrid: false, tickfont: { size: 12, color: INK } }),
     };
-    return { data, layout };
+    const table: ChartTable = { columns: ["Group", "Share"], rows: () => rows.map((r) => [r.name, `${r.value}%`]) };
+    return { data, layout, table };
   }, [rows]);
-  return <Plot data={data} layout={layout} height={40 + rows.length * 38} label={label} />;
+  return <Plot data={data} layout={layout} height={40 + rows.length * 38} label={label} table={table} />;
 }
 
 function Sheet({ label, parts, reveal }: { label: string; parts: ReactNode[]; reveal?: number }) {
   const shown = reveal === undefined ? parts : parts.slice(0, reveal);
   return (
-    <div className="report-desk">
+    <div className="report-desk" tabIndex={0}>
       <article className="report" aria-label={label}>
         {shown.map((part, i) => (
           <div key={i} className={reveal === undefined ? undefined : "report__part"}>
@@ -170,28 +189,12 @@ export function ResearchSheet({ which, reveal }: { which: "acme" | "moon"; revea
           <section className="report__section">
             <h3>Who holds the supply</h3>
             <p className="report__sub">Share of all tokens.</p>
-            <HBars
-              label="Who holds the supply"
-              rows={[
-                { name: "Wallets with one funder", value: 23, color: LOSS },
-                { name: "Other top 10", value: 38, color: "#7a7a80" },
-                { name: "Trading pool", value: 18, color: "#b4b4b9" },
-                { name: "Everyone else", value: 21, color: "#b4b4b9" },
-              ]}
-            />
+            <HBars label="Who holds the supply" rows={holders} />
           </section>
           <section className="report__section">
             <h3>1,240 similar launches</h3>
             <p className="report__sub">What happened within 30 days.</p>
-            <HBars
-              label="Outcomes of similar past launches"
-              rows={[
-                { name: "Soft rug", value: 53, color: LOSS },
-                { name: "Hard rug", value: 31, color: LOSS },
-                { name: "Faded", value: 9, color: "#7a7a80" },
-                { name: "Survived", value: 7, color: GAIN },
-              ]}
-            />
+            <HBars label="Outcomes of similar past launches" rows={launches} />
           </section>
         </div>,
         <section className="report__receipt">

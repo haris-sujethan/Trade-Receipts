@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, FileCode2, FileText, Paperclip, RotateCcw } from "lucide-react";
+import { Check, FileCode2, FileText, Pause, Paperclip, Play, RotateCcw } from "lucide-react";
 import { APP_NAME } from "../../config";
 import { acmeResearch, cashflowPython, moonResearch, rsiPine, rsiThread, type ThreadStep } from "../../data/examples";
 import { ResultsView, resultParts } from "../../ide/ResultsView";
-import { RESEARCH_PARTS, ResearchSheet } from "./ResearchSheet";
+import { RESEARCH_PARTS, ResearchSheet } from "../../ide/report/ResearchSheet";
+import { onTablistKeyDown } from "../../lib/tabs";
 import "./window.css";
 
 type Replay = {
@@ -112,6 +113,8 @@ const PART_MS = 750;
 /** Then the finished results stay up this long before the next example. */
 const HOLD_MS = 7000;
 const CLOCK_MS = 100;
+/** The replay starts once this share of the window, or of the screen, shows it. */
+const SEEN = 0.6;
 
 function prefersReducedMotion() {
   return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -124,8 +127,10 @@ function timeline(r: Replay) {
   const openAt = workEnd + OPEN_DELAY_MS;
   const parts = r.result.kind === "backtest" ? resultParts(r.result.runId) : RESEARCH_PARTS;
   const printedAt = openAt + (parts - 1) * PART_MS;
-  return { total, stepMs, workEnd, openAt, parts, printedAt, endAt: printedAt + HOLD_MS };
+  return { total, stepMs, workEnd, openAt, parts, printedAt };
 }
+
+const thresholds = Array.from({ length: 21 }, (_, i) => i / 20);
 
 export function ProductWindow() {
   const [active, setActive] = useState(0);
@@ -133,36 +138,52 @@ export function ProductWindow() {
   const t = timeline(replay);
   const [elapsed, setElapsed] = useState(() => (prefersReducedMotion() ? Infinity : 0));
   const [userView, setUserView] = useState<"code" | "results" | null>(null);
-  const [paused, setPaused] = useState(false);
   const [visible, setVisible] = useState(false);
+  /** The visitor pressed Pause. Stops everything. */
+  const [paused, setPaused] = useState(false);
+  /** Pointer over the window, or focus inside it. Keeps finished results up. */
+  const [hover, setHover] = useState(false);
+  const [focusWithin, setFocusWithin] = useState(false);
+  /** The visitor scrolled, tapped or clicked inside. Stops following along and keeps this example up. */
+  const [engaged, setEngaged] = useState(false);
   const frameRef = useRef<HTMLDivElement>(null);
   const threadRef = useRef<HTMLElement>(null);
   const viewRef = useRef<HTMLDivElement>(null);
-  const userScrolled = useRef(false);
 
-  // Start only once most of the window is actually on screen, and pause when it isn't.
+  // Start once the window is mostly on screen, and pause when it isn't. On a short screen, "mostly" means most of
+  // the screen rather than most of the window.
   useEffect(() => {
     const el = frameRef.current;
     if (!el) return;
-    const io = new IntersectionObserver(([entry]) => setVisible(entry.intersectionRatio >= 0.6), {
-      threshold: [0, 0.6, 1],
-    });
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        const screen = entry.rootBounds?.height ?? window.innerHeight;
+        const shown = entry.intersectionRect.height;
+        setVisible(entry.intersectionRatio >= SEEN || shown >= screen * SEEN);
+      },
+      { threshold: thresholds },
+    );
     io.observe(el);
     return () => io.disconnect();
   }, []);
 
-  // One clock drives everything. Hovering only holds the finished results; the work keeps playing.
-  const holding = elapsed >= t.printedAt;
-  useEffect(() => {
-    if (!visible || !Number.isFinite(elapsed)) return;
-    if (holding && paused) return;
-    const id = window.setInterval(() => setElapsed((v) => v + CLOCK_MS), CLOCK_MS);
-    return () => window.clearInterval(id);
-  }, [visible, holding, paused, elapsed]);
+  const finite = Number.isFinite(elapsed);
+  const printing = finite && elapsed < t.printedAt;
 
+  // The clock runs only while the agent works and the results print.
   useEffect(() => {
-    if (Number.isFinite(elapsed) && elapsed >= t.endAt) choose((active + 1) % replays.length);
-  }, [elapsed, t.endAt, active]);
+    if (!visible || paused || !printing) return;
+    const id = window.setInterval(() => setElapsed((v) => Math.min(t.printedAt, v + CLOCK_MS)), CLOCK_MS);
+    return () => window.clearInterval(id);
+  }, [visible, paused, printing, t.printedAt]);
+
+  // Then the finished results hold, and the next example starts, unless the visitor is reading.
+  const held = paused || hover || focusWithin || engaged || !visible;
+  useEffect(() => {
+    if (!finite || printing || held) return;
+    const id = window.setTimeout(() => choose((active + 1) % replays.length), HOLD_MS);
+    return () => window.clearTimeout(id);
+  }, [finite, printing, held, active]);
 
   const shownSteps = Math.min(t.total, Math.floor(elapsed / t.stepMs));
   const done = shownSteps >= t.total;
@@ -173,23 +194,23 @@ export function ProductWindow() {
   // Keep the newest step in view while the agent works.
   useEffect(() => {
     const el = threadRef.current;
-    if (el && !done) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-  }, [shownSteps, done]);
+    if (el && !done && !engaged) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }, [shownSteps, done, engaged]);
 
   // Follow each part of the results as it prints, until the visitor scrolls on their own.
   useEffect(() => {
-    if (view !== "results" || userScrolled.current || reveal < 2) return;
+    if (view !== "results" || engaged || reveal < 2) return;
     const desk = viewRef.current?.querySelector<HTMLElement>(".report-desk");
     const parts = desk?.querySelectorAll<HTMLElement>(".report__part");
     const last = parts?.[parts.length - 1];
     if (desk && last) desk.scrollTo({ top: Math.max(0, last.offsetTop - 12), behavior: "smooth" });
-  }, [reveal, view]);
+  }, [reveal, view, engaged]);
 
   function choose(i: number) {
     setActive(i);
     setUserView(null);
     setElapsed(prefersReducedMotion() ? Infinity : 0);
-    userScrolled.current = false;
+    setEngaged(false);
     if (threadRef.current) threadRef.current.scrollTop = 0;
   }
 
@@ -198,18 +219,19 @@ export function ProductWindow() {
   const writeProgress = Math.min(1, Math.max(0, (elapsed - writeStart) / Math.max(1, t.workEnd - writeStart)));
   const shownLines = Math.round(lines.length * writeProgress);
   const FileIcon = replay.result.kind === "research" ? FileText : FileCode2;
-  const markUserScroll = () => {
-    userScrolled.current = true;
-  };
+  const engage = () => setEngaged(true);
 
   return (
     <div className="pw">
-      <div className="pw__tabs" role="tablist" aria-label="Example sessions">
+      <div className="pw__tabs" role="tablist" aria-label="Example sessions" onKeyDown={onTablistKeyDown}>
         {replays.map((r, i) => (
           <button
             key={r.id}
+            id={`pw-tab-${r.id}`}
             role="tab"
             aria-selected={i === active}
+            aria-controls="pw-panel"
+            tabIndex={i === active ? 0 : -1}
             className={i === active ? "is-on" : ""}
             onClick={() => choose(i)}
           >
@@ -220,13 +242,16 @@ export function ProductWindow() {
 
       <div
         ref={frameRef}
+        id="pw-panel"
         className="pw__frame"
         role="tabpanel"
-        aria-label={`${replay.tab}, replayed`}
-        onMouseEnter={() => setPaused(true)}
-        onMouseLeave={() => setPaused(false)}
-        onFocus={() => setPaused(true)}
-        onBlur={() => setPaused(false)}
+        aria-labelledby={`pw-tab-${replay.id}`}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        onFocus={() => setFocusWithin(true)}
+        onBlur={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocusWithin(false);
+        }}
       >
         <div className="pw__top">
           <span className="pw__mark">{APP_NAME}</span>
@@ -234,14 +259,26 @@ export function ProductWindow() {
             <span className={replay.mode === "Backtest" ? "is-on" : ""}>Backtest</span>
             <span className={replay.mode === "Analyze" ? "is-on" : ""}>Analyze</span>
           </span>
-          <button className="pw__replay" onClick={() => choose(active)} aria-label="Replay this example">
-            <RotateCcw size={14} aria-hidden />
-            Replay
-          </button>
+          <span className="pw__controls">
+            {finite && (
+              <button
+                className="pw__btn"
+                onClick={() => setPaused((v) => !v)}
+                aria-label={paused ? "Play the replay" : "Pause the replay"}
+              >
+                {paused ? <Play size={13} aria-hidden fill="currentColor" /> : <Pause size={13} aria-hidden fill="currentColor" />}
+                {paused ? "Play" : "Pause"}
+              </button>
+            )}
+            <button className="pw__btn" onClick={() => choose(active)} aria-label="Replay this example">
+              <RotateCcw size={13} aria-hidden />
+              Replay
+            </button>
+          </span>
         </div>
 
         <div className="pw__body">
-          <aside className="pw__thread" ref={threadRef} aria-label="Agent steps">
+          <aside className="pw__thread" ref={threadRef} aria-label="Agent steps" onWheel={engage} onTouchMove={engage}>
             <div className="pw__ask">
               {replay.clip && (
                 <span className="pw__clip">
@@ -274,28 +311,46 @@ export function ProductWindow() {
               {!done && <li className="pw__working">Working…</li>}
             </ol>
             {opened && (
-              <button className="pw__open" onClick={() => setUserView("results")}>
+              <button
+                className="pw__open"
+                onClick={() => {
+                  setUserView("results");
+                  engage();
+                }}
+              >
                 Open the results
               </button>
             )}
           </aside>
 
           <div className="pw__main">
-            <div className="pw__filetabs" role="tablist" aria-label="Open files">
+            <div className="pw__filetabs" role="tablist" aria-label="Open files" onKeyDown={onTablistKeyDown}>
               <button
+                id="pw-file-code"
                 role="tab"
                 aria-selected={view === "code"}
+                aria-controls="pw-view"
+                tabIndex={view === "code" ? 0 : -1}
                 className={view === "code" ? "is-on" : ""}
-                onClick={() => setUserView("code")}
+                onClick={() => {
+                  setUserView("code");
+                  engage();
+                }}
               >
                 <FileIcon size={13} aria-hidden />
                 {replay.file}
               </button>
               <button
+                id="pw-file-results"
                 role="tab"
                 aria-selected={view === "results"}
+                aria-controls="pw-view"
+                tabIndex={view === "results" ? 0 : -1}
                 className={view === "results" ? "is-on" : ""}
-                onClick={() => setUserView("results")}
+                onClick={() => {
+                  setUserView("results");
+                  engage();
+                }}
                 disabled={!opened}
                 title={opened ? undefined : "Results appear after a clean run"}
               >
@@ -305,14 +360,17 @@ export function ProductWindow() {
             </div>
 
             <div
+              id="pw-view"
               className="pw__view"
               ref={viewRef}
-              onWheel={markUserScroll}
-              onTouchMove={markUserScroll}
-              onPointerDown={markUserScroll}
+              role="tabpanel"
+              aria-labelledby={view === "code" ? "pw-file-code" : "pw-file-results"}
+              onWheel={engage}
+              onTouchMove={engage}
+              onPointerDown={engage}
             >
               {view === "code" ? (
-                <pre className="pw__code" aria-label={`${replay.file} contents`}>
+                <pre className="pw__code" tabIndex={0} aria-label={`${replay.file} contents`}>
                   {lines.slice(0, done ? lines.length : shownLines).map((line, i) => (
                     <span key={i} className={/^\s*(\/\/|#|"""|\|)/.test(line) ? "is-quiet" : ""}>
                       <span className="pw__ln">{i + 1}</span>
@@ -332,7 +390,8 @@ export function ProductWindow() {
         </div>
       </div>
       <p className="pw__note">
-        Replays of example sessions with example values. Scroll the results, turn the 3D chart, or switch tabs.
+        Replays of example sessions with example values. Scroll the results, turn the 3D chart, or switch tabs. The
+        replay stops on whatever you touch.
       </p>
     </div>
   );

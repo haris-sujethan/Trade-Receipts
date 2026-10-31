@@ -6,3 +6,4 @@ dist/
 data/
 .DS_Store
 .impeccable/config.local.json
+*.tsbuildinfo

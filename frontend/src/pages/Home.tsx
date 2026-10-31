@@ -5,6 +5,7 @@ import { APP_NAME, TAGLINE } from "../config";
 import { FactsLabel } from "../components/FactsLabel";
 import { ProductWindow } from "../components/home/ProductWindow";
 import { acmeFacts, moonFacts, rsiFacts } from "../data/examples";
+import { onTablistKeyDown } from "../lib/tabs";
 import "./home.css";
 
 const heroLabels = [
@@ -20,6 +21,9 @@ export function Home() {
 
   return (
     <div className="theme-paper home">
+      <a href="#main" className="skip">
+        Skip to content
+      </a>
       <header className="home-nav">
         <Link to="/" className="wordmark">
           {APP_NAME}
@@ -33,7 +37,7 @@ export function Home() {
         </Link>
       </header>
 
-      <main>
+      <main id="main" tabIndex={-1}>
         <section className="hero" aria-labelledby="hero-title">
           <div className="hero__copy">
             <h1 id="hero-title">Backtest any strategy. Research any stock or coin.</h1>
@@ -54,12 +58,15 @@ export function Home() {
           </div>
 
           <div className="hero__label">
-            <div className="label-tabs" role="tablist" aria-label="Example results">
+            <div className="label-tabs" role="tablist" aria-label="Example results" onKeyDown={onTablistKeyDown}>
               {heroLabels.map((l, i) => (
                 <button
                   key={l.id}
+                  id={`label-tab-${l.id}`}
                   role="tab"
                   aria-selected={i === active}
+                  aria-controls="label-panel"
+                  tabIndex={i === active ? 0 : -1}
                   className={i === active ? "is-on" : ""}
                   onClick={() => setActive(i)}
                 >
@@ -67,7 +74,7 @@ export function Home() {
                 </button>
               ))}
             </div>
-            <div role="tabpanel">
+            <div id="label-panel" role="tabpanel" aria-labelledby={`label-tab-${current.id}`}>
               <FactsLabel facts={current.facts} title={current.title} />
             </div>
           </div>

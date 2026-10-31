@@ -1,5 +1,6 @@
 import { AlertTriangle, Info, XCircle } from "lucide-react";
 import { projectFiles } from "../data/examples";
+import { onTablistKeyDown } from "../lib/tabs";
 import { outputFor, problemsFor, useIde } from "./state";
 
 const icons = {
@@ -25,27 +26,25 @@ export function BottomPanel() {
 
   return (
     <section className="bottom" aria-label="Problems and output" data-tour="problems">
-      <div className="bottom__tabs" role="tablist">
-        <button
-          role="tab"
-          aria-selected={state.bottomTab === "problems"}
-          className={state.bottomTab === "problems" ? "is-on" : ""}
-          onClick={() => dispatch({ type: "bottomTab", tab: "problems" })}
-        >
-          Problems
-          {problems.length > 0 && <span className="count">{problems.length}</span>}
-        </button>
-        <button
-          role="tab"
-          aria-selected={state.bottomTab === "output"}
-          className={state.bottomTab === "output" ? "is-on" : ""}
-          onClick={() => dispatch({ type: "bottomTab", tab: "output" })}
-        >
-          Output
-        </button>
+      <div className="bottom__tabs" role="tablist" aria-label="Problems and output" onKeyDown={onTablistKeyDown}>
+        {(["problems", "output"] as const).map((tab) => (
+          <button
+            key={tab}
+            id={`bottom-tab-${tab}`}
+            role="tab"
+            aria-selected={state.bottomTab === tab}
+            aria-controls="bottom-panel"
+            tabIndex={state.bottomTab === tab ? 0 : -1}
+            className={state.bottomTab === tab ? "is-on" : ""}
+            onClick={() => dispatch({ type: "bottomTab", tab })}
+          >
+            {tab === "problems" ? "Problems" : "Output"}
+            {tab === "problems" && problems.length > 0 && <span className="count">{problems.length}</span>}
+          </button>
+        ))}
       </div>
 
-      <div className="bottom__body" role="tabpanel">
+      <div id="bottom-panel" className="bottom__body" role="tabpanel" aria-labelledby={`bottom-tab-${state.bottomTab}`} tabIndex={0}>
         {state.bottomTab === "problems" &&
           (problems.length === 0 ? (
             <p className="bottom__empty">No problems yet. Compile errors and honesty issues show up here after a run.</p>
@@ -55,6 +54,7 @@ export function BottomPanel() {
                 <li key={i}>
                   <button onClick={() => jump(p.file)}>
                     {icons[p.severity]}
+                    <span className="sr-only">{p.severity}: </span>
                     <span className="problems__msg">{p.message}</span>
                     <span className="problems__where mono">
                       {p.file}

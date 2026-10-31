@@ -1,33 +1,46 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import { ArrowRight } from "lucide-react";
 import { markTourDone, useIde } from "./state";
 
+type Ide = ReturnType<typeof useIde>;
+
 type Step = {
-  target?: string;
+  target: string;
   title: string;
   body: string;
   /** Prepare the IDE so the target exists and shows the right thing. */
-  enter?: (dispatch: ReturnType<typeof useIde>["dispatch"], state: ReturnType<typeof useIde>["state"]) => void;
+  enter?: (dispatch: Ide["dispatch"], state: Ide["state"]) => void;
 };
+
+function startReplay(dispatch: Ide["dispatch"], state: Ide["state"]) {
+  if (!state.replaying && !state.replayed) dispatch({ type: "startReplay" });
+}
+
+/** Scroll the report so the target sits at its top. Only the report pane moves; scrollIntoView would also shift
+ * the IDE's own overflow-hidden frame. */
+function scrollReportTo(target: string) {
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // Wait a frame so a tab that just opened has rendered.
+  requestAnimationFrame(() => {
+    const el = document.querySelector(`[data-tour="${target}"]`);
+    const desk = el?.closest<HTMLElement>(".report-desk");
+    if (!el || !desk) return;
+    const top = el.getBoundingClientRect().top - desk.getBoundingClientRect().top + desk.scrollTop - 12;
+    desk.scrollTo({ top, behavior: reduce ? "auto" : "smooth" });
+  });
+}
 
 const steps: Step[] = [
   {
-    target: "explorer",
-    title: "Your files live here",
-    body: "Strategies, research, and clips sit in folders, like in a code editor. This demo project is already filled in.",
-  },
-  {
-    target: "composer",
-    title: "Type an idea or drop a clip",
-    body: "Describe a strategy in plain English, or add a chart screenshot or a short video. Here, someone dropped in a clip.",
+    target: "ask",
+    title: "Start with a clip or an idea",
+    body: "Someone dropped in a 48-second clip that claims 300% in a year. You can also describe a strategy in plain English.",
   },
   {
     target: "thread",
-    title: "Watch an idea become code",
-    body: "The agent reads the clip, finds the rules, picks Pine Script, writes the file, and fixes its own errors. Every step shows up here.",
-    enter: (dispatch, state) => {
-      if (!state.replaying && !state.replayed) dispatch({ type: "startReplay" });
-    },
+    title: "The agent writes and fixes the code",
+    body: "It finds the rules in the clip, picks Pine Script, writes the file, and fixes its own errors. Every step shows up here.",
+    enter: startReplay,
   },
   {
     target: "problems",
@@ -35,55 +48,51 @@ const steps: Step[] = [
     body: "Compile errors and honesty issues show up here and as underlines in the code, the way an editor shows errors.",
     enter: (dispatch, state) => {
       if (!state.replayed) dispatch({ type: "finishReplay" });
+      dispatch({ type: "open", id: "rsi" });
       dispatch({ type: "bottomTab", tab: "problems" });
     },
   },
   {
     target: "results",
     title: "The full backtest",
-    body: "The verdict, the equity curve against holding BTC and the S&P 500, results by market regime, every trade, and monthly returns. The Strategy Facts label closes the report as the receipt.",
-    enter: (dispatch, state) => {
-      if (!state.replayed) dispatch({ type: "finishReplay" });
-      dispatch({ type: "open", id: "results:rsi" });
-    },
-  },
-  {
-    target: "settings",
-    title: "Change what you test",
-    body: "Pick the symbol, timeframe, dates, and starting money, then run it again.",
+    body: "The verdict, the equity curve against holding BTC and the S&P 500, results by market regime, and every trade. The code is yours to copy into TradingView.",
     enter: (dispatch) => dispatch({ type: "open", id: "results:rsi" }),
   },
   {
-    target: "export",
-    title: "Take it to TradingView",
-    body: "Copy the Pine code or download the file. Paste it into TradingView and it runs there too. The code is yours.",
-    enter: (dispatch) => dispatch({ type: "open", id: "rsi" }),
-  },
-  {
-    target: "worktabs",
-    title: "Research a stock",
-    body: "Switch to Analyze to check a company against its SEC filings. Each claim gets a verdict: supported, contradicted, or can't check.",
+    target: "receipt",
+    title: "Every report ends on a receipt",
+    body: "The clip's +300% is struck through by what the test found. Switch to Analyze at the top to check a stock or coin the same way.",
     enter: (dispatch) => {
-      dispatch({ type: "workTab", tab: "Analyze" });
-      dispatch({ type: "open", id: "acme" });
+      dispatch({ type: "open", id: "results:rsi" });
+      scrollReportTo("receipt");
     },
-  },
-  {
-    title: "That's the tour",
-    body: "Your own project starts empty. The finished examples stay in the Examples folder whenever you want them.",
   },
 ];
 
 type Rect = { top: number; left: number; width: number; height: number };
 const PAD = 6;
 const CARD_W = 340;
+const FOCUSABLE = "button:not(:disabled), [href], [tabindex]:not([tabindex='-1'])";
 
-function measure(target?: string): Rect | null {
-  if (!target) return null;
+function measure(target: string): Rect | null {
   const el = document.querySelector(`[data-tour="${target}"]`);
   if (!el) return null;
+  // Light only the part that's actually on screen: clip to every scrolling pane the target sits in.
   const r = el.getBoundingClientRect();
-  return { top: r.top - PAD, left: r.left - PAD, width: r.width + PAD * 2, height: r.height + PAD * 2 };
+  let { top, bottom, left, right } = r;
+  for (let p = el.parentElement; p; p = p.parentElement) {
+    const overflow = getComputedStyle(p).overflowY;
+    if (overflow === "visible") continue;
+    const pr = p.getBoundingClientRect();
+    top = Math.max(top, pr.top);
+    bottom = Math.min(bottom, pr.bottom);
+    left = Math.max(left, pr.left);
+    right = Math.min(right, pr.right);
+  }
+  const vh = window.innerHeight;
+  top = Math.min(vh - PAD, Math.max(PAD, top - PAD));
+  bottom = Math.max(top, Math.min(vh - PAD, bottom + PAD));
+  return { top, left: left - PAD, width: Math.max(0, right - left + PAD * 2), height: bottom - top };
 }
 
 function place(rect: Rect | null, cardH: number) {
@@ -96,81 +105,100 @@ function place(rect: Rect | null, cardH: number) {
   if (rect.left - gap - CARD_W > 16) return { top: clampTop(rect.top), left: rect.left - gap - CARD_W };
   const left = Math.max(16, Math.min(vw - CARD_W - 16, rect.left + rect.width / 2 - CARD_W / 2));
   if (rect.top + rect.height + gap + cardH < vh - 16) return { top: rect.top + rect.height + gap, left };
-  return { top: clampTop(rect.top - gap - cardH), left };
+  if (rect.top - gap - cardH > 16) return { top: rect.top - gap - cardH, left };
+  // Nothing fits beside the target: pin the card to the roomier edge of the screen, over a neighboring pane.
+  const roomRight = vw - (rect.left + rect.width);
+  return { top: clampTop(rect.top), left: roomRight >= rect.left ? vw - CARD_W - 16 : 16 };
 }
 
 export function Tour() {
+  const { state } = useIde();
+  if (!state.tourOpen) return null;
+  // A new key on every start, so a replayed tour begins at step one with fresh state.
+  return <TourCard key={state.tourRun} />;
+}
+
+function TourCard() {
   const { state, dispatch } = useIde();
   const [index, setIndex] = useState(0);
   const [rect, setRect] = useState<Rect | null>(null);
   const [cardH, setCardH] = useState(220);
   const cardRef = useRef<HTMLDivElement>(null);
-  const open = state.mode === "demo" && state.tourOpen;
   const step = steps[index];
-
-  // Restarting the demo from the help menu starts the tour over.
-  useEffect(() => {
-    if (open) setIndex(0);
-  }, [open]);
+  const last = index === steps.length - 1;
 
   useEffect(() => {
-    if (!open) return;
     step.enter?.(dispatch, state);
     // Run only when the step changes, not on every state update.
-  }, [index, open]);
+  }, [index]);
 
   const remeasure = useCallback(() => setRect(measure(step.target)), [step.target]);
 
   useLayoutEffect(() => {
-    if (!open) return;
     remeasure();
-    // Layout can shift while panels mount; measure again shortly after.
-    const t1 = window.setTimeout(remeasure, 120);
-    const t2 = window.setTimeout(remeasure, 450);
-    window.addEventListener("resize", remeasure);
-    return () => {
-      window.clearTimeout(t1);
-      window.clearTimeout(t2);
-      window.removeEventListener("resize", remeasure);
+    // Layout shifts while panels mount and reports scroll; measure again shortly after.
+    const timers = [120, 450, 800].map((ms) => window.setTimeout(remeasure, ms));
+    // Follow the target while any pane scrolls, such as the report scrolling to the receipt.
+    let frame = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(remeasure);
     };
-  }, [open, remeasure, state.openTabs, state.active, state.workTab]);
+    window.addEventListener("resize", remeasure);
+    window.addEventListener("scroll", onScroll, true);
+    return () => {
+      timers.forEach((t) => window.clearTimeout(t));
+      cancelAnimationFrame(frame);
+      window.removeEventListener("resize", remeasure);
+      window.removeEventListener("scroll", onScroll, true);
+    };
+  }, [remeasure, state.openTabs, state.active, state.workTab, state.revealed]);
 
   useLayoutEffect(() => {
     if (cardRef.current) setCardH(cardRef.current.offsetHeight);
     cardRef.current?.focus();
-  }, [index, open]);
+  }, [index]);
 
-  const finish = useCallback(() => {
+  const close = useCallback(() => {
     markTourDone();
-    dispatch({ type: "personal" });
+    dispatch({ type: "closeTour" });
+    // Hand focus to the report the tour ends on.
+    requestAnimationFrame(() => document.querySelector<HTMLElement>('[data-tour="results"]')?.focus());
   }, [dispatch]);
 
-  const next = useCallback(() => {
-    if (index === steps.length - 1) finish();
-    else setIndex((i) => i + 1);
-  }, [index, finish]);
-
+  const next = useCallback(() => (last ? close() : setIndex((i) => i + 1)), [last, close]);
   const back = useCallback(() => setIndex((i) => Math.max(0, i - 1)), []);
 
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") finish();
-      if (e.key === "ArrowRight") next();
-      if (e.key === "ArrowLeft") back();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, finish, next, back]);
-
-  if (!open) return null;
+  function onKeyDown(e: KeyboardEvent<HTMLDivElement>) {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      close();
+    } else if (e.key === "ArrowRight" || (e.key === "Enter" && e.target === cardRef.current)) {
+      next();
+    } else if (e.key === "ArrowLeft") {
+      back();
+    } else if (e.key === "Tab") {
+      // Keep focus inside the card; the IDE behind it is inert.
+      const items = Array.from(cardRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? []);
+      if (items.length === 0) return;
+      const first = items[0];
+      const end = items[items.length - 1];
+      const at = document.activeElement;
+      if (e.shiftKey && (at === first || at === cardRef.current)) {
+        e.preventDefault();
+        end.focus();
+      } else if (!e.shiftKey && at === end) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+  }
 
   const pos = place(rect, cardH);
-  const last = index === steps.length - 1;
 
   return (
-    <div className="tour" aria-live="polite">
-      <div className="tour__block" />
+    <div className="tour">
+      <div className="tour__block" onClick={() => cardRef.current?.focus()} />
       <div
         className={`tour__spot ${rect ? "" : "is-none"}`}
         style={rect ? { top: rect.top, left: rect.left, width: rect.width, height: rect.height } : undefined}
@@ -184,6 +212,7 @@ export function Tour() {
         aria-labelledby="tour-title"
         aria-describedby="tour-body"
         tabIndex={-1}
+        onKeyDown={onKeyDown}
         style={{ top: pos.top, left: pos.left, width: CARD_W }}
       >
         <p className="tour__count">
@@ -197,7 +226,7 @@ export function Tour() {
         </p>
         <div className="tour__actions">
           {!last && (
-            <button className="tour__link" onClick={finish}>
+            <button className="tour__link" onClick={close}>
               Skip tour
             </button>
           )}

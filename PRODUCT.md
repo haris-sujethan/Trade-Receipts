@@ -8,7 +8,7 @@ web
 
 ## Stack
 
-React + Vite + TypeScript, with Monaco (the VS Code editor) for code files and TradingView's open-source `lightweight-charts` for charts. Backend (later): Python FastAPI on Modal. Confirmed by the user during spec review (SPEC.md, decisions log).
+React + Vite + TypeScript, with Monaco (the VS Code editor) for code files and Plotly for report charts (a custom bundle with only the chart types the reports use). Backend (later): Python FastAPI on Modal. Confirmed by the user during spec review (SPEC.md, decisions log).
 
 ## Users
 
@@ -33,7 +33,7 @@ Clean compiles are expected, not the selling point. Video of trading gurus is on
 ## Operating Context
 
 - Desktop IDE layout: file explorer, editor and results tabs, agent thread, Problems and Output panels.
-- First visit: home page, a sign-up screen whose options are visual only, a "Meta Hackathon: skip sign-up" button, a once-per-browser guided tour over a cached demo, then the user's own IDE.
+- First visit: home page, a sign-up screen whose options are visual only, a "Meta Hackathon: skip sign-up" button, then a once-per-browser five-step tour over a cached demo that ends on the demo's receipt. Closing the tour at any step leaves the finished demo open, never an empty project.
 - Built for the Meta Global AI Developer Hackathon (submission Nov 4, 2026). Uses Meta's models: Muse Spark 1.3, Muse Wonder, Muse Voice Transcribe.
 - Users copy Pine code into TradingView, where TradingView's compiler is the final check.
 
@@ -45,7 +45,8 @@ Clean compiles are expected, not the selling point. Video of trading gurus is on
 - No TradingView data is used, and TradingView's site is never automated.
 - Markets: US stocks, ETFs, and crypto. No options, forex, or futures. No live trading for now.
 - Crypto analysis is designed but parked until the equities experience works.
-- The IDE is desktop-only (phones see a "best on a larger screen" message); the home page works on any screen.
+- The IDE is built for laptops and desktops. Below 900px it shows one pane at a time (thread, files, editor, problems) with a light read-only code view instead of Monaco, and the demo plays without the tour. The home page works on any screen.
+- Until the backend exists, the IDE is a preview on example data: anything that can't run yet is disabled with a visible reason or a "coming soon" label, and a "Preview · example data" note in the top bar lists what works now.
 - Full product spec: SPEC.md. Data and tooling research: notes/data-sources.md.
 
 ## Brand Commitments

@@ -1,4 +1,4 @@
-import type { ReactElement } from "react";
+import type { ReactElement, ReactNode } from "react";
 import { AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
 import { FactsLabel } from "../components/FactsLabel";
 import { runs, type CheckStatus } from "../data/examples";
@@ -38,21 +38,15 @@ type Props = {
   reveal?: number;
 };
 
-export function ResultsView({ runId, reveal }: Props) {
+/** The report, in print order. The home page replay prints it one part at a time. */
+function reportParts(runId: string): ReactNode[] | null {
   const run = runs[runId];
   const report = reportFor(runId);
-  if (!run || !report) {
-    return (
-      <div className="empty">
-        <p className="empty__title">No results yet.</p>
-        <p className="empty__body">Press Run to test this strategy.</p>
-      </div>
-    );
-  }
+  if (!run || !report) return null;
 
   const start = run.series.find((s) => s.focus)!.data[0].value;
 
-  const parts = [
+  return [
     (
       <header className="report__head">
           <h2>{report.title}</h2>
@@ -163,16 +157,30 @@ export function ResultsView({ runId, reveal }: Props) {
       <section className="report__receipt" aria-labelledby={`rc-${runId}`}>
           <h3 id={`rc-${runId}`}>The receipt</h3>
           <p className="report__sub">The whole test on one label. Claimed numbers are struck through when the test disagrees.</p>
-          <div className="report__label">
+          <div className="report__label" data-tour="receipt">
             <FactsLabel facts={run.facts} />
           </div>
         </section>
     ),
   ].filter(Boolean);
+}
+
+export function ResultsView({ runId, reveal }: Props) {
+  const parts = reportParts(runId);
+  if (!parts) {
+    return (
+      <div className="empty">
+        <p className="empty__title">No results for this file.</p>
+        <p className="empty__body">It wasn't run in this preview. Running new code comes with the backend.</p>
+      </div>
+    );
+  }
+
+  const report = reportFor(runId)!;
   const shown = reveal === undefined ? parts : parts.slice(0, reveal);
 
   return (
-    <div className="report-desk" data-tour="results">
+    <div className="report-desk" data-tour="results" tabIndex={0}>
       <article className="report" aria-label={`Backtest report: ${report.title}`}>
         {shown.map((part, i) => (
           <div key={i} className={reveal === undefined ? undefined : "report__part"}>
@@ -184,7 +192,10 @@ export function ResultsView({ runId, reveal }: Props) {
   );
 }
 
+const partCounts = new Map<string, number>();
+
 /** How many parts a run's report has, so the home page replay knows when it's finished. */
 export function resultParts(runId: string): number {
-  return runs[runId]?.readings ? 9 : 8;
+  if (!partCounts.has(runId)) partCounts.set(runId, reportParts(runId)?.length ?? 0);
+  return partCounts.get(runId)!;
 }

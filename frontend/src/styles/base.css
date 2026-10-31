@@ -30,6 +30,10 @@
   --desk-amber: #e3a53c;
   --desk-red: #f0675c;
   --desk-green: #6cc287;
+  /* Input borders: 3:1 against the panels they sit on */
+  --desk-field: #66666b;
+  /* Line numbers: 4.5:1 on the editor background */
+  --desk-ln: #7a7a80;
 
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -62,10 +66,25 @@ p {
   margin: 0;
 }
 
+/* No single word stranded on a paragraph's last line. */
+p {
+  text-wrap: pretty;
+}
+
 button {
   font: inherit;
   color: inherit;
   cursor: pointer;
+}
+
+/* No double-tap zoom delay on controls; every control draws its own pressed and focus states. */
+a,
+button,
+input,
+textarea,
+[role="tab"] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 button:disabled {

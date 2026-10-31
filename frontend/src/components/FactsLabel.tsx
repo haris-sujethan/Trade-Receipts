@@ -34,7 +34,9 @@ export function FactsLabel({ facts, title = "Strategy Facts", size = "full", ani
         <div className="facts__big facts__claimed">
           <span>{facts.claimed.label}</span>
           <span className="facts__claimed-value">
-            <s aria-label={`${facts.claimed.value}, contradicted by the test`}>{facts.claimed.value}</s>
+            {/* Screen readers skip <s>, so the strike's meaning is spelled out. */}
+            <span className="sr-only">Contradicted by the test: </span>
+            <s>{facts.claimed.value}</s>
           </span>
         </div>
       )}

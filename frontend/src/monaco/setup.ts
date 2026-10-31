@@ -1,4 +1,9 @@
-import * as monaco from "monaco-editor";
+// The editor core and its features, plus the two languages the IDE shows. The full "monaco-editor" entry would
+// also bundle every other language and the TypeScript, CSS, JSON and HTML language services (about 12 MB).
+import * as monaco from "monaco-editor/editor/editor.api";
+import "monaco-editor/features/register.all";
+import "monaco-editor/languages/definitions/python/register";
+import "monaco-editor/languages/definitions/markdown/register";
 import EditorWorker from "monaco-editor/editor/editor.worker?worker";
 import { loader } from "@monaco-editor/react";
 
@@ -61,7 +66,7 @@ monaco.editor.defineTheme("desk", {
   colors: {
     "editor.background": "#0b0b0c",
     "editor.foreground": "#d9d9dc",
-    "editorLineNumber.foreground": "#4f4f56",
+    "editorLineNumber.foreground": "#7a7a80",
     "editorLineNumber.activeForeground": "#a6a6ab",
     "editor.lineHighlightBackground": "#141417",
     "editor.lineHighlightBorder": "#00000000",

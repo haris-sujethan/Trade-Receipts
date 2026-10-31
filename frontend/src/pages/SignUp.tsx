@@ -42,7 +42,7 @@ export function SignUp() {
             Meta Hackathon: skip sign-up
             <ArrowRight size={20} strokeWidth={2.5} aria-hidden />
           </button>
-          <p className="signup-fine">No account is created. Your projects are saved in this browser.</p>
+          <p className="signup-fine">No account is created. The preview runs on example data.</p>
         </section>
       </main>
     </div>
