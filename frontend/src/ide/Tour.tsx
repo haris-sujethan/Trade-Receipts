@@ -40,8 +40,8 @@ const steps: Step[] = [
   },
   {
     target: "results",
-    title: "An honest result",
-    body: "The verdict, the equity curve against holding BTC and the S&P 500, and the Strategy Facts label. A claimed number gets struck through when the test disagrees.",
+    title: "The full backtest",
+    body: "The verdict, the equity curve against holding BTC and the S&P 500, results by market regime, every trade, and monthly returns. The Strategy Facts label closes the report as the receipt.",
     enter: (dispatch, state) => {
       if (!state.replayed) dispatch({ type: "finishReplay" });
       dispatch({ type: "open", id: "results:rsi" });

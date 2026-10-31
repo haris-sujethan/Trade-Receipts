@@ -16,6 +16,7 @@
     "lightweight-charts": "^5.2.1",
     "lucide-react": "^1.65.0",
     "monaco-editor": "^0.57.0",
+    "plotly.js-dist-min": "^4.2.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-resizable-panels": "^4.15.2",

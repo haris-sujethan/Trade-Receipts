@@ -3,7 +3,7 @@ import { Play } from "lucide-react";
 const turns = [
   { at: "0:00", text: "Okay, listen up. This one changed everything for me." },
   { at: "0:03", text: "I made 300% this year with it. Three hundred percent.", tag: "Claim" },
-  { at: "0:08", text: "Pull up Bitcoin on the daily chart and add the RSI, length 14." },
+  { at: "0:08", text: "Pull up Bitcoin on the 4-hour chart and add the RSI, length 14." },
   { at: "0:12", text: "When RSI closes below 30, you buy. That's the dip.", tag: "Entry rule" },
   { at: "0:19", text: "When it closes back above 70, you sell. Simple.", tag: "Exit rule" },
   { at: "0:26", text: "Don't overthink it. The chart tells you everything." },

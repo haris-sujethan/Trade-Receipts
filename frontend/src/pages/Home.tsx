@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { APP_NAME, TAGLINE } from "../config";
@@ -13,19 +13,10 @@ const heroLabels = [
   { id: "crypto", tab: "Crypto research", title: "Coin Facts", facts: moonFacts },
 ];
 
-const CYCLE_MS = 7000;
-
 export function Home() {
+  // Opens on the backtest label; the other two show on click.
   const [active, setActive] = useState(0);
-  const [paused, setPaused] = useState(false);
   const current = heroLabels[active];
-
-  // Rotate through the three labels until someone picks one.
-  useEffect(() => {
-    if (paused || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const id = window.setInterval(() => setActive((i) => (i + 1) % heroLabels.length), CYCLE_MS);
-    return () => window.clearInterval(id);
-  }, [paused]);
 
   return (
     <div className="theme-paper home">
@@ -62,11 +53,7 @@ export function Home() {
             </div>
           </div>
 
-          <div
-            className="hero__label"
-            onMouseEnter={() => setPaused(true)}
-            onFocus={() => setPaused(true)}
-          >
+          <div className="hero__label">
             <div className="label-tabs" role="tablist" aria-label="Example results">
               {heroLabels.map((l, i) => (
                 <button
@@ -74,10 +61,7 @@ export function Home() {
                   role="tab"
                   aria-selected={i === active}
                   className={i === active ? "is-on" : ""}
-                  onClick={() => {
-                    setActive(i);
-                    setPaused(true);
-                  }}
+                  onClick={() => setActive(i)}
                 >
                   {l.tab}
                 </button>

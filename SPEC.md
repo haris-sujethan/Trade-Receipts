@@ -155,7 +155,7 @@ It stays clear of the hackathon's anti-project list (the kickoff slides add "Str
 
 - Black theme, thin borders, monospace for code and numbers, sans-serif for everything else.
 - Status colors: red = error or red flag, amber = warning or caution, green = pass, grey = can't check.
-- Editor: Monaco (the editor inside VS Code). Charts: TradingView's open-source `lightweight-charts` (follow its attribution requirement **(verify)**).
+- Editor: Monaco (the editor inside VS Code). Charts: Plotly (open source), drawn on the white report sheet; loaded only when a report opens.
 - Our own name, logo, and styling. The three-pane layout is a standard IDE pattern; we don't copy any product's branding.
 
 ---
@@ -360,7 +360,18 @@ Runs on every backtest, for both engines (Pine strategies are re-run with change
 
 ### 5.10 Results and export
 
-Results are the output of a run, in the main area.
+Results are the output of a run: a full backtest report printed on a white sheet on the dark desk, in this order. The Strategy Facts label closes it as the receipt.
+
+1. Title, period, costs, then the verdict and claim vs. reality
+2. Stat tiles: total return (with the benchmark), return per year, max drawdown, win rate, trades, average hold
+3. Equity against the benchmarks, with drawdown underneath
+4. P&L by market regime: cumulative P&L by trade, colored by the regime on each entry day, with totals and a plain-language insight
+5. Every trade in 3D: entry signal, time held, and return; winners and losers; drag to turn
+6. Monthly returns heatmap and the trade-return histogram, side by side
+7. Honesty checks, then any ambiguous rule with every reading's result
+8. The receipt: the Strategy Facts label
+
+Earlier draft of the list:
 
 - Verdict and explanation, after the numbers audit
 - Claim vs. reality, for example "Claimed +300% in a year. As stated: +41% over its best 12 months, and it trails buy-and-hold after costs" (illustrative)
@@ -580,7 +591,7 @@ Before any explanation is shown, every number in the model's text is checked aga
 | Macro series | FRED API with ALFRED vintages | Free key; first-release values (parameter **(verify)**) |
 | Pine linting | `pine-lint` (pine-tools) | MIT, offline; never its `--tv` mode |
 | Pine execution | Resin (Apache-2.0) or PineTS (AGPL-3.0) | Chosen by the parity test (5.6) |
-| Charts | `lightweight-charts` | Open source; attribution **(verify)** |
+| Charts | Plotly (`plotly.js-dist-min`) | Open source (MIT) |
 | Crypto | See section 7 and the notes | GoPlus requires "Powered by GoPlus"; Binance's archive is non-commercial |
 
 **Not used:** Yahoo/yfinance (terms ban automated collection), Coinbase market data (personal or research use only, no apps for other users, no AI training), Alpaca, Massive/Polygon individual plans, EODHD, FMP, Alpha Vantage, Stooq, WRDS/CRSP (display not allowed for a public app), Etherscan (commercial terms), and any TradingView data.
@@ -732,4 +743,5 @@ Equities first. Each phase ends with something that works on its own. The deadli
 - **Oct 30:** Crypto details are parked until equities works. Learning comes from past tokens; tracking new coins forward is a future feature.
 - **Oct 30:** No Streamlit; results are outputs of code the agent writes and runs.
 - **Oct 30:** Product name: Trade Receipts. Tagline: "An agent-native IDE for financial research and automated backtesting." ("multi-agent" dropped because the product isn't built as separate agents).
+- **Oct 30:** IDE results become a full backtest report with charts (equity, regimes, 3D trades, monthly returns, histogram); the Strategy Facts label moves to the end as the receipt. Charts use Plotly.
 - **Oct 30:** The home page sells backtesting plus stock and crypto research. No strategy input or example prompts in the hero, and no SEC or filing jargon.

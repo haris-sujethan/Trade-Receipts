@@ -115,8 +115,9 @@ const replays: Replay[] = [
   },
 ];
 
-const TICK_MS = 650;
-const HOLD_TICKS = 9;
+// Fast steps, then a long hold on the finished label.
+const TICK_MS = 280;
+const HOLD_TICKS = 22;
 
 function prefersReducedMotion() {
   return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
