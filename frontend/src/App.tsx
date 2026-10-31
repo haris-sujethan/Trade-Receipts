@@ -8,7 +8,7 @@ import { SignUp } from "./pages/SignUp";
 const Ide = lazy(() => import("./pages/Ide").then((m) => ({ default: m.Ide })));
 
 const titles: Record<string, string> = {
-  "/": `${APP_NAME} · Build and test trading strategies without code`,
+  "/": `${APP_NAME} · Agent-native IDE for financial research and backtesting`,
   "/signup": `Sign up · ${APP_NAME}`,
   "/ide": `IDE · ${APP_NAME}`,
 };

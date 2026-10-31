@@ -1,28 +1,31 @@
-import { useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
-import { APP_NAME, PENDING_PROMPT_KEY } from "../config";
+import { APP_NAME, TAGLINE } from "../config";
 import { FactsLabel } from "../components/FactsLabel";
 import { ProductWindow } from "../components/home/ProductWindow";
-import { homeExamples } from "../data/examples";
+import { acmeFacts, moonFacts, rsiFacts } from "../data/examples";
 import "./home.css";
 
-export function Home() {
-  const navigate = useNavigate();
-  const [prompt, setPrompt] = useState("");
-  const [exampleId, setExampleId] = useState(homeExamples[0].id);
-  const example = homeExamples.find((e) => e.id === exampleId) ?? homeExamples[0];
+const heroLabels = [
+  { id: "backtest", tab: "Backtest", title: "Strategy Facts", facts: rsiFacts },
+  { id: "stock", tab: "Stock research", title: "Company Facts", facts: acmeFacts },
+  { id: "crypto", tab: "Crypto research", title: "Coin Facts", facts: moonFacts },
+];
 
-  function submit(e: FormEvent) {
-    e.preventDefault();
-    const text = prompt.trim() || example.prompt;
-    try {
-      sessionStorage.setItem(PENDING_PROMPT_KEY, text);
-    } catch {
-      // Storage can be blocked; the IDE simply opens without a prefilled prompt.
-    }
-    navigate("/signup");
-  }
+const CYCLE_MS = 7000;
+
+export function Home() {
+  const [active, setActive] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const current = heroLabels[active];
+
+  // Rotate through the three labels until someone picks one.
+  useEffect(() => {
+    if (paused || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const id = window.setInterval(() => setActive((i) => (i + 1) % heroLabels.length), CYCLE_MS);
+    return () => window.clearInterval(id);
+  }, [paused]);
 
   return (
     <div className="theme-paper home">
@@ -42,62 +45,56 @@ export function Home() {
       <main>
         <section className="hero" aria-labelledby="hero-title">
           <div className="hero__copy">
-            <h1 id="hero-title">Know what your strategy really does.</h1>
+            <h1 id="hero-title">Backtest any strategy. Research any stock or coin.</h1>
+            <p className="hero__tagline">{TAGLINE}</p>
             <p className="hero__sub">
-              Describe a trading strategy in plain English. The agent writes the code, tests it honestly against
-              the S&amp;P&nbsp;500, and checks the stocks behind it against their SEC filings.
+              Describe what you want to test or check. The agent writes the code, runs it on real data, and shows you
+              the receipts.
             </p>
-
-            <form className="ask" onSubmit={submit}>
-              <label htmlFor="ask-input" className="sr-only">
-                Describe a strategy
-              </label>
-              <input
-                id="ask-input"
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                placeholder={example.prompt}
-                autoComplete="off"
-              />
-              <button type="submit" className="btn btn--ink ask__go">
-                Test it
+            <div className="hero__ctas">
+              <Link to="/signup" className="btn btn--ink btn--lg">
+                Launch IDE
                 <ArrowRight size={20} strokeWidth={2.5} aria-hidden />
-              </button>
-            </form>
-
-            <div className="tries">
-              <span className="tries__lead">Or try:</span>
-              <ul>
-                {homeExamples.map((ex) => (
-                  <li key={ex.id}>
-                    <button
-                      type="button"
-                      className={ex.id === exampleId ? "is-on" : ""}
-                      aria-pressed={ex.id === exampleId}
-                      onClick={() => {
-                        setExampleId(ex.id);
-                        setPrompt(ex.prompt);
-                      }}
-                    >
-                      {ex.prompt}
-                    </button>
-                  </li>
-                ))}
-              </ul>
+              </Link>
+              <a href="#examples" className="btn btn--line btn--lg">
+                See it work
+              </a>
             </div>
           </div>
 
-          <div className="hero__label">
-            <FactsLabel facts={example.facts} />
+          <div
+            className="hero__label"
+            onMouseEnter={() => setPaused(true)}
+            onFocus={() => setPaused(true)}
+          >
+            <div className="label-tabs" role="tablist" aria-label="Example results">
+              {heroLabels.map((l, i) => (
+                <button
+                  key={l.id}
+                  role="tab"
+                  aria-selected={i === active}
+                  className={i === active ? "is-on" : ""}
+                  onClick={() => {
+                    setActive(i);
+                    setPaused(true);
+                  }}
+                >
+                  {l.tab}
+                </button>
+              ))}
+            </div>
+            <div role="tabpanel">
+              <FactsLabel facts={current.facts} title={current.title} />
+            </div>
           </div>
         </section>
 
         <section id="examples" className="showcase" aria-labelledby="showcase-title">
           <div className="section-head">
-            <h2 id="showcase-title">Watch an idea become a tested strategy.</h2>
+            <h2 id="showcase-title">Watch the agent work.</h2>
             <p>
-              Each example replays a session in the IDE: the agent reads the idea, writes the code, fixes its own
-              errors, and prints the label.
+              Each example replays a session in the IDE: a strategy backtested, a stock checked, a coin checked. Every
+              answer comes with its receipts.
             </p>
           </div>
           <ProductWindow />
@@ -109,31 +106,31 @@ export function Home() {
           </h2>
           <ol className="how__steps">
             <li>
-              <h3>Describe it</h3>
+              <h3>Ask</h3>
               <p>
-                Plain English, a chart screenshot, or a short video clip. The agent pulls out the exact rules and
-                shows where each one came from.
+                Describe a strategy to backtest, or name a stock or coin to research. Plain English, a chart
+                screenshot, or a short clip all work.
               </p>
             </li>
             <li>
-              <h3>It writes the code</h3>
+              <h3>The agent does the work</h3>
               <p>
-                Pine Script for TradingView, or Python when a strategy needs many stocks, company filings, or
-                economic data. Compile errors get fixed in a loop you can watch.
+                It writes the code, fixes its own errors, and pulls the data, in a workspace you can watch. Strategies
+                come out as Pine Script for TradingView or Python.
               </p>
             </li>
             <li>
-              <h3>You get an honest test</h3>
+              <h3>You get the receipts</h3>
               <p>
-                Trading costs included, checked for repainting and look-ahead, and compared with the S&amp;P 500.
-                The code is yours to keep.
+                Backtests with trading costs included and compared with the S&amp;P 500. Research where every number
+                shows where it came from. The code is yours to keep.
               </p>
             </li>
           </ol>
         </section>
 
         <section className="close" aria-labelledby="close-title">
-          <h2 id="close-title">Test your first strategy.</h2>
+          <h2 id="close-title">Test it before you trade it.</h2>
           <Link to="/signup" className="btn btn--paper">
             Launch IDE
             <ArrowRight size={20} strokeWidth={2.5} aria-hidden />
@@ -144,7 +141,7 @@ export function Home() {
       <footer className="home-foot">
         <p className="home-foot__name">{APP_NAME}</p>
         <p>For research and education. Not financial advice.</p>
-        <p>Data from Tiingo · Crypto data: Binance Vision · Filings from SEC EDGAR</p>
+        <p>Data from Tiingo · Crypto data: Binance Vision</p>
         <p>Built for the Meta Global AI Developer Hackathon, 2026.</p>
       </footer>
     </div>

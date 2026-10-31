@@ -18,7 +18,9 @@ Secondary audience during the hackathon: judges, who watch a 3-minute demo video
 
 ## Product Purpose
 
-Build and test trading strategies without writing code. The agent turns plain English, a screenshot, or a video clip into Pine Script v6 (single-chart strategies) or Python (multi-stock, fundamentals, macro), fixes its own compile and lint errors in a visible loop, and backtests honestly against the S&P 500. Users keep the code. A second tab researches stocks from SEC filings.
+Tagline: "An agent-native IDE for financial research and automated backtesting."
+
+The main selling points are backtesting and research of stocks and crypto, in one IDE. Build and test trading strategies without writing code. The agent turns plain English, a screenshot, or a video clip into Pine Script v6 (single-chart strategies) or Python (multi-stock, fundamentals, macro), fixes its own compile and lint errors in a visible loop, and backtests honestly against the S&P 500. Users keep the code. A second tab researches stocks from SEC filings.
 
 Success: a user with no coding background goes from an idea to clean, tested code they can paste into TradingView, and understands honestly how it would have performed.
 

@@ -1,6 +1,6 @@
 # Trade Receipts — product spec
 
-> An IDE for trading. Describe a strategy and the agent writes the code, fixes its own errors, and tests it honestly. No coding required. Research the stocks behind it in the same workspace.
+> **An agent-native IDE for financial research and automated backtesting.** Backtest any strategy and research any stock or coin, with receipts for every result.
 
 - **Builder:** Haris Sujethan (solo)
 - **Event:** Meta Global AI Developer Hackathon, Indie Developer track
@@ -31,9 +31,9 @@ The product is for coding and testing any idea, wherever it came from.
 
 A Cursor-style IDE for trading research with two tabs. **Backtest**: describe a strategy in plain English, or drop in a clip or screenshot. The agent pulls out the exact rules (with timestamps for where each came from), writes the strategy as Pine Script v6 or Python, compiles and lints it, fixes its own errors in a loop you can watch, and runs it on real historical data. Results come with honesty checks and a comparison with the S&P 500, and the code is yours to copy into TradingView or keep. **Analyze**: give it a ticker, or a clip pitching one, and it builds a research file from SEC filings: growth, cash flow, dilution, debt, the pitch's claims checked against the facts, and what happened to similar companies in the past. It never says buy or sell.
 
-### Main feature
+### Main selling points
 
-**Build and test trading strategies without writing code.** Describe the idea in plain English, or show it a clip or screenshot. The agent writes the code, fixes its own errors, and tests it honestly, and you keep the code. Clean compiles are expected, not the selling point. A clip of a trading guru is the demo's hook, not the product's positioning.
+**Backtesting and research (stocks and crypto), in one agent-native IDE.** Describe a strategy and the agent writes the code, fixes its own errors, and backtests it honestly; name a stock or coin and it researches it with real data. No coding required, and you keep the code. Clean compiles are expected, not the selling point. A clip of a trading guru is the demo's hook, not the product's positioning.
 
 ### Use cases
 
@@ -78,10 +78,12 @@ It stays clear of the hackathon's anti-project list (the kickoff slides add "Str
 
 **Home page**
 
-- Headline: "Build and test trading strategies without writing code." (draft wording)
-- A short looping demo of an idea turning into working, tested code.
-- 3–4 feature blocks: honesty checks, comparison with the S&P, stock research, crypto (coming soon).
-- A Launch button.
+- Headline: "Backtest any strategy. Research any stock or coin."
+- Tagline under it: "An agent-native IDE for financial research and automated backtesting." Then one plain line ending in "shows you the receipts."
+- Two buttons: Launch IDE and See it work. No strategy input box and no example prompts on the home page.
+- Beside the copy: the facts label with three tabs (Backtest, Stock research, Crypto research) that rotate until someone picks one.
+- Below: the product window replaying four example sessions (two backtests, one stock, one coin), then How it works (Ask, The agent does the work, You get the receipts).
+- Plain language: no SEC or filing jargon on the home page.
 - Footer: data credits ("Data from Tiingo," "Crypto data: Binance Vision") and "Not financial advice."
 
 **Sign-up screen**
@@ -729,4 +731,5 @@ Equities first. Each phase ends with something that works on its own. The deadli
 - **Oct 30:** Hosting on Modal with the builder's partner credits; per-visitor limits, 90-second clips, cached demo runs.
 - **Oct 30:** Crypto details are parked until equities works. Learning comes from past tokens; tracking new coins forward is a future feature.
 - **Oct 30:** No Streamlit; results are outputs of code the agent writes and runs.
-- **Oct 30:** Product name: Trade Receipts.
+- **Oct 30:** Product name: Trade Receipts. Tagline: "An agent-native IDE for financial research and automated backtesting." ("multi-agent" dropped because the product isn't built as separate agents).
+- **Oct 30:** The home page sells backtesting plus stock and crypto research. No strategy input or example prompts in the hero, and no SEC or filing jargon.
