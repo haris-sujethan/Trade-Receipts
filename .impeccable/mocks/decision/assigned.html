@@ -1,0 +1,43 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Exchange board</title><style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{width:1440px;height:900px;background:#2a2d31;font-family:"Avenir Next Condensed","Arial Narrow",sans-serif;color:#f2f0ea;overflow:hidden;position:relative}
+.frame{position:absolute;inset:16px;background:#0b0b0d;border:2px solid #3a3e44}
+nav{display:flex;align-items:center;justify-content:space-between;padding:18px 32px;border-bottom:2px solid #1c1d20}
+.mark{font-weight:700;letter-spacing:.28em;font-size:24px}
+.links{display:flex;gap:36px;font-size:15px;letter-spacing:.22em;color:#a7aaaf;font-weight:600}
+.btn{background:#f2f0ea;color:#0b0b0d;font-weight:700;letter-spacing:.2em;padding:12px 22px;font-size:16px}
+.board{padding:30px 32px 0}
+.row{display:flex;gap:6px;margin-bottom:6px}
+.c{width:64px;height:88px;background:#1c1d20;display:flex;align-items:center;justify-content:center;font-size:68px;font-weight:700;position:relative}
+.c::after{content:"";position:absolute;left:0;right:0;top:50%;height:2px;background:#0b0b0d}
+.c.e{background:#141518}
+.sub{font-size:21px;letter-spacing:.05em;color:#c9cbcf;margin:22px 0 18px;max-width:940px;line-height:1.45}
+.input{display:flex;gap:6px}
+.in{display:flex;gap:3px;padding:6px;background:#141518}
+.ic{width:27px;height:46px;background:#1c1d20;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:600;position:relative}
+.ic::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:#0b0b0d}
+.ic.e{background:#18191c}
+.ic.cur{background:#f2f0ea}
+.go{background:#f2f0ea;color:#0b0b0d;font-weight:700;font-size:26px;letter-spacing:.2em;padding:0 30px;display:flex;align-items:center}
+.cap{margin:30px 32px 8px;display:flex;justify-content:space-between;font-size:15px;letter-spacing:.26em;color:#a7aaaf;font-weight:600}
+table{width:calc(100% - 64px);margin:0 32px;border-collapse:separate;border-spacing:0 4px;font-size:25px;letter-spacing:.14em}
+th{font-size:14px;color:#7d8187;text-align:left;letter-spacing:.24em;font-weight:600;padding:0 14px 4px}
+td{background:#1c1d20;padding:10px 14px;font-weight:600;white-space:nowrap}
+tr.amber td.s{color:#f2a833} tr.red td.s{color:#d0453c} td.dim{color:#7d8187;text-decoration:line-through}
+</style></head><body><div class="frame">
+<nav><div class="mark">NAME TBD</div><div class="links"><span>HOW IT WORKS</span><span>STRATEGIES</span><span>STOCKS</span></div><div class="btn">LAUNCH IDE &rsaquo;</div></nav>
+<div class="board">
+<div class="row"><div class="c">D</div><div class="c">O</div><div class="c">E</div><div class="c">S</div><div class="c e"></div><div class="c">Y</div><div class="c">O</div><div class="c">U</div><div class="c">R</div><div class="c e"></div><div class="c">S</div><div class="c">T</div><div class="c">R</div><div class="c">A</div><div class="c">T</div><div class="c">E</div><div class="c">G</div><div class="c">Y</div></div>
+<div class="row"><div class="c">A</div><div class="c">C</div><div class="c">T</div><div class="c">U</div><div class="c">A</div><div class="c">L</div><div class="c">L</div><div class="c">Y</div><div class="c e"></div><div class="c">W</div><div class="c">O</div><div class="c">R</div><div class="c">K</div><div class="c">?</div></div>
+<p class="sub">Describe it in plain English. The agent writes the code, tests it honestly against the S&amp;P 500, and checks the stocks behind it against their filings.</p>
+<div class="input"><div class="in"><div class="ic">B</div><div class="ic">U</div><div class="ic">Y</div><div class="ic e"></div><div class="ic">Q</div><div class="ic">Q</div><div class="ic">Q</div><div class="ic e"></div><div class="ic">W</div><div class="ic">H</div><div class="ic">E</div><div class="ic">N</div><div class="ic e"></div><div class="ic">I</div><div class="ic">T</div><div class="ic e"></div><div class="ic">I</div><div class="ic">S</div><div class="ic e"></div><div class="ic">1</div><div class="ic">0</div><div class="ic">%</div><div class="ic e"></div><div class="ic">O</div><div class="ic">F</div><div class="ic">F</div><div class="ic e"></div><div class="ic">I</div><div class="ic">T</div><div class="ic">S</div><div class="ic e"></div><div class="ic">H</div><div class="ic">I</div><div class="ic">G</div><div class="ic">H</div><div class="ic cur"></div></div><div class="go">TEST IT &rsaquo;</div></div>
+</div>
+<div class="cap"><span>RECENT TESTS &middot; EXAMPLES</span><span>CLAIMED &rarr; TESTED</span></div>
+<table>
+<tr><th>STRATEGY</th><th>MARKET</th><th>CLAIMED</th><th>TESTED</th><th>VS S&amp;P 500</th><th>STATUS</th></tr>
+<tr class="amber"><td>RSI DIP</td><td>BTC</td><td class="dim">+300%</td><td>+41%</td><td>&minus;14%</td><td class="s">TRAILS</td></tr>
+<tr class="red"><td>BREAKOUT</td><td>TSLA</td><td class="dim">+500%</td><td>REPAINTS</td><td>&mdash;</td><td class="s">FAILED CHECK</td></tr>
+<tr><td>CASH FLOW TOP 20</td><td>S&amp;P 500</td><td class="dim">&mdash;</td><td>+11.8%/YR</td><td>+1.9%</td><td class="s">BEATS</td></tr>
+<tr class="red"><td>ACME CORP</td><td>FILINGS</td><td class="dim">REV EXPLODING</td><td>+6% YOY</td><td>&mdash;</td><td class="s">CONTRADICTED</td></tr>
+</table>
+</div></body></html>

@@ -1,0 +1,154 @@
+/* The Strategy Facts label: the product's signature object.
+   Always printed on white stock, whether it sits on paper or on the desk. */
+
+.facts {
+  --f-pad: 18px;
+  --f-title: 56px;
+  --f-big: 25px;
+  --f-row: 17px;
+  background: var(--paper);
+  color: var(--ink);
+  border: var(--rule-bar) solid var(--ink);
+  padding: 10px var(--f-pad) 14px;
+  font-family: var(--font-sans);
+  width: 100%;
+}
+
+.facts--compact {
+  --f-pad: 14px;
+  --f-title: 36px;
+  --f-big: 19px;
+  --f-row: 14px;
+  border-width: 3px;
+}
+
+.facts__title {
+  font-size: var(--f-title);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  padding-bottom: 4px;
+  border-bottom: var(--rule-hair) solid var(--ink);
+}
+
+.facts__subject {
+  font-size: calc(var(--f-row) + 2px);
+  font-weight: 700;
+  padding-top: 7px;
+}
+
+.facts__serving {
+  font-size: var(--f-row);
+  padding: 2px 0 8px;
+  border-bottom: var(--rule-slab) solid var(--ink);
+}
+
+.facts--compact .facts__serving {
+  border-bottom-width: 10px;
+}
+
+.facts__big {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  font-size: var(--f-big);
+  font-weight: 900;
+  padding: 7px 0 6px;
+  border-bottom: var(--rule-hair) solid var(--ink);
+}
+
+.facts__big > span:first-child {
+  font-weight: 800;
+}
+
+.facts__claimed {
+  color: var(--ink);
+  transition: color 600ms var(--ease-out);
+}
+
+.facts__claimed-value {
+  position: relative;
+}
+
+/* The strike is drawn, not toggled: a bar that grows across the claimed number. */
+.facts__claimed-value s {
+  text-decoration: none;
+}
+
+.facts__claimed-value::after {
+  content: "";
+  position: absolute;
+  left: -4px;
+  right: -4px;
+  top: 52%;
+  height: 4px;
+  background: var(--red);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 520ms var(--ease-out);
+}
+
+.is-struck .facts__claimed {
+  color: var(--ink-3);
+}
+
+.is-struck .facts__claimed-value::after {
+  transform: scaleX(1);
+}
+
+.facts__tested {
+  border-bottom: var(--rule-mid) solid var(--ink);
+}
+
+.facts__tested.is-bad > span:last-child {
+  color: var(--red);
+}
+
+.facts__rows {
+  margin: 0;
+}
+
+.facts__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: var(--f-row);
+  padding: 5px 0 4px;
+  border-bottom: var(--rule-hair) solid var(--ink);
+}
+
+.facts__row dt,
+.facts__row dd {
+  margin: 0;
+}
+
+.facts__row dd {
+  font-weight: 700;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.facts__row.is-strong {
+  font-weight: 800;
+}
+
+.facts__row.rule-mid {
+  border-bottom: var(--rule-mid) solid var(--ink);
+}
+
+.facts__row.rule-bar {
+  border-bottom: var(--rule-bar) solid var(--ink);
+}
+
+.facts__row .is-bad,
+.facts__row dd.is-bad {
+  color: var(--red);
+}
+
+.facts__foot {
+  font-size: calc(var(--f-row) - 3px);
+  line-height: 1.4;
+  padding-top: 8px;
+  color: var(--ink-2);
+}

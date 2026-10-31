@@ -1,0 +1,78 @@
+.signup {
+  --gutter: clamp(20px, 4vw, 56px);
+  --max: 1360px;
+  display: flex;
+  flex-direction: column;
+}
+
+.signup-back {
+  font-size: 16px;
+  font-weight: 600;
+  text-underline-offset: 6px;
+  text-decoration-thickness: 2px;
+}
+
+.signup-main {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: clamp(40px, 8vh, 96px) var(--gutter);
+}
+
+.signup-card {
+  width: min(100%, 520px);
+  border: var(--rule-bar) solid var(--ink);
+  padding: 12px 22px 22px;
+}
+
+.signup-card h1 {
+  font-size: clamp(38px, 5vw, 52px);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1.02;
+  padding-bottom: 6px;
+  border-bottom: var(--rule-hair) solid var(--ink);
+}
+
+.signup-status {
+  font-size: 17px;
+  font-weight: 700;
+  padding: 8px 0 10px;
+  border-bottom: var(--rule-slab) solid var(--ink);
+}
+
+.signup-options {
+  display: grid;
+  gap: 10px;
+  padding: 18px 0 20px;
+  border-bottom: var(--rule-mid) solid var(--ink);
+}
+
+.signup-options button {
+  width: 100%;
+  font-size: 17px;
+  font-weight: 700;
+  padding: 14px 18px;
+  background: var(--paper-2);
+  color: #8b8b90;
+  border: 2px solid var(--paper-3);
+  text-align: center;
+}
+
+.signup-for {
+  font-size: 15px;
+  color: var(--ink-2);
+  padding: 16px 0 10px;
+}
+
+.signup-skip {
+  width: 100%;
+  font-size: 18px;
+  padding: 16px 20px;
+}
+
+.signup-fine {
+  font-size: 14px;
+  color: var(--ink-2);
+  padding-top: 12px;
+}

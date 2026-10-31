@@ -1,0 +1,159 @@
+:root {
+  --font-sans: "Public Sans Variable", "Public Sans", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", monospace;
+
+  /* Paper: the label stock the home page and sign-up are printed on */
+  --ink: #111111;
+  --ink-2: #444447;
+  --ink-3: #66666b;
+  --paper: #ffffff;
+  --paper-2: #f2f2ef;
+  --paper-3: #e6e6e2;
+  --red: #c3261c;
+
+  /* Rule weights, from the facts panel: hairline, bar, mid, slab */
+  --rule-hair: 1px;
+  --rule-bar: 4px;
+  --rule-mid: 7px;
+  --rule-slab: 14px;
+
+  /* Desk: the dark surface the IDE sits on */
+  --desk-0: #0b0b0c;
+  --desk-1: #111113;
+  --desk-2: #17171a;
+  --desk-3: #1f1f23;
+  --desk-line: #26262b;
+  --desk-line-2: #36363d;
+  --desk-text: #ededeb;
+  --desk-text-2: #a6a6ab;
+  --desk-text-3: #85858b;
+  --desk-amber: #e3a53c;
+  --desk-red: #f0675c;
+  --desk-green: #6cc287;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-feature-settings: "tnum" 1, "lnum" 1;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4,
+p {
+  margin: 0;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+a {
+  color: inherit;
+}
+
+code,
+kbd,
+pre,
+.mono {
+  font-family: var(--font-mono);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Paper theme */
+.theme-paper {
+  background: var(--paper);
+  color: var(--ink);
+  min-height: 100vh;
+}
+
+.theme-paper ::selection {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.theme-paper :focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
+}
+
+/* Desk theme */
+.theme-desk {
+  background: var(--desk-0);
+  color: var(--desk-text);
+  color-scheme: dark;
+}
+
+.theme-desk ::selection {
+  background: #ededeb;
+  color: #0b0b0c;
+}
+
+.theme-desk :focus-visible {
+  outline: 2px solid var(--desk-text);
+  outline-offset: -2px;
+}
+
+.theme-desk * {
+  scrollbar-width: thin;
+  scrollbar-color: var(--desk-line-2) transparent;
+}
+
+.theme-desk ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.theme-desk ::-webkit-scrollbar-thumb {
+  background: var(--desk-line-2);
+  border: 3px solid var(--desk-1);
+}
+
+.theme-desk ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
