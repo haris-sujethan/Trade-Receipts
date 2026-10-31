@@ -2,7 +2,7 @@
 
 > **An agent-native IDE for financial research and automated backtesting.** Check any new token for a rug with a model trained on past launches, backtest any strategy, and research any stock, with receipts for every result.
 
-- **Builder:** Haris Sujethan (solo)
+- **Builder:** Haris Sujethan (solo). The hackathon rules, rubric, banned project types and judging are in [notes/hackathon.md](notes/hackathon.md); setup steps before each build step are in [notes/setup.md](notes/setup.md).
 - **Event:** Meta Global AI Developer Hackathon, Indie Developer track
 - **Theme:** Build for Your World
 - **Submission deadline:** Wed Nov 4, 2026, 9:00 PM ET ([submit](https://cerebralvalley.ai/e/meta-ai-developer-hackathon/hackathon/submit))
@@ -610,7 +610,7 @@ The main model is **Muse Glimmer**, Meta's open-weight 30B model (Apache 2.0, re
 - **Compute (estimates until the first run measures them):** on Modal, 4-bit QLoRA plus vLLM fits on one H100 ($3.95/hour) or A100 80 GB ($2.50/hour).
   - Stage 1: about 5,000–10,000 examples of about 3,000 tokens, roughly 3–4 hours per pass.
   - Stage 2: about 1,000–2,000 tokens with 4 samples each, roughly 4–6 hours.
-  - About $30–60 including retries.
+  - About $30–60 of Modal credits including retries. Kaggle's free GPUs are the fallback if the credits run short.
 
 **Rug chance:** the probability Glimmer states. It is checked for calibration on the development split and adjusted (isotonic) if needed, so a rug chance of 80% comes true about 80% of the time.
 
@@ -776,6 +776,12 @@ Before any explanation is shown, every number in the model's text is checked aga
 
 **Not used:** Yahoo/yfinance (terms ban automated collection), Coinbase market data (personal or research use only, no apps for other users, no AI training), Alpaca, Massive/Polygon individual plans, EODHD, FMP, Alpha Vantage, Stooq, WRDS/CRSP (display not allowed for a public app), Etherscan (commercial terms), and any TradingView data.
 
+**Free with no credit card (Oct 31):** every service must have a free tier that needs no card.
+- **Data:** the BigQuery sandbox (1 TB of queries and 10 GB of storage a month; tables expire after 60 days, so results are kept locally), Helius's dashboard free plan (1M credits a month), and GoPlus (no key).
+- **Models:** a Hugging Face account. The one exception is the Meta Model API: the Participant Guide says its $150 credits need a card on file before any call works. It's checked before build step 6 (`notes/setup.md`).
+- **Glimmer:** Modal, on the builder's existing credits, which needed no card. Kaggle's free GPUs (two 16 GB cards, phone verification) are the training fallback.
+- **This Mac:** an M5 with 16 GB can't run Glimmer.
+
 **Data rights:** the hackathon disqualifies projects using data without rights. Blockchain data is public and nobody owns transactions; the limits come from the services used to fetch it, listed above. Stock data is more limited: users' own Tiingo keys are allowed, but cached stock results can't be shown publicly without Tiingo's permission. Follow each source's terms; never commit third-party data, clips, or scraped content to the public repo.
 
 ---
@@ -849,7 +855,17 @@ Real numbers for Technical Depth, the README, and the video.
 - No TradingView data in our engine; no automation of TradingView's site or undocumented endpoints.
 - Demo clips are filmed by the builder as a mock guru; no real creators are named or shown.
 - Users upload clips; the app doesn't download from social platforms. Uploaded clips stay private.
-- Per-visitor limits and 90-second clips protect the $150 of Meta credits; spend limit set on the Billing page; contributor models for development; per-run cost logged.
+- **Meta Model API spend never goes past the $150 credits.** The builder's card is on file, Meta's "spend limit" only sends an email (no hard cap), and any overage is charged to the card. The credits are "valid for a 10-day development window", so after it ends every call is charged. Guards:
+  - **One budget-guarded client** for every Meta API call:
+    - it estimates each call's cost before sending it;
+    - it refuses the call once the local ledger reaches **$100**, leaving margin for estimation error and billing lag;
+    - it records actual usage from each response.
+  - **`META_API_ENABLED` defaults to off.** The builder turns it on only while building.
+  - **No Meta API calls after the window ends.** The judged deployment (Nov 4–9) runs with the switch off. Its demo results are cached, and live checks use Glimmer on Modal, the trees and Helius, none of which bill the card.
+  - **Cheaper models first:** the contributor model for development and evals, and Muse Wonder only when nothing cheaper works.
+  - **Every response is cached** by input, so repeat runs cost nothing.
+  - **Limits on the public site:** per-visitor limits and 90-second clips.
+  - **Email alerts on Meta's Billing page** as a backstop only, at $50 and $100.
 - Users' Tiingo keys are never logged or stored server-side.
 - The Meta Hackathon button uses the event name in text only, no Meta logo.
 
