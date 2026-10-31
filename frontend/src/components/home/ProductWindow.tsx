@@ -1,20 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, Paperclip, RotateCcw } from "lucide-react";
+import { Check, FileCode2, FileText, Paperclip, RotateCcw } from "lucide-react";
 import { APP_NAME } from "../../config";
-import { FactsLabel } from "../FactsLabel";
-import {
-  acmeFacts,
-  acmeResearch,
-  cashflowFacts,
-  cashflowPython,
-  moonFacts,
-  moonResearch,
-  rsiFacts,
-  rsiPine,
-  rsiThread,
-  type Facts,
-  type ThreadStep,
-} from "../../data/examples";
+import { acmeResearch, cashflowPython, moonResearch, rsiPine, rsiThread, type ThreadStep } from "../../data/examples";
+import { ResultsView } from "../../ide/ResultsView";
+import { ResearchSheet } from "./ResearchSheet";
 import "./window.css";
 
 type Replay = {
@@ -28,8 +17,7 @@ type Replay = {
   code: string;
   /** Step index at which the file starts being written. */
   writesAt: number;
-  facts: Facts;
-  labelTitle?: string;
+  result: { kind: "backtest"; runId: string } | { kind: "research"; which: "acme" | "moon" };
 };
 
 const rsiSteps = rsiThread.flatMap((m) => (m.kind === "steps" ? m.steps : []));
@@ -45,7 +33,7 @@ const replays: Replay[] = [
     file: "rsi_dip.pine",
     code: rsiPine,
     writesAt: 4,
-    facts: rsiFacts,
+    result: { kind: "backtest", runId: "rsi" },
   },
   {
     id: "english",
@@ -63,7 +51,7 @@ const replays: Replay[] = [
     file: "cashflow_top20.py",
     code: cashflowPython,
     writesAt: 2,
-    facts: cashflowFacts,
+    result: { kind: "backtest", runId: "cashflow" },
   },
   {
     id: "research",
@@ -89,8 +77,7 @@ const replays: Replay[] = [
     file: "ACME.md",
     code: acmeResearch,
     writesAt: 3,
-    facts: acmeFacts,
-    labelTitle: "Company Facts",
+    result: { kind: "research", which: "acme" },
   },
   {
     id: "crypto",
@@ -110,14 +97,14 @@ const replays: Replay[] = [
     file: "MOON.md",
     code: moonResearch,
     writesAt: 5,
-    facts: moonFacts,
-    labelTitle: "Coin Facts",
+    result: { kind: "research", which: "moon" },
   },
 ];
 
-// Fast steps, then a long hold on the finished label.
-const TICK_MS = 280;
-const HOLD_TICKS = 22;
+/** The working part of each replay takes this long, however many steps it has. */
+const WORK_MS = 2400;
+/** Then the results stay up this long before the next example. */
+const HOLD_MS = 9000;
 
 function prefersReducedMotion() {
   return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -127,37 +114,50 @@ export function ProductWindow() {
   const [active, setActive] = useState(0);
   const replay = replays[active];
   const total = replay.steps.length;
-  const [tick, setTick] = useState(() => (prefersReducedMotion() ? total + 2 : 0));
+  const [tick, setTick] = useState(() => (prefersReducedMotion() ? total : 0));
+  const [view, setView] = useState<"code" | "results">("code");
   const [paused, setPaused] = useState(false);
   const [visible, setVisible] = useState(false);
   const frameRef = useRef<HTMLDivElement>(null);
+  const threadRef = useRef<HTMLElement>(null);
+  const done = tick >= total;
 
   // Only play while the window is on screen.
   useEffect(() => {
     const el = frameRef.current;
     if (!el) return;
-    const io = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting), { threshold: 0.3 });
+    const io = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting), { threshold: 0.25 });
     io.observe(el);
     return () => io.disconnect();
   }, []);
 
+  // Reveal the steps quickly, flip to the results, hold, then move on.
   useEffect(() => {
-    if (paused || !visible || prefersReducedMotion()) return;
-    const id = window.setInterval(() => {
-      setTick((t) => {
-        if (t >= total + HOLD_TICKS) {
-          setActive((a) => (a + 1) % replays.length);
-          return 0;
-        }
-        return t + 1;
-      });
-    }, TICK_MS);
-    return () => window.clearInterval(id);
-  }, [paused, visible, total]);
+    if (!visible || prefersReducedMotion()) return;
+    if (!done) {
+      const t = window.setTimeout(() => setTick((v) => v + 1), WORK_MS / total);
+      return () => window.clearTimeout(t);
+    }
+    if (paused) return;
+    const t = window.setTimeout(() => choose((active + 1) % replays.length), HOLD_MS);
+    return () => window.clearTimeout(t);
+  }, [tick, total, done, visible, paused, active]);
+
+  useEffect(() => {
+    if (done) setView("results");
+  }, [done]);
+
+  // Keep the newest step in view while the agent works.
+  useEffect(() => {
+    const el = threadRef.current;
+    if (el && !done) el.scrollTop = el.scrollHeight;
+  }, [tick, done]);
 
   function choose(i: number) {
     setActive(i);
-    setTick(prefersReducedMotion() ? replays[i].steps.length + 2 : 0);
+    setView("code");
+    setTick(prefersReducedMotion() ? replays[i].steps.length : 0);
+    if (threadRef.current) threadRef.current.scrollTop = 0;
   }
 
   const shownSteps = Math.min(tick, total);
@@ -165,7 +165,7 @@ export function ProductWindow() {
   const writeProgress =
     tick <= replay.writesAt ? 0 : Math.min(1, (tick - replay.writesAt) / Math.max(1, total - replay.writesAt));
   const shownLines = Math.round(lines.length * writeProgress);
-  const done = tick >= total;
+  const FileIcon = replay.result.kind === "research" ? FileText : FileCode2;
 
   return (
     <div className="pw">
@@ -199,14 +199,14 @@ export function ProductWindow() {
             <span className={replay.mode === "Backtest" ? "is-on" : ""}>Backtest</span>
             <span className={replay.mode === "Analyze" ? "is-on" : ""}>Analyze</span>
           </span>
-          <button className="pw__replay" onClick={() => setTick(0)} aria-label="Replay this example">
+          <button className="pw__replay" onClick={() => choose(active)} aria-label="Replay this example">
             <RotateCcw size={14} aria-hidden />
             Replay
           </button>
         </div>
 
         <div className="pw__body">
-          <aside className="pw__thread" aria-label="Agent steps">
+          <aside className="pw__thread" ref={threadRef} aria-label="Agent steps">
             <div className="pw__ask">
               {replay.clip && (
                 <span className="pw__clip">
@@ -238,34 +238,60 @@ export function ProductWindow() {
               ))}
               {!done && <li className="pw__working">Working…</li>}
             </ol>
+            {done && (
+              <button className="pw__open" onClick={() => setView("results")}>
+                Open the results
+              </button>
+            )}
           </aside>
 
-          <div className="pw__code">
-            <div className="pw__file">{replay.file}</div>
-            <pre aria-label={`${replay.file} contents`}>
-              {lines.slice(0, shownLines).map((line, i) => (
-                <span
-                  key={i}
-                  className={/^\s*(\/\/|#|"""|\|)/.test(line) || line.startsWith("Example") ? "is-quiet" : ""}
-                >
-                  <span className="pw__ln">{i + 1}</span>
-                  {line || " "}
-                  {"\n"}
-                </span>
-              ))}
-            </pre>
-          </div>
+          <div className="pw__main">
+            <div className="pw__filetabs" role="tablist" aria-label="Open files">
+              <button
+                role="tab"
+                aria-selected={view === "code"}
+                className={view === "code" ? "is-on" : ""}
+                onClick={() => setView("code")}
+              >
+                <FileIcon size={13} aria-hidden />
+                {replay.file}
+              </button>
+              <button
+                role="tab"
+                aria-selected={view === "results"}
+                className={view === "results" ? "is-on" : ""}
+                onClick={() => setView("results")}
+                disabled={!done}
+                title={done ? undefined : "Results appear after a clean run"}
+              >
+                <Check size={13} aria-hidden />
+                Results
+              </button>
+            </div>
 
-          <div className={`pw__result ${done ? "is-done" : ""}`}>
-            {done ? (
-              <FactsLabel facts={replay.facts} title={replay.labelTitle} size="compact" />
-            ) : (
-              <p className="pw__waiting">The label prints after a clean run.</p>
-            )}
+            <div className="pw__view">
+              {view === "code" ? (
+                <pre className="pw__code" aria-label={`${replay.file} contents`}>
+                  {lines.slice(0, done ? lines.length : shownLines).map((line, i) => (
+                    <span key={i} className={/^\s*(\/\/|#|"""|\|)/.test(line) ? "is-quiet" : ""}>
+                      <span className="pw__ln">{i + 1}</span>
+                      {line || " "}
+                      {"\n"}
+                    </span>
+                  ))}
+                </pre>
+              ) : replay.result.kind === "backtest" ? (
+                <ResultsView key={replay.id} runId={replay.result.runId} />
+              ) : (
+                <ResearchSheet key={replay.id} which={replay.result.which} />
+              )}
+            </div>
           </div>
         </div>
       </div>
-      <p className="pw__note">Replays of example sessions. All values are example values.</p>
+      <p className="pw__note">
+        Replays of example sessions with example values. Scroll the results, turn the 3D chart, or switch tabs.
+      </p>
     </div>
   );
 }

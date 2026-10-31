@@ -316,3 +316,33 @@
     grid-column: 2;
   }
 }
+
+/* Wide table: claims checked against reported numbers or on-chain data */
+
+.report-table--wide {
+  max-width: none;
+}
+
+.report-table--wide thead th {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+  border-top: 0;
+  padding: 0 12px 6px 0;
+}
+
+.report-table--wide th,
+.report-table--wide td {
+  text-align: left;
+  padding-right: 12px;
+  vertical-align: top;
+}
+
+.report-table--wide tbody th {
+  font-weight: 700;
+}
+
+.report-table td.is-bad {
+  color: var(--red);
+  font-weight: 800;
+}
