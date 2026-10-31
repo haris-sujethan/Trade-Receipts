@@ -6,7 +6,7 @@
 - **Event:** Meta Global AI Developer Hackathon, Indie Developer track
 - **Theme:** Build for Your World
 - **Submission deadline:** Wed Nov 4, 2026, 9:00 PM ET ([submit](https://cerebralvalley.ai/e/meta-ai-developer-hackathon/hackathon/submit))
-- **Status (Oct 31, 2026):** pivot. The crypto rug check (section 7) is now the main feature: pump.fun first, scored by a model trained on past launches. Backtesting and stock research stay as the second half. The frontend is built as a preview on example data; the backend isn't started.
+- **Status (Oct 31, 2026):** pivot. The crypto rug check (section 7) is now the main feature: pump.fun first, scored by a model trained on past launches. Backtesting and stock research stay as the second half. The frontend is built as a preview on example data. The backend is started: build steps 1–2 (the pump.fun data pipeline) are in progress in `backend/`.
 - **Name:** Trade Receipts.
 
 The research behind the data and tooling choices is in [notes/data-sources.md](notes/data-sources.md). Items marked **(verify)** couldn't be confirmed and must be checked before they're relied on; they're collected in [Open questions](#14-open-questions).
@@ -477,7 +477,7 @@ Each claim maps to a metric and gets **supported**, **contradicted**, or **can't
 
 **Scope of the first model:** pump.fun on Solana only. A token is scored from 1 minute to 24 hours after launch, on the bonding curve or after it graduates. Everything else is listed for later (7.12).
 
-**Key research finding:** on pump.fun, the creator can't pull the main pool. The bonding curve graduates into a canonical pool whose LP is burned (PumpSwap since March 2025, Raydium before that). The rug is the team selling into buyers. So the model weights holder, wallet-link and trading behavior above "is liquidity locked." Mint and freeze permissions are normally revoked on pump.fun tokens **(verify)**, so those checks mostly pass and can't be the edge.
+**Key research finding:** on pump.fun, the creator can't pull the main pool. The bonding curve graduates into a canonical pool whose LP is burned (PumpSwap since March 2025, Raydium before that). The rug is the team selling into buyers. So the model weights holder, wallet-link and trading behavior above "is liquidity locked." Mint, freeze and close authorities come back revoked on pump.fun tokens (GoPlus on a live token, Oct 31), so those checks pass and can't be the edge.
 
 ### 7.1 Inputs and token resolution
 
@@ -574,7 +574,7 @@ Labels are computed by us from raw chain data, so the model and its data are our
 
 ### 7.7 Dataset and snapshots
 
-- **Launches:** pump.fun launches from May to October 2026, from BigQuery's public Solana dataset. Sampling across those months lets the model see different market moods. The newest 4 weeks are held back for the final test. Target: tens of thousands of launches above the activity floor, within the free query quota **(verify cost)**.
+- **Launches:** pump.fun launches from BigQuery's public Solana dataset, in the stretches where it has pump.fun's events (`notes/data-sources.md`): mainly May 11–17, 2026, six continuous days with about 2,000–4,000 launches a day above the activity floor. Training uses May 11–14, tuning May 15, and the final test May 16. Aug 12 and Sep 15 are a later check that the model still holds up months afterwards. One day costs 5–21 GiB of the free 1 TiB a month.
 - **Activity floor:** a token enters the dataset at a snapshot only once it has real activity by then. The starting floor is 20 independent buyers or $10k market cap, tuned from the data. Most launches never reach it; scoring them would make accuracy look high while measuring nothing.
 - **Activity pulled:**
   - Each token's first 24 hours in full: every trade, transfer and funding transfer, decoded from pump.fun, PumpSwap and Raydium instructions with the public pump.fun IDL.
@@ -624,7 +624,7 @@ The score users see comes from whichever wins on the test split: Glimmer alone, 
 - **The explanation:** Muse Spark writes the plain-language explanation from Glimmer's reasons and the token's signals, and the numbers audit (8.4) checks every number in it. Glimmer's own reasoning sits underneath under "How the model saw it." The tree model's per-signal contributions (SHAP) serve as a cross-check.
 - **Similar past tokens:** the 5 nearest in signal space, each with how it ended and an explorer link.
 - **No cheating:**
-  - Split by launch date: both training stages use older tokens, tuning uses a middle slice, and testing uses the newest 4 weeks.
+  - Split by launch date: both training stages use May 11–14, tuning uses May 15, and testing uses May 16. Aug 12 and Sep 15 test whether it holds up months later.
   - Inputs come only from snapshot data, and a leakage test makes sure none reads the future.
   - The label window and thresholds are frozen before the final test.
 - **Retraining:** rug tactics change, so both stages are rerun on fresh launches. Tracking new tokens forward and publishing a track record is a future feature.
@@ -690,7 +690,13 @@ A research file per token (for example, `research/MOON-7xKX.md`) that can be che
 - The source of the exchange and bot wallet lists.
 - How Jito bundles are detected.
 - Whether GoPlus adds anything beyond our own signals for pump.fun tokens.
-- Which BigQuery Solana tables hold decoded instructions and token balances **(verify)**.
+- Which BigQuery Solana tables hold decoded instructions and token balances **(verify)**. `Instructions` is clustered by `executing_account`; the rest waits on `bq-check`.
+- **Found in live data (Oct 31):**
+  - **Mayhem mode** tokens are traded by pump.fun's own agent program, with no fees and with the curve's virtual reserves reset between trades. Its trades need their own wallet group, outside both the team and independent buyers.
+  - **Version-1 transactions** now appear on mainnet. `bq-check` looks for days where BigQuery's row counts drop, in case its ingestion skips them.
+  - **BigQuery has pump.fun's events only in stretches:** May 11–17 (six continuous days), May 28–29, Aug 12–13 and Sep 15, and nothing in October. The dataset plan in 7.7 is set to match (decisions log, Oct 31); details in `notes/data-sources.md`.
+  - **Mayhem mode is a third of launches** (6,392 of 22,079 on Sep 15).
+  - **Quotes other than SOL:** `create_v2` tokens can trade against USDC or another pump token (up to two levels deep). Trades keep their quote mint; prices for these need converting to SOL.
 
 ---
 
@@ -972,9 +978,10 @@ Rug check first, then backtesting and stocks. Each phase ends with something tha
   - **Data pulled:** each token's first 24 hours in full; days 2–7 only the price and the team's sells.
   - **Scoring:** snapshots from 1 minute to 24 hours, and no training on snapshots taken after a rug. Older tokens get evidence without a score; already-rugged tokens get the verdict "Already rugged."
   - **Activity floor:** starting at 20 independent buyers or $10k market cap.
-  - **Training data:** launches from May to October 2026, with the newest 4 weeks held back for testing.
+  - **Training data:** launches from May to October 2026, with the newest 4 weeks held back for testing. Superseded the same day; see below.
   - **Headline:** a verdict plus the rug chance. The bands are 60% and 25%, adjusted after calibration and shown with their real rug rates. No faded or survived numbers.
   - **Explanation:** written by Muse Spark from Glimmer's reasons and the signals, with every number audited.
   - **Report:** order as in 7.11. The bubble map shows the top 50 holders and first 50 buyers, and 5 similar past tokens are listed.
   - **Speed:** the first signals within 10 seconds, the full report within a minute when warm.
   - **Demo:** a real past token from the test set, scored at 15 minutes, then its outcome revealed.
+- **Oct 31 (data pull):** BigQuery's Solana table has pump.fun's events (inner instructions) only in stretches, mainly May 11–17; October has none. The rug model uses the May week: train on May 11–14, tune on May 15, test on May 16, with Aug 12 and Sep 15 as a later check. Rebuilding October from the `Token Transfers` table was considered and set aside: about 58 GiB of quota a day, a day of extra work, and unverified.

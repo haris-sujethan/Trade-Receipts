@@ -4,29 +4,33 @@ These are the accounts and keys the user sets up themselves. Every service must 
 
 ## Before step 1–2: the pump.fun data pipeline
 
-- [ ] **Commit the current work,** including `CLAUDE.md` and `frontend/src/data/` (it was never tracked until the `.gitignore` fix on Oct 31).
-- [ ] **BigQuery sandbox:** create a Google Cloud project with the sandbox. It needs no card and no billing account. Note the project ID.
-- [ ] **Google Cloud CLI:** install it and sign in once, so the pipeline can query as you without a key file:
-  ```bash
-  brew install --cask google-cloud-sdk
-  ```
+- [x] **Commit the current work,** including `CLAUDE.md` and `frontend/src/data/` (committed Oct 31).
+- [x] **BigQuery sandbox:** create a Google Cloud project with the sandbox at console.cloud.google.com/bigquery. It needs no card and no billing account. Note the project ID.
+- [x] **Google Cloud CLI:** installed Oct 31 (`brew install --cask google-cloud-sdk`).
+- [x] **Sign in to Google Cloud** once, so the pipeline can query as you without a key file:
   ```bash
   gcloud auth application-default login
   ```
-- [ ] **Helius:** get a free API key at dashboard.helius.dev. The dashboard free plan needs no card; the CLI signup asks for 1 USDC, so use the dashboard.
-- [ ] **`.env`** at the project root:
+- [x] **Helius:** get a free API key at dashboard.helius.dev. The dashboard free plan needs no card; the CLI signup asks for 1 USDC, so use the dashboard.
+- [x] **`.env`** at the project root, copied from `.env.example`:
   ```
   GOOGLE_CLOUD_PROJECT=your-project-id
   HELIUS_API_KEY=your-key
   ```
-- [ ] **Open a new chat** in `~/Desktop/Trade-Receipts` and start it with:
-  > Read CLAUDE.md, then SPEC.md section 7 and the build order in section 15, GLOSSARY.md and docs/adr. Start build steps 1–2: the pump.fun data pipeline. My BigQuery project and Helius key are in .env.
+- [x] **Check both** from `backend/`:
+  ```bash
+  cd backend && uv run python -m receipts helius-check
+  ```
+  ```bash
+  cd backend && uv run python -m receipts bq-check
+  ```
 
-The agent then sets up the rest itself:
-- uv and a Python project in `backend/`, plus a `.env.example`;
-- a check of the BigQuery tables, their coverage of May–October 2026, and the query cost;
-- the pump.fun and PumpSwap interface descriptions (IDLs);
-- Helius's limits.
+Done by the agent (Oct 31):
+- [x] uv and the Python project in `backend/`, plus `.env.example`.
+- [x] The pump.fun and PumpSwap IDLs, pinned to commit `639b87f` (Oct 13) and fetched into `data/idl/` at runtime, since their repo states no license.
+- [x] Helius's limits: 1M credits a month; standard RPC calls cost 1 credit, `getTransactionsForAddress` 10 per 100 transactions, DAS 10, and the Wallet API (including funded-by) 100 a call, so funding traces use plain RPC calls.
+- [x] GoPlus test call: works with no key.
+- [x] The BigQuery tables, their coverage of May–October 2026, and the query cost (Oct 31). Findings are in `notes/data-sources.md`: pump.fun's events exist only in a few stretches, May 11–17 being the long one.
 
 ## Before step 4: training Glimmer
 
@@ -37,8 +41,8 @@ The agent then sets up the rest itself:
   ```bash
   modal token new
   ```
-- [ ] **Hugging Face:** a free account, and a token if Meta asks you to accept Glimmer's license before downloading. Put it in `.env` as `HF_TOKEN`.
-- [ ] **Fallback:** a Kaggle account (free GPUs; needs phone verification, no card) in case the Modal credits run short.
+- [ ] **Hugging Face (optional):** Glimmer's weights (`meta-models/Muse-Glimmer-30B`) aren't gated (checked Oct 31), so downloading needs no account. An account and a write token (`HF_TOKEN` in `.env`) are only needed to publish the trained adapter for judges.
+- [ ] **Fallback (only if Modal credits run short):** a Kaggle account (free GPUs; needs phone verification, no card). Its two 16 GB cards are a weak fit for a 30B model: possible for fine-tuning, impractical for reinforcement learning.
 
 ## Before step 6: the agent (Muse Spark, Voice Transcribe)
 

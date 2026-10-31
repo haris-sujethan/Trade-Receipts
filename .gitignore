@@ -7,3 +7,6 @@ dist/
 .DS_Store
 .impeccable/config.local.json
 *.tsbuildinfo
+.venv/
+__pycache__/
+.pytest_cache/

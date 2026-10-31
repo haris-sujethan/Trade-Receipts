@@ -1,0 +1,1 @@
+"""Trade Receipts backend."""

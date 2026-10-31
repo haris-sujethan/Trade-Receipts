@@ -1,0 +1,29 @@
+[project]
+name = "receipts"
+version = "0.1.0"
+description = "Trade Receipts backend: the pump.fun data pipeline and rug check"
+requires-python = ">=3.13"
+dependencies = [
+    "base58>=2.1.1",
+    "duckdb>=2.0.0",
+    "google-cloud-bigquery>=3.47.0",
+    "google-cloud-bigquery-storage>=2.43.0",
+    "httpx>=0.28.1",
+    "pyarrow>=26.0.0",
+    "python-dotenv>=1.2.4",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+]
+
+[tool.uv]
+# Not installed as a package: uv hides .venv files on macOS and Python 3.13 skips hidden .pth
+# files, which breaks editable installs. Run from backend/ with `uv run python -m receipts`.
+package = false
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+markers = ["network: reads from the public Solana RPC"]

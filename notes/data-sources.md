@@ -65,6 +65,27 @@ No Base or recent BNB rug dataset was found.
 
 Sources: docs.cloud.google.com/blockchain-analytics/docs/supported-datasets · docs.cloud.google.com/bigquery/docs/sandbox · docs.cdp.coinbase.com/data/sql-api/welcome.md · helius.dev/docs/billing/credits.md · github.com/pump-fun/pump-public-docs · docs.raydium.io/user-flows/burn-and-earn · clanker.gitbook.io/documentation/references/deployed-contracts · docs.zora.co/coins · github.com/DeFiLabX/SolRPDS · github.com/git-disl/MELT · docs.gopluslabs.io/reference/response-details · ankr.com/docs/rpc-service/service-plans · github.com/binance/binance-public-data/blob/master/TERMS_AND_CONDITIONS.md · etherscan.io/apiterms
 
+## BigQuery's Solana dataset: what's actually there (checked Oct 31, 2026)
+
+Measured with the user's sandbox project (`trade-receipts-513313`). Reports are in `data/reports/` (gitignored).
+
+- **Tables:** `Instructions` (partitioned by day, clustered by `program_id`), `Transactions` (by day, clustered by `signature`), `Token Transfers` (by day, not clustered), and monthly `Accounts`, `Blocks`, `Tokens`, `Block Rewards`. Every day from May 1 to Oct 31 is present.
+- **`data` is base58.** pump.fun and PumpSwap events decode with the public IDL; there were no failures across 7.5M events from Sep 15.
+- **Inner instructions exist only in stretches.** pump.fun's events live in inner instructions, so only these stretches have trades with executed amounts:
+
+  | Stretch (UTC) | Length |
+  |---|---|
+  | May 11 11:00 – May 17 11:00 | 6 days, continuous |
+  | May 26 04:00 – 09:00 | 5 hours |
+  | May 28 07:00 – May 29 08:00 | 25 hours |
+  | Aug 12 04:00 – Aug 13 02:00 | 22 hours, plus a few hours on Aug 15 and 17 |
+  | Sep 15 01:00 – 17:00 | 16 hours |
+
+  Every other day, October included, has top-level instructions only. Those miss trades routed through other programs and don't show what a trade executed at, so they can't be used for trades. Found from free dry runs (a day with inner instructions is 2–5× bigger), then confirmed hour by hour (`data/reports/inner_coverage_hourly.json`).
+- **Cost per day** (columns the pull reads): pump.fun and PumpSwap instructions 4–21 GiB (21 on a day with inner instructions); `Token Transfers` about 58 GiB without signatures; `Transactions` is out of reach (377 GiB for signatures alone). Reusing a scan within one query isn't billed twice.
+- **Downloads:** the Storage Read API works in the sandbox. Parallel LZ4 streams move about 15 MB/s here, 5 minutes for a day's 7.5M events.
+- **One day's yield (Sep 15, 16 hours):** 22,079 launches: 12,572 ordinary SOL-quoted, 6,392 Mayhem mode, 3,115 quoted in another token. 2,922 of the ordinary ones reach 20 buyers or a 60 SOL market cap; 655 graduated.
+
 ## Pine Script tooling and competitors
 
 **Competitors that already write Pine with AI and fix errors**
