@@ -50,7 +50,7 @@ _Avoid_: dead, rugged (for these)
 A token still trading at the end of the label window without collapsing.
 
 **Label window**:
-The days after launch in which a rug counts toward a token's label; a rug after it doesn't.
+The time after launch in which a rug counts toward a token's label (24 hours); a rug after it doesn't.
 
 **Snapshot**:
 A token as it stood at a fixed age after launch, built only from what had happened by then. A token is scored only from snapshots taken before any rug, and only within its first day.

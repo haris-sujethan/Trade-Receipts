@@ -17,3 +17,12 @@ PUMP_TOKEN_DECIMALS = 6
 QUOTE_DECIMALS = {WSOL: 9, USDC: 6}
 # A pump token quoted in another pump token (create_v2 depth > 0).
 DEFAULT_QUOTE_DECIMALS = PUMP_TOKEN_DECIMALS
+
+# pump.fun's agent wallet that trades Mayhem mode tokens (most of their trades in May, Aug and Sep).
+MAYHEM_AGENT = "BwWK17cbHxwWBKZkUYvzxLcNQ1YVyaFezduWbtm2de6s"
+
+# Every pump.fun token: 1B supply. The bonding curve starts at 1,073M virtual tokens and graduates
+# when its 793.1M real tokens are sold.
+TOTAL_SUPPLY = 1_000_000_000 * 10**PUMP_TOKEN_DECIMALS
+CURVE_START_TOKENS = 1_073_000_000 * 10**PUMP_TOKEN_DECIMALS
+CURVE_SALE_TOKENS = 793_100_000 * 10**PUMP_TOKEN_DECIMALS

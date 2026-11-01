@@ -25,7 +25,7 @@ An agent-native IDE for financial research and automated backtesting. The main f
   - Helius's dashboard free plan for live token data.
   - GoPlus.
   - Hugging Face.
-  - Modal's existing credits for Glimmer, with Kaggle's free GPUs as the training fallback.
+  - Kaggle's free GPUs (2× T4, 30 hours a week) for training and scoring Glimmer. The hackathon's Modal credits weren't claimed (requested Nov 1), and Modal's free tier gave only $1, so don't add a card there.
 
   The one exception is the Meta Model API: its $150 credits need a card on file (`notes/setup.md`, step 6).
 

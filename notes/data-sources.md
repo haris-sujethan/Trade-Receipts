@@ -86,6 +86,9 @@ Measured with the user's sandbox project (`trade-receipts-513313`). Reports are 
 - **Downloads:** the Storage Read API works in the sandbox. Parallel LZ4 streams move about 15 MB/s here, 5 minutes for a day's 7.5M events.
 - **One day's yield (Sep 15, 16 hours):** 22,079 launches: 12,572 ordinary SOL-quoted, 6,392 Mayhem mode, 3,115 quoted in another token. 2,922 of the ordinary ones reach 20 buyers or a 60 SOL market cap; 655 graduated.
 
+- **Failed transactions are included.** The `Instructions` table has no status column, and failed transactions' pump.fun events are in it: about 1 in 60 sampled trades had failed (checked against Helius), and some tokens show two or three creates, all but one failed. Status is only in `Transactions`, where reading just `signature` and `status` for one day scans about 400 GiB (dry run, Oct 31), so the pipeline finds failed curve trades from the reserve chain instead (`backend/receipts/crypto/chain.py`).
+- **`Transactions` also holds fees, the transaction's index in its block, and token balances**, but at the same ~400–500 GiB a day it's out of reach for the sandbox.
+
 ## Pine Script tooling and competitors
 
 **Competitors that already write Pine with AI and fix errors**

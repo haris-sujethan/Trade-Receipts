@@ -82,6 +82,61 @@ def wallet_history(_args) -> None:
     print(history.build())
 
 
+DATASET_STAGES = ("tokens", "trades", "edges", "wallets", "team", "labels", "reputation", "signals")
+
+
+def build_dataset(args) -> None:
+    """The rug check's dataset for a block: tokens through snapshots (SPEC.md 7.4–7.7)."""
+    import time
+
+    from receipts.crypto import dataset, labels, signals
+
+    stages = args.stages or DATASET_STAGES
+    for block in args.blocks:
+        for stage in DATASET_STAGES:
+            if stage not in stages:
+                continue
+            started = time.time()
+            if stage in dataset.STEPS:
+                result = dataset.prepare(block, (stage,))
+            elif stage == "team":
+                result = labels.build_team(block)
+            elif stage == "labels":
+                result = len(labels.build(block))
+            elif stage == "reputation":
+                result = dataset.reputation(block, signals.LABEL_HOURS)
+            else:
+                result = signals.build(block)
+            print(f"{block} {stage}: {result} ({time.time() - started:.0f}s)", flush=True)
+
+
+def train_baselines(_args) -> None:
+    from receipts.crypto import baselines
+
+    report = baselines.run()
+    for name, entry in report["models"].items():
+        t = entry["test"]
+        print(f"{name:10s} fair AUC {entry['fair_auc']}  pooled AUC {t.get('auc')}  Brier {t.get('brier')}  80%+: {t.get('at_80_plus')}")
+    print(f"Report: {baselines.REPORT}")
+
+
+def glimmer_data(_args) -> None:
+    from receipts.crypto import glimmer_data
+
+    print(glimmer_data.build(), "->", glimmer_data.RECORDS)
+
+
+def glimmer_eval(args) -> None:
+    import pathlib
+
+    from receipts.crypto import glimmer_eval
+
+    report = glimmer_eval.evaluate(pathlib.Path(args.folder) / "predictions.jsonl", args.name)
+    for file in ("test", "later_aug", "later_sep"):
+        for model, m in report.get(file, {}).items():
+            print(f"{file:10s} {model:22s} fair AUC {m.get('fair_auc')}  AUC {m.get('auc')}  Brier {m.get('brier')}  n {m.get('n')}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(prog="receipts")
     sub = parser.add_subparsers(required=True)
@@ -100,6 +155,16 @@ def main() -> None:
     p.add_argument("block", choices=["may", "aug", "sep"])
     p.set_defaults(run=pull_funding)
     sub.add_parser("wallet-history", help="build the wallet history table from pulled data").set_defaults(run=wallet_history)
+    p = sub.add_parser("build-dataset", help="build the rug check's tokens, links, labels and snapshots")
+    p.add_argument("blocks", nargs="+", choices=["may", "aug", "sep"])
+    p.add_argument("--stages", nargs="+", choices=DATASET_STAGES, help="only these stages (default: all, in order)")
+    p.set_defaults(run=build_dataset)
+    sub.add_parser("train-baselines", help="train and test the checklist and LightGBM baselines").set_defaults(run=train_baselines)
+    sub.add_parser("glimmer-data", help="write Glimmer's prompts, bubble maps and fine-tuning answers").set_defaults(run=glimmer_data)
+    p = sub.add_parser("glimmer-eval", help="score a Kaggle job's Glimmer predictions against the outcomes")
+    p.add_argument("folder", help="the downloaded job output (holds predictions.jsonl)")
+    p.add_argument("--name", default="glimmer")
+    p.set_defaults(run=glimmer_eval)
     p = sub.add_parser("goplus", help="GoPlus token security for a mint")
     p.add_argument("mint")
     p.set_defaults(run=goplus)

@@ -34,15 +34,13 @@ Done by the agent (Oct 31):
 
 ## Before step 4: training Glimmer
 
-- [ ] **Modal:** the account already shows the hackathon credits without a card. Log in from the terminal:
+- [x] **Modal login:** done Oct 31, workspace `sujethanharis` on the Starter plan; the token is in `~/.modal.toml`, outside the repo. Modal is a dependency of the backend (Homebrew's Python refuses `pip3 install`), so it runs as:
   ```bash
-  pip3 install modal
+  cd backend && uv run modal token new
   ```
-  ```bash
-  modal token new
-  ```
-- [ ] **Hugging Face (optional):** Glimmer's weights (`meta-models/Muse-Glimmer-30B`) aren't gated (checked Oct 31), so downloading needs no account. An account and a write token (`HF_TOKEN` in `.env`) are only needed to publish the trained adapter for judges.
-- [ ] **Fallback (only if Modal credits run short):** a Kaggle account (free GPUs; needs phone verification, no card). Its two 16 GB cards are a weak fit for a 30B model: possible for fine-tuning, impractical for reinforcement learning.
+- [ ] **Modal credits:** the account shows only $1.00. The hackathon's Modal credits ($100, first 1,000 participants) were never claimed; requested Nov 1. Starter's $30 a month appears to need a payment method beyond the first $1, so **don't add a card**. Training runs on Kaggle meanwhile.
+- [x] **Hugging Face:** account `Haris545`, a fine-grained token with write access to its own repos in `.env` as `HF_TOKEN` (checked Nov 1). It downloads Glimmer without rate limits and will publish the trained adapter for judges.
+- [x] **Kaggle:** account `harissujethan`, phone verified, `KAGGLE_API_TOKEN` in `.env` (checked Nov 1). 30 GPU hours a week on 2× T4, resetting Saturdays (next: Nov 7). Glimmer's 4-bit copy fits across both cards; scoring takes 8 seconds a snapshot and training 23 seconds an example (measured Nov 1).
 
 ## Before step 6: the agent (Muse Spark, Voice Transcribe)
 
@@ -51,6 +49,6 @@ Done by the agent (Oct 31):
   - Meta has **no hard cap**; its "spend limit" only sends an email.
   - The credits are valid for a **10-day window**, and any call after that is charged.
   - The app enforces the budget itself (`SPEC.md` section 12): a guarded client that refuses calls past a $100 ledger, `META_API_ENABLED` off by default, and no Meta API calls after the window.
-- [ ] **Credit expiry:** check the exact end date on the Billing page and note it here: ______
+- [x] **Credit expiry:** Nov 4, the end of the hackathon (user, Nov 1). All Meta API work, including caching the demo's results, has to finish by then; the judged deployment (Nov 5–9) makes no Meta API calls.
 - [ ] **Email alerts** on the Billing page at $50 and $100, as a backstop only.
 - [ ] **Usage checks:** look at usage on the Billing page each day you build.

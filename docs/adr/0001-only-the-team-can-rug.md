@@ -5,4 +5,6 @@ A token is labeled rugged only when its team (the creator plus wallets linked to
 ## Consequences
 
 - Every label, the training data, and the model's receipt depend on this definition; changing it means relabeling and retraining.
-- The starting thresholds (half of peak holdings, a 90% fall, a 7-day window) are tuned on a development split and frozen before the final test.
+- The starting thresholds (half of peak holdings, a 90% fall) are tuned on a development split and frozen before the final test.
+- The label window is 24 hours, set from the data (Oct 31): 99.2% of rugs in the May launches landed within a day.
+- On the bonding curve the price can't fall below its launch price, so the 90% fall is measured above that price (the share of the rise given back). After graduation this is close to the plain fall.

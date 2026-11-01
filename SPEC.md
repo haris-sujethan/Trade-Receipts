@@ -6,7 +6,7 @@
 - **Event:** Meta Global AI Developer Hackathon, Indie Developer track
 - **Theme:** Build for Your World
 - **Submission deadline:** Wed Nov 4, 2026, 9:00 PM ET ([submit](https://cerebralvalley.ai/e/meta-ai-developer-hackathon/hackathon/submit))
-- **Status (Oct 31, 2026):** pivot. The crypto rug check (section 7) is now the main feature: pump.fun first, scored by a model trained on past launches. Backtesting and stock research stay as the second half. The frontend is built as a preview on example data. The backend is started: build steps 1–2 (the pump.fun data pipeline) are in progress in `backend/`.
+- **Status (Oct 31, 2026):** pivot. The crypto rug check (section 7) is now the main feature: pump.fun first, scored by a model trained on past launches. Backtesting and stock research stay as the second half. The frontend is built as a preview on example data. The backend is started in `backend/`: build steps 1–2 (the pump.fun data pipeline) are done, step 3 (signals, wallet links, labels and snapshots) is built (`uv run python -m receipts build-dataset may aug sep`), and step 4 is under way: the baselines are trained and Glimmer is training on Kaggle (Nov 1).
 - **Name:** Trade Receipts.
 
 The research behind the data and tooling choices is in [notes/data-sources.md](notes/data-sources.md). Items marked **(verify)** couldn't be confirmed and must be checked before they're relied on; they're collected in [Open questions](#14-open-questions).
@@ -536,7 +536,9 @@ Every signal is a number the model learns from and a line the user can read. Eac
   - sent tokens or SOL to or from the creator's wallets;
   - bought in the creator's launch bundle.
 - **Likely team:** wallets funded from the same exchange with the same amount (within 1%) inside a 10-minute window, with no on-chain link. They're their own signal. They count as team for the rug label only when they also sell alongside the team.
-- **Never link through** exchange hot wallets, pump.fun's program accounts or popular trading-bot accounts. These are identified by very high transfer counts plus a known list.
+- **Never link through** exchange hot wallets, pump.fun's program accounts or popular trading-bot accounts. These are identified by very high transfer counts: a wallet that paid 200 or more wallets in the window, or received SOL from 50 or more (trading bots' fee wallets receive from tens of thousands). Transfers under 0.01 SOL are dust and never link.
+- **How far links reach (measured Oct 31):** the team is the creator, its bundle, and wallets *one* link away from them. Following links further, or linking wallets that only share a funder two hops back on both sides, chained in unrelated holders: some "teams" held 98% of supply.
+- **The launch bundle** is the wallets that bought in the creation slot, minus sniper bots: wallets that bought that early into tokens from 10 or more creators. About three quarters of creation-slot buys come from such bots (May 12: 399 wallets made 74% of them). Jito bundle data isn't in BigQuery, so this replaces the tip check.
 - **Clusters** of linked wallets are the units for supply control and trading behavior (7.3).
 - **Independent buyers** aren't team, likely team, snipers or wash traders. Their wallet is at least a day old, has traded tokens before, or was funded from outside the team.
 - **The bubble map** shows the top 50 holders and the first 50 buyers, sized by share of supply.
@@ -567,7 +569,10 @@ Labels are computed by us from raw chain data, so the model and its data are our
 | Faded | Trading died out without a rug, including collapses caused by unlinked snipers |
 | Survived | Still trading at the end of the label window with no 90% collapse |
 
-- **Label window:** 7 days after launch. The first data pull measures the real time to rug: if almost all rugs land within a day, the window shrinks; if many land late, it grows. Published work suggests most dumps happen within minutes to hours. MELT labels from only the first 20 minutes after graduation, during which about 73% of graduated tokens fell below 40% of their graduation price.
+- **Label window: 24 hours after launch** (measured Oct 31 on May 11–12 launches, which have 4+ days of data after them). Of all rugs, 67% land within a minute, 86% within 5 minutes, 96% within an hour and 99.2% within a day. Of tokens still standing at 1 hour, 22% rug within 24 hours and 27% ever. Labels are also kept at 1, 6, 12, 48, 96 and 144 hours.
+- **The 90% fall is measured above the launch price.** A bonding curve's price can never fall below where it started, so a token that ran from 28 to 100 SOL and back to 30 has fallen 97%. After graduation the launch price is small next to the pool's, so this is close to the plain fall.
+- **Base rate:** about 90% of tokens at the starting floor rug within a day, most of them in the first minutes, which matches public reports on pump.fun. The model only sees snapshots taken before a rug, so the rate it learns is the rate among tokens still standing: 73% rug within the day at 1 minute, 52% at 5 minutes, 22% at 1 hour, 9% at 6 hours.
+- **Team holdings in rugs are large:** the median rugged team held 35% of supply at its peak, mostly through the creator's own launch buy, so the label is driven by real team selling.
 - **Thresholds** (half of peak holdings, a 90% fall) are tuned on a development split, then frozen before the final evaluation.
 - **References:** the MELT and SolRPDS datasets inform the definitions. MELT is non-commercial, so its definitions are referenced but its data isn't trained on.
 - **Why rugged vs. faded matters:** most pump.fun tokens simply die, and a model that only learns "new tokens go to zero" is useless.
@@ -575,49 +580,48 @@ Labels are computed by us from raw chain data, so the model and its data are our
 ### 7.7 Dataset and snapshots
 
 - **Launches:** pump.fun launches from BigQuery's public Solana dataset, in the stretches where it has pump.fun's events (`notes/data-sources.md`): mainly May 11–17, 2026, six continuous days with about 2,000–4,000 launches a day above the activity floor. Training uses May 11–14, tuning May 15, and the final test May 16. Aug 12 and Sep 15 are a later check that the model still holds up months afterwards. One day costs 5–21 GiB of the free 1 TiB a month.
-- **Activity floor:** a token enters the dataset at a snapshot only once it has real activity by then. The starting floor is 20 independent buyers or $10k market cap, tuned from the data. Most launches never reach it; scoring them would make accuracy look high while measuring nothing.
+- **Activity floor:** a token enters the dataset at a snapshot only once it has real activity by then. The starting floor is 20 independent buyers or a 60 SOL market cap (the $10k floor, held in SOL because the pull has no SOL price), tuned from the data. Every snapshot carries whether it passes, so the floor can be tuned without rebuilding. Most launches never reach it; scoring them would make accuracy look high while measuring nothing.
 - **Activity pulled:**
-  - Each token's first 24 hours in full: every trade, transfer and funding transfer, decoded from pump.fun, PumpSwap and Raydium instructions with the public pump.fun IDL.
-  - Days 2–7: only the price and the team's sells, which is all the label needs.
-- **Snapshots:** each token is rebuilt at 1, 5, 15 and 30 minutes, then 1, 6 and 24 hours after launch, using only what had happened by then. A token scored 10 minutes after launch is compared with other tokens at 10 minutes. Snapshots taken after the token rugged are never trained on: they would teach the model to spot rugs after the fact.
-- **Wallet history:** a table of every wallet's past launches, trades and outcomes. Wallet reputation ("team in 3 past rugs") only counts rugs already known at the snapshot time.
+  - Every trade of each token on the bonding curve and PumpSwap for the rest of its block (up to 6 days), decoded with the public pump.fun IDL. Raydium isn't needed: graduations go to PumpSwap.
+  - SOL funding transfers into each token's creator, first 50 buyers and 50 biggest holders, and into their funders, two hops back.
+  - Token transfers between wallets aren't pulled; tokens that reached a wallet without a buy show up as sells larger than its buys (`hidden_supply_share`).
+- **Snapshots:** each token is rebuilt at 1, 5, 15 and 30 minutes, then 1 and 6 hours after launch, using only what had happened by then. (A 24-hour snapshot has nothing left to predict inside a 24-hour label window.) A token scored 10 minutes after launch is compared with other tokens at 10 minutes. Snapshots taken after the token rugged are never trained on: they would teach the model to spot rugs after the fact. At each snapshot, funding is read only for the wallets a live check would trace then: the creator, the first 50 buyers and the 50 biggest holders so far. The leakage test (`backend/tests/test_leakage.py`) recomputes snapshots with everything after them deleted and requires identical signals.
+- **Follow-up limits:** labels need 24 hours of data after launch. May 16 launches after about 11:00 UTC, and all of Aug 12 and Sep 15, have less; those tokens are kept for snapshots but have no 24-hour label. The later checks use the 6- and 12-hour labels until the missing hours are filled from Helius.
+- **Failed transactions:** BigQuery's instructions include failed transactions, and their events look like real trades (checked against Helius). Failed bonding-curve trades are dropped by chaining each trade's reserves to the next (about 1% of curve trades; 49 of 50 dropped trades checked had failed, 50 of 50 kept ones had succeeded). Mayhem mode curves and PumpSwap pools can't be chained yet and are marked unverified.
+- **Holdings** come from pump.fun trades: complete on the bonding curve, partial after graduation, when tokens also trade elsewhere.
+- **Dataset size (Oct 31), snapshots above the activity floor with a 24-hour label:** 20,848 for training (May 11–14), 5,011 for tuning (May 15) and 2,210 for the test (May 16 launches with a full day after them). The later checks have 6-hour labels: 5,047 snapshots on Aug 12 and 3,361 on Sep 15. Each snapshot has 80 signals; `backend/receipts/crypto/signals.py` lists them by 7.3 family.
+- **Wallet history:** a table of every wallet's past launches, trades and outcomes. Wallet reputation ("team in 3 past rugs") counts only rugs that had happened before the token's launch, within the past 24 hours, so the same history can be rebuilt from Helius live.
 
 ### 7.8 The models
 
 The main model is **Muse Glimmer**, Meta's open-weight 30B model (Apache 2.0, reads text and images). We train it in two stages: supervised fine-tuning, then reinforcement learning on real outcomes. Simpler models stay as baselines it has to beat.
 
-**What Glimmer reads** for one token at one snapshot (7.7). It is mostly numbers:
-- **Signals:** the 7.3 signals as a compact block of numbers.
-- **Timeline:** every trade and transfer in order, bucketed and compressed to a fixed input length. Each event carries the wallet's cluster, wallet age, size in SOL, and fees paid. The order of events is the giveaway that hand-made signals miss: small identical buys, then independent buyers, then the team selling into every buy.
-- **Bubble map (7.4):** the one image, because shapes like the spider are read by eye.
+**What Glimmer reads** for one token at one snapshot (7.7), built in `backend/receipts/crypto/prompt.py` (about 1,700 tokens plus the image):
+- **Signals:** the 7.3 signals, written as lines by family.
+- **The 20 biggest holders:** share, group (team, sniper, fresh wallet, independent…), when each first bought, how much it sold, and how it was funded.
+- **The price line:** market cap from launch to the snapshot.
+- **Trades over time:** SOL bought and sold by each group, in time buckets. The order is the giveaway hand-made signals miss: small identical buys, then independent buyers, then the team selling into every buy.
+- **Bubble map (7.4):** the one image (448×448): the 50 biggest holders and first 50 buyers, sized by share and colored by group, with funding links.
 
-**Stage 1: supervised fine-tuning**
-- LoRA on Glimmer over the training split, with the real outcome (rugged, faded or survived) as the answer.
-- It teaches the format and a first sense of what a rug looks like.
+**How Glimmer answers:** "Rug chance: N%" first, then one or two sentences on the signals that raise and lower it. The system message sets low reasoning strength and the answer channel is opened directly, so there's no separate thinking step. Every N from 1 to 99 is one token, so one forward pass gives Glimmer's whole distribution over N, and the rug chance is its expected value.
 
-**Stage 2: reinforcement learning**
-- Glimmer writes its reasoning, then a rug chance between 0 and 1.
-- **Reward:**
-  - Mostly a proper scoring rule against the real outcome: 1 − (p − y)², the Brier score. It rewards being right *and* being honestly confident, so always saying "rug" doesn't pay.
-  - A penalty when the reasoning cites a number that isn't in the input (the numbers audit rule, 8.4).
-  - A small reward for the expected format.
-- **Algorithm:** GRPO. Several answers are sampled per token and each is scored against the others.
-- **Tooling:** Unsloth, which has an official Glimmer guide.
-  - QLoRA fits in 24 GB, and LoRA needs more than 40 GB.
-  - Its GRPO supports vision models, with vLLM generating the samples. The image encoder stays frozen (vLLM can't put LoRA on vision layers, and Unsloth recommends freezing it first anyway).
-  - TorchTitan is the fallback.
-- **Training targets:** fine-tuning only on short answers is reported to weaken Glimmer's reasoning. So stage 1 stays small and its answers include a brief reasoning line built from the input signals, giving RL reasoning to improve on.
-- **Compute (estimates until the first run measures them):** on Modal, 4-bit QLoRA plus vLLM fits on one H100 ($3.95/hour) or A100 80 GB ($2.50/hour).
-  - Stage 1: about 5,000–10,000 examples of about 3,000 tokens, roughly 3–4 hours per pass.
-  - Stage 2: about 1,000–2,000 tokens with 4 samples each, roughly 4–6 hours.
-  - About $30–60 of Modal credits including retries. Kaggle's free GPUs are the fallback if the credits run short.
+**Where it trains (Nov 1):** Kaggle's free GPUs (2× T4, 30 GPU hours a week), because the hackathon's Modal credits weren't claimed. Unsloth's 4-bit Glimmer (20.7 GB) is split across both cards and computes in float16 (T4s have no bfloat16). Measured: 8 seconds to score a snapshot, 23 seconds per training example. LoRA rank 8 on the language model's projections (52M trainable parameters); the image encoder is frozen. Jobs: `backend/kaggle/glimmer_job.py`, pushed with `backend/kaggle/push.py`.
 
-**Rug chance:** the probability Glimmer states. It is checked for calibration on the development split and adjusted (isotonic) if needed, so a rug chance of 80% comes true about 80% of the time.
+**Stage 1: supervised fine-tuning** (900 examples from May 11–14)
+- The answers come from the trees: the rug chance is the trees' calibrated estimate made without seeing that day (out of fold by launch day), and the reasons are the signals that raised and lowered it most (their SHAP contributions). Every number in an answer is copied from its prompt, so answers pass the numbers audit by construction (`backend/tests/test_glimmer_answers.py`).
+- It teaches the format and a calibrated starting point instead of 0% and 100%.
 
-**Baselines it has to beat:**
-- The checklist score: what rug checkers do today.
-- Gradient-boosted trees (LightGBM) on the same signals.
-- Glimmer after fine-tuning only, to show what reinforcement learning adds.
+**Stage 2: reinforcement learning** (about 900 examples from other May 11–14 tokens)
+- GRPO with a one-token action: 8 rug chances are sampled from Glimmer's distribution per snapshot, each rewarded by the Brier score against the real outcome, 1 − (N/100 − y)², and pushed up or down relative to the group's mean. The Brier score rewards being right *and* honestly confident, so always saying "rug" doesn't pay.
+- Scope set by the GPU hours: RL trains the number, not the written reasons, which come from stage 1. Sampling written reasoning would cost about 4 times as much per example. The numbers audit still checks every number in what users read (the explanation, 8.4).
+
+**Rug chance:** the expected value of Glimmer's distribution over N, calibrated (isotonic) on May 15, so a rug chance of 80% comes true about 80% of the time.
+
+**Baselines it has to beat** (`backend/receipts/crypto/baselines.py`, measured Nov 1 on May 16):
+- The checklist score: 10 red flags of the kind rug checkers show today, thresholds fixed in advance. **Fair AUC 0.44**: worse than a coin flip once age and mode are accounted for.
+- Gradient-boosted trees (LightGBM) on the same signals: **fair AUC 0.69** on May 16, 0.74 on Aug 12 and Sep 15 (6-hour labels).
+- Glimmer before any training, and after fine-tuning only, to show what each stage adds.
+- **Why "fair" AUC:** pooled over all snapshots the trees score 0.96, but most of that is knowing the age (rug rates fall from 77% at 1 minute to 13% at 6 hours) and the mode (Mayhem mode tokens rug 8% of the time, standard ones 84%). The fair AUC is measured within each mode at each age and averaged by size, and it's the headline number.
 
 The score users see comes from whichever wins on the test split: Glimmer alone, or Glimmer combined with the trees. The receipt (7.9) shows all of them.
 
@@ -631,8 +635,8 @@ The score users see comes from whichever wins on the test split: Glimmer alone, 
 
 ### 7.9 The model's receipt
 
-Shown in the app and the README, and measured on the newest held-out launches. For each model (Glimmer after reinforcement learning, Glimmer after fine-tuning only, the trees, the checklist, and the combination if used):
-- how well it ranks rugs above non-rugs (AUC);
+Shown in the app and the README, and measured on the newest held-out launches. For each model (Glimmer after reinforcement learning, Glimmer after fine-tuning only, Glimmer untrained, the trees, the checklist, and the combination if used):
+- how well it ranks rugs above non-rugs within each mode and age (the fair AUC), and pooled;
 - how often a high rug chance (80% or more) actually rugged;
 - the calibration curve;
 - the Brier score.
@@ -681,14 +685,14 @@ A research file per token (for example, `research/MOON-7xKX.md`) that can be che
 
 ### 7.13 Still open
 
-- Label thresholds, the 7-day window and the activity floor, checked against the data.
+- Label thresholds and the activity floor, tuned on May 15. The window is set: 24 hours (7.6).
 - Glimmer's input length for the timeline, and how busy tokens are compressed to fit it.
 - Measured training time and cost for both stages (the estimates in 7.8 come from published guides).
 - Glimmer's cold start on Modal, and whether memory snapshots cut it.
-- Snapshot ages.
+- Snapshot ages: set to 1, 5, 15 and 30 minutes, 1 and 6 hours (7.7).
 - Dataset size against the BigQuery quota.
-- The source of the exchange and bot wallet lists.
-- How Jito bundles are detected.
+- The source of the exchange and bot wallet lists: hubs are found by transfer counts (7.4); a named list would let the report say "from Binance".
+- How Jito bundles are detected: BigQuery has no bundle data, so the launch bundle is the creation-slot buyers minus sniper bots (7.4).
 - Whether GoPlus adds anything beyond our own signals for pump.fun tokens.
 - Which BigQuery Solana tables hold decoded instructions and token balances **(verify)**. `Instructions` is clustered by `executing_account`; the rest waits on `bq-check`.
 - **Found in live data (Oct 31):**
@@ -696,6 +700,8 @@ A research file per token (for example, `research/MOON-7xKX.md`) that can be che
   - **Version-1 transactions** now appear on mainnet. `bq-check` looks for days where BigQuery's row counts drop, in case its ingestion skips them.
   - **BigQuery has pump.fun's events only in stretches:** May 11–17 (six continuous days), May 28–29, Aug 12–13 and Sep 15, and nothing in October. The dataset plan in 7.7 is set to match (decisions log, Oct 31); details in `notes/data-sources.md`.
   - **Mayhem mode is a third of launches** (6,392 of 22,079 on Sep 15).
+  - **Failed transactions are in BigQuery's instructions.** Their pump.fun events look like real trades; some tokens even show failed creates. Status lives only in the `Transactions` table, which costs about 400 GiB a day to read, so failed curve trades are found from the reserve chain instead (7.7). PumpSwap pools need the pool's quote reserves before each trade to do the same; the decoded trades don't keep them yet.
+  - **Priority fees and tips aren't in the pull** (the Fees family in 7.3): they're in the same `Transactions` table. Live scoring can read them from Helius; training would need another source.
   - **Quotes other than SOL:** `create_v2` tokens can trade against USDC or another pump token (up to two levels deep). Trades keep their quote mint; prices for these need converting to SOL.
 
 ---
@@ -985,3 +991,16 @@ Rug check first, then backtesting and stocks. Each phase ends with something tha
   - **Speed:** the first signals within 10 seconds, the full report within a minute when warm.
   - **Demo:** a real past token from the test set, scored at 15 minutes, then its outcome revealed.
 - **Oct 31 (data pull):** BigQuery's Solana table has pump.fun's events (inner instructions) only in stretches, mainly May 11–17; October has none. The rug model uses the May week: train on May 11–14, tune on May 15, test on May 16, with Aug 12 and Sep 15 as a later check. Rebuilding October from the `Token Transfers` table was considered and set aside: about 58 GiB of quota a day, a day of extra work, and unverified.
+- **Oct 31 (step 3: links, labels, snapshots):** built in `backend/receipts/crypto/` (`dataset.py`, `chain.py`, `roles.py`, `labels.py`, `signals.py`). Decided from the data:
+  - The label window is 24 hours, not 7 days: 99.2% of rugs land within a day.
+  - The 90% fall is measured above the launch price, since a bonding curve can't fall below it.
+  - Snapshots stop at 6 hours.
+  - The team is one link from the creator or its bundle; hub wallets (50+ senders) never link.
+  - Failed transactions are dropped by chaining reserves (bonding curve; PumpSwap still unverified).
+  - Tokens quoted in something other than SOL are left out of snapshots for now (none in May; 1% of Aug 12, 14% of Sep 15).
+
+- **Nov 1 (step 4: models):**
+  - Glimmer trains on Kaggle's free GPUs, not Modal: the hackathon's Modal credits weren't claimed (requested Nov 1), and Modal's own free tier gave $1.
+  - The receipt's headline is the fair AUC (within mode and age), since pooled AUC mostly measures age and mode.
+  - Glimmer answers with the rug chance first, read as the expected value of its distribution over 1–99, and RL trains that number (one-token GRPO). Written reasons come from fine-tuning. Both choices fit the 30 GPU hours.
+  - Fine-tuning answers are distilled from the trees (their out-of-fold estimate and SHAP reasons).

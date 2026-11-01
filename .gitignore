@@ -10,3 +10,6 @@ dist/
 .venv/
 __pycache__/
 .pytest_cache/
+
+# generated per Kaggle run by backend/kaggle/push.py
+backend/kaggle/jobs/
