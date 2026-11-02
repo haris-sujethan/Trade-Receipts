@@ -1,13 +1,13 @@
 """The model's receipt for Glimmer (SPEC.md 7.9): its rug chances against the real outcomes.
 
-Reads a Kaggle scoring job's predictions (rug chances for the calibration, test and later-check
-files), fits isotonic calibration on the calibration file (May 15), and scores the test (May 16)
+Reads Kaggle scoring jobs' predictions (rug chances for the calibration, test and later-check
+files, from one job or split across several), fits isotonic calibration on the calibration file (May 15), and scores the test (May 16)
 and the later checks (Aug 12, Sep 15, 6-hour labels) with the same metrics as the baselines:
 the fair AUC within each mode and age, the pooled AUC, Brier, how often 80%+ really rugged, the
 verdict bands, and the calibration curve. The trees are scored on exactly the same snapshots, and
 so is the combination (the mean of Glimmer's and the trees' calibrated chances).
 
-    uv run python -m receipts glimmer-eval <job output folder> [--name glimmer-rl]
+    uv run python -m receipts glimmer-eval <job output folder>... [--name glimmer-rl]
     data/reports/glimmer_<name>.json
 """
 
@@ -24,8 +24,9 @@ from receipts.crypto import baselines
 REPORTS = settings.data_dir / "reports"
 
 
-def evaluate(predictions: pathlib.Path, name: str) -> dict:
-    df = pd.read_json(predictions, lines=True)
+def evaluate(predictions: list[pathlib.Path], name: str) -> dict:
+    df = pd.concat([pd.read_json(p, lines=True) for p in predictions], ignore_index=True)
+    df = df.drop_duplicates(["file", "id"])
     df["y"] = df.rugged.astype(int)
     cal = df[df.file == "calibration"]
     report: dict = {"name": name, "scored": df.groupby("file").size().to_dict()}

@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trade Receipts · Canon</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,500&family=Hanken+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Hallmark · v2.0.0 · theme: custom (the category standard, played straight) · genre: modern-minimal · shape: Settled, centred head over a photograph band · hero: head and actions centred, the product on frosted tabs over a photograph at 1240px · signature: the real IDE replaying MOON's check, floating on glass over architecture · direction: impeccable canon card, the reference the user named · photo: library stand-in, glass office building at blue hour (Dietmar Rabich, CC BY-SA 4.0) */
+/* Hallmark · pre-emit critique: P5 H4 E4 S4 R4 V5 · weakest: H, a centred head over a product band is the category's familiar opener; kept because it is the look the user asked for */
+:root{
+  --color-paper:oklch(99% 0 0); --color-paper-2:oklch(96.5% 0 0); --color-ink:oklch(19% 0 0); --color-ink-2:oklch(45% 0 0); --color-muted:oklch(55% 0 0); --color-rule:oklch(92% 0 0);
+  --color-glass:oklch(100% 0 0 / 0.2); --color-glass-on:oklch(100% 0 0 / 0.96); --color-glass-edge:oklch(100% 0 0 / 0.4); --color-on-photo:oklch(99% 0 0); --color-focus:oklch(19% 0 0);
+  --font-display:"Literata",ui-serif,Georgia,serif; --font-body:"Hanken Grotesk",ui-sans-serif,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;overflow-x:clip;background:var(--color-paper);color:var(--color-ink)}
+body{font:400 16px/1.55 var(--font-body);font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--color-focus);outline-offset:3px}
+.wrap{max-width:1320px;margin:0 auto;padding:0 40px}
+.nav{display:flex;align-items:center;justify-content:space-between;height:60px;border-bottom:1px solid var(--color-rule);padding:0 24px}
+.mark{display:flex;align-items:center;gap:9px;font:600 16px/1 var(--font-body);text-decoration:none}
+.mark svg{width:18px;height:18px}
+.nav nav{display:flex;align-items:center;gap:26px;font-size:14.5px;color:var(--color-ink-2)}
+.nav nav a{text-decoration:none}
+.btn{display:inline-flex;align-items:center;height:42px;padding:0 18px;border-radius:7px;font:500 15px/1 var(--font-body);text-decoration:none}
+.btn--primary{background:var(--color-ink);color:var(--color-paper)}
+.btn--line{box-shadow:inset 0 0 0 1px var(--color-rule);background:var(--color-paper)}
+.nav nav a.btn--primary{color:var(--color-paper);height:34px;padding:0 14px;font-size:14px}
+.head{text-align:center;padding:84px 0 52px}
+h1{margin:0;font:400 72px/1.04 var(--font-display);letter-spacing:-.025em;overflow-wrap:break-word;min-width:0}
+h1 span{display:block;color:var(--color-muted)}
+.lede{margin:22px auto 30px;font-size:18px;color:var(--color-ink-2);max-width:46ch;text-wrap:balance}
+.acts{display:flex;justify-content:center;gap:10px}
+.band{position:relative;max-width:1240px;margin:0 auto;height:760px;border-radius:16px;overflow:hidden}
+.band>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 35%}
+.tabs{position:absolute;top:44px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:2}
+.tab{height:34px;padding:0 15px;border-radius:999px;border:0;font:500 14px/1 var(--font-body);color:var(--color-on-photo);background:var(--color-glass);-webkit-backdrop-filter:blur(14px) saturate(1.5);backdrop-filter:blur(14px) saturate(1.5);box-shadow:inset 0 0 0 1px var(--color-glass-edge)}
+.tab[aria-selected=true]{background:var(--color-glass-on);color:var(--color-ink)}
+.window{position:absolute;left:64px;right:64px;top:100px;bottom:-40px;border-radius:12px;overflow:hidden;box-shadow:0 0 0 1px oklch(0% 0 0 / .2),0 40px 80px -30px oklch(10% 0.02 250 / .6);z-index:1}
+.window img{display:block;width:100%;height:auto}
+.how{padding:120px 0 90px}
+.how h2{margin:0 0 48px;font:400 48px/1.06 var(--font-display);letter-spacing:-.02em;max-width:16ch}
+.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:40px;border-top:1px solid var(--color-rule);padding-top:28px}
+.steps h3{margin:0 0 8px;font:500 18px/1.3 var(--font-body)}
+.steps p{margin:0;color:var(--color-ink-2);font-size:15.5px}
+.foot{padding:28px 0 40px;font-size:13px;color:var(--color-muted);border-top:1px solid var(--color-rule)}
+</style>
+</head>
+<body>
+<header class="nav"><a class="mark" href="/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h14v18l-2.33-1.5L14.33 21 12 19.5 9.67 21 7.33 19.5 5 21Z"/><path d="M9 8h6M9 12h6"/></svg>Trade Receipts</a><nav aria-label="Site"><a href="#examples">Examples</a><a href="#how">How it works</a><a class="btn btn--primary" href="/signup">Launch IDE</a></nav></header>
+<main>
+  <section class="head wrap" aria-labelledby="hero-h">
+    <h1 id="hero-h">Check the token<span>before you buy it.</span></h1>
+    <p class="lede">Paste a pump.fun token or drop in the clip shilling it.</p>
+    <div class="acts"><a class="btn btn--primary" href="/signup">Launch IDE</a><a class="btn btn--line" href="#examples">See it work</a></div>
+  </section>
+  <section class="band" id="examples" aria-label="Examples">
+    <img src="img/facade.jpg" alt="A glass office building at blue hour">
+    <div class="tabs" role="tablist" aria-label="Example sessions"><button class="tab" role="tab" aria-selected="true">MOON rug check</button><button class="tab" role="tab" aria-selected="false">KITE rug check</button><button class="tab" role="tab" aria-selected="false">BTC backtest</button></div>
+    <figure class="window" style="margin:0"><img src="img/ide-map.png" alt="The Trade Receipts IDE replaying MOON's rug check: the bubble map of linked wallets and the agent's steps"></figure>
+  </section>
+  <section class="how wrap" id="how" aria-labelledby="how-h">
+    <h2 id="how-h">From a shill clip to a receipt in one thread.</h2>
+    <div class="steps">
+      <div><h3>Ask</h3><p>Paste the token's mint or drop the clip that's shilling it.</p></div>
+      <div><h3>The agent does the work</h3><p>It traces who funded every wallet and splits the buying by who bought.</p></div>
+      <div><h3>You get the receipts</h3><p>A verdict, the real chart, the bubble map and every signal behind them.</p></div>
+    </div>
+  </section>
+  <footer class="foot"><div class="wrap">Photograph: <a href="https://commons.wikimedia.org/wiki/File:M%C3%BCnster,_LVM,_B%C3%BCrogeb%C3%A4ude_--_2013_--_5149-51.jpg">Dietmar Rabich</a>, CC BY-SA 4.0. For research and education. Not financial advice.</div></footer>
+</main>
+</body>
+</html>

@@ -185,6 +185,38 @@ def run() -> dict:
     ]
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
     booster.save_model(str(MODEL_DIR / "lightgbm.txt"), num_iteration=booster.best_iteration)
+    save_calibration(iso_tree)
     REPORT.parent.mkdir(parents=True, exist_ok=True)
     REPORT.write_text(json.dumps(report, indent=2, default=str))
     return report
+
+
+CALIBRATION = MODEL_DIR / "lightgbm_calibration.json"
+
+
+def save_calibration(iso: IsotonicRegression) -> None:
+    CALIBRATION.write_text(json.dumps({"x": iso.X_thresholds_.tolist(), "y": iso.y_thresholds_.tolist()}))
+
+
+def tree_model():
+    """The saved trees and their calibration (fit on the tune day), for live scoring.
+
+    Returns (booster, columns, rug_chance), where rug_chance maps a snapshot's signals to the
+    calibrated rug chance. A model saved before the calibration was kept gets it refit here from
+    the same tune-day predictions run() used.
+    """
+    booster = lgb.Booster(model_file=str(MODEL_DIR / "lightgbm.txt"))
+    cols = booster.feature_name()
+    if not CALIBRATION.exists():
+        df = load()
+        tune = df[df.launch_day.isin(SPLITS["tune"]) & df[LABEL].notna()]
+        raw = booster.predict(matrix(tune, cols))
+        save_calibration(IsotonicRegression(out_of_bounds="clip", y_min=0.001, y_max=0.999)
+                         .fit(raw, (tune[LABEL] == "rugged").to_numpy(int)))
+    cal = json.loads(CALIBRATION.read_text())
+
+    def rug_chance(signals: dict) -> float:
+        row = pd.DataFrame([{c: signals.get(c, np.nan) for c in cols}]).astype(float)
+        return float(np.interp(booster.predict(row)[0], cal["x"], cal["y"]))
+
+    return booster, cols, rug_chance

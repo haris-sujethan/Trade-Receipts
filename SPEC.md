@@ -6,7 +6,7 @@
 - **Event:** Meta Global AI Developer Hackathon, Indie Developer track
 - **Theme:** Build for Your World
 - **Submission deadline:** Wed Nov 4, 2026, 9:00 PM ET ([submit](https://cerebralvalley.ai/e/meta-ai-developer-hackathon/hackathon/submit))
-- **Status (Oct 31, 2026):** pivot. The crypto rug check (section 7) is now the main feature: pump.fun first, scored by a model trained on past launches. Backtesting and stock research stay as the second half. The frontend is built as a preview on example data. The backend is started in `backend/`: build steps 1–2 (the pump.fun data pipeline) are done, step 3 (signals, wallet links, labels and snapshots) is built (`uv run python -m receipts build-dataset may aug sep`), and step 4 is under way: the baselines are trained and Glimmer is training on Kaggle (Nov 1).
+- **Status (Oct 31, 2026):** pivot. The crypto rug check (section 7) is now the main feature: pump.fun first, scored by a model trained on past launches. Backtesting and stock research stay as the second half. The frontend is built as a preview on example data. The backend is started in `backend/`: build steps 1–2 (the pump.fun data pipeline) are done, step 3 (signals, wallet links, labels and snapshots) is built (`uv run python -m receipts build-dataset may aug sep`), and step 4 is nearly done: the baselines are trained, Glimmer is fine-tuned and trained with reinforcement learning on Kaggle, and its scoring is running (Nov 1). Steps 5 and 6 are started (Nov 2): live checks from Helius, the budget-guarded Meta client, the numbers audit, the agent loop and its API (`backend/receipts/server.py`).
 - **Name:** Trade Receipts.
 
 The research behind the data and tooling choices is in [notes/data-sources.md](notes/data-sources.md). Items marked **(verify)** couldn't be confirmed and must be checked before they're relied on; they're collected in [Open questions](#14-open-questions).
@@ -621,6 +621,31 @@ The main model is **Muse Glimmer**, Meta's open-weight 30B model (Apache 2.0, re
 - The checklist score: 10 red flags of the kind rug checkers show today, thresholds fixed in advance. **Fair AUC 0.44**: worse than a coin flip once age and mode are accounted for.
 - Gradient-boosted trees (LightGBM) on the same signals: **fair AUC 0.69** on May 16, 0.74 on Aug 12 and Sep 15 (6-hour labels).
 - Glimmer before any training, and after fine-tuning only, to show what each stage adds.
+- **Results (Nov 2):** fair AUC, with pooled AUC in brackets.
+  - **Same 300 snapshots per set** for every model, so the stages compare directly. The untrained run used 200 per set and older, longer prompts.
+
+    | | May 16 | Aug 12 | Sep 15 |
+    |---|---|---|---|
+    | Glimmer untrained | 0.62 (0.42) | 0.45 (0.47) | 0.57 (0.51) |
+    | Glimmer fine-tuned | 0.74 (0.96) | 0.76 (0.88) | 0.64 (0.92) |
+    | Glimmer after RL | 0.55 (0.92) | 0.52 (0.75) | 0.52 (0.88) |
+    | Trees | 0.87 (0.98) | 0.72 (0.89) | 0.61 (0.93) |
+    | Fine-tuned Glimmer + trees (mean) | 0.84 (0.97) | 0.76 (0.90) | 0.62 (0.93) |
+
+  - **Every snapshot** of May 16 (2,210) and 700 of each later day, for Glimmer after RL and the trees:
+
+    | | May 16 | Aug 12 | Sep 15 |
+    |---|---|---|---|
+    | Glimmer after RL | 0.52 (0.91) | 0.51 (0.76) | 0.58 (0.88) |
+    | Trees | 0.71 (0.96) | 0.72 (0.89) | 0.70 (0.92) |
+
+  - **Fine-tuning works.** It takes Glimmer from a coin flip to the trees' level: behind them on May 16, ahead on Aug 12 and level on Sep 15. That fits answers distilled from the trees.
+  - **RL made Glimmer worse.** GRPO pushed nearly every answer to 1% or 99% (median 99%). That loses the ranking within each mode and age, which is what the fair AUC measures. The likely causes:
+    - no KL penalty holding it near the fine-tuned model;
+    - a learning rate too high for 830 examples;
+    - training's rug rate (84%) far above the test days' (53%).
+  - **The live score is the trees' for now:** they win on the test split. Fine-tuned Glimmer is the better Glimmer.
+  - Reports: `data/reports/glimmer_{untrained,sft,rl}.json`.
 - **Why "fair" AUC:** pooled over all snapshots the trees score 0.96, but most of that is knowing the age (rug rates fall from 77% at 1 minute to 13% at 6 hours) and the mode (Mayhem mode tokens rug 8% of the time, standard ones 84%). The fair AUC is measured within each mode at each age and averaged by size, and it's the headline number.
 
 The score users see comes from whichever wins on the test split: Glimmer alone, or Glimmer combined with the trees. The receipt (7.9) shows all of them.
@@ -656,6 +681,34 @@ No accuracy claim appears anywhere without these numbers behind it.
   - The trees run alongside it on CPU.
 - **Cold starts:** keeping a GPU warm all of Nov 4–9 would cost about $230–300. So the demo's example tokens are scored ahead of time and cached. Live checks stream every signal, the bubble map, and the tree score at once, while Glimmer starts up (minutes from cold; Modal memory snapshots could shorten that **(verify)**).
 - **Speed:** the first signals within 10 seconds and the full report within a minute when Glimmer is warm. From cold, the report says the model is starting. Results stream into the thread as each signal finishes, and repeat lookups are cached.
+
+**Built (Nov 2):** `backend/receipts/crypto/live.py`, run with `uv run python -m receipts live-check <mint>`.
+- **Same code as training.** A live check fetches the token from Helius and writes the same raw tables the BigQuery pull makes. Then the dataset, label and signal code that built the training snapshots runs on them unchanged.
+- **What it fetches:**
+  - every transaction that touched the mint, launch to now (`getTransactionsForAddress`, 100 full transactions for 10 credits);
+  - for each traced wallet, the transactions in the two days before the launch and those since;
+  - its funders' incoming transfers;
+  - for wallets that bought in the first 10 seconds, the launches of tokens they bought in the day before, to tell sniper bots from the creator's bundle.
+- **Scored by the trees for now.** Glimmer has no free GPU to serve it live (Modal's credits weren't claimed), so its rug chance is precomputed on Kaggle for the demo tokens.
+- **Thinner than training, by design:**
+  - busy traders' scans stop after a few pages;
+  - funding reaches back two days before the launch;
+  - past rugs by the token's wallets need other tokens' outcomes, so they count as none and show as n/a.
+  - The parity check (`live-parity`, section 11) measures the effect on May 16 test tokens.
+- **Parity (Nov 2, 8 May 16 test tokens at 1 minute to 1 hour):**
+  - Same verdict on all 8. The trees' rug chance moved 0.007 on average and 0.05 at most.
+  - 38 of 81 signals matched exactly on every token.
+  - The rest are mostly wallet history:
+    - recycled wallets and past rugs, which a live check can't see;
+    - experienced and profitable holders, read from only part of busy traders' day;
+    - sniper bots and linked clusters.
+  - Three tokens had one more trade in training than live. Each was a failed transaction the reserve chain didn't catch (7.7); live checks drop failed transactions exactly.
+  - Report: `data/reports/live_parity.json`.
+- **Already rugged** comes from the same label code: the team's sells as of now.
+- **Cost:** a few hundred to about 8,000 Helius credits per token, depending on how many sniper bots bought it. About 20 seconds to 3 minutes.
+- **Two fixes found by the parity check:**
+  - Events are numbered by position in their parent instruction, as BigQuery numbers them, because training orders a slot's trades by that number.
+  - Sniper bots are scanned too: they're on the busy-sender list because they pay many wallets.
 
 ### 7.11 Result view
 
@@ -712,6 +765,13 @@ A research file per token (for example, `research/MOON-7xKX.md`) that can be che
 
 Muse Spark 1.3 with tool calling. It plans, calls tools, reads results, asks the user when needed, writes code, and explains. It never computes numbers itself.
 
+**Built (Nov 2):** `backend/receipts/agent/loop.py`, streamed by `backend/receipts/server.py` (`POST /api/agent`; `POST /api/check` runs a live check without the Meta API). The rug check's tools so far:
+- `check_token`: the live check (7.10). It covers `token_activity`, `trace_funding`, `signals` and `rug_model`, and returns the verdict, the rug chance and the signal lines Glimmer reads.
+- `token_security`: GoPlus.
+- `read_address`: reads a screenshot with structured output.
+
+Clips, copycats and name search come next. Tool outputs carry no timings or credit counts, so a repeated check sends identical requests and is served from the Meta cache.
+
 ### 8.2 Tools
 
 | Tool | Does | Backed by |
@@ -753,6 +813,8 @@ Muse Spark 1.3 with tool calling. It plans, calls tools, reads results, asks the
 Every tool call is an event streamed to the thread (server-sent events): step name, status, a short result line, timing. Fix rounds show what was fixed. Long jobs report progress.
 
 ### 8.4 Numbers audit
+
+**Built (Nov 2):** `backend/receipts/agent/audit.py`. A number passes when a tool value rounds to it at the precision the text shows, after its unit (%, $, K/M/B, x, durations). Digits inside addresses and tickers are skipped. The product's own constants and numbers from the user's message are allowed. One rewrite with the failing numbers pointed out, then they're marked unverified. Every audit is logged to `data/ledger/audit.jsonl` for the pass rate.
 
 Before any explanation is shown, every number in the model's text is checked against this run's tool outputs (with rounding tolerance and units: %, $, M/B, x). On a mismatch, regenerate with the mismatch pointed out; if it still fails, show the number marked unverified. Pass rates are logged for the eval.
 
@@ -1004,3 +1066,17 @@ Rug check first, then backtesting and stocks. Each phase ends with something tha
   - The receipt's headline is the fair AUC (within mode and age), since pooled AUC mostly measures age and mode.
   - Glimmer answers with the rug chance first, read as the expected value of its distribution over 1–99, and RL trains that number (one-token GRPO). Written reasons come from fine-tuning. Both choices fit the 30 GPU hours.
   - Fine-tuning answers are distilled from the trees (their out-of-fold estimate and SHAP reasons).
+  - Training skips examples over 2,100 tokens, which run a T4 out of memory (106 of the 900 in fine-tuning); scoring takes every snapshot.
+- **Nov 2 (step 4 results):** GRPO collapsed Glimmer to 1% or 99% answers and lowered its fair AUC on every test set. Fine-tuned Glimmer is the better Glimmer, and the trees win the test split (7.8). Another RL run, with a KL penalty to the fine-tuned model and a lower learning rate, needs about 11 Kaggle GPU hours: about 6 to train and 5 to score. The weekly quota resets Nov 7, after the deadline.
+- **Nov 2 (steps 5–6: live checks and the agent):**
+  - **One guarded client** (`backend/receipts/agent/meta.py`) makes every Meta call:
+    - Repeats come from its cache, even with the API off.
+    - It needs `META_API_ENABLED` and refuses after Nov 4, 9 PM ET.
+    - It prices each call first: input counted, with images and clips counted by Meta's free token-count endpoint, and output at its cap. It refuses once the ledger plus calls in flight would pass $100, or $10 in one day, so a loop gone wrong can't spend more than a day's cap.
+    - Each call's actual usage replaces its worst case.
+    - Rejected calls cost nothing. Network and server errors keep the worst case logged.
+    - Prices are from dev.meta.ai on Nov 1: Muse Spark 1.3 $1.25 / $4.25 per million tokens, the contributor model $0.10 / $0.20, Muse Wonder $4 / $20.
+    - `uv run python -m receipts meta-report` shows spend.
+  - **Muse Spark requests go to the contributor model** while `META_CONTRIBUTOR` is on (the default): the same model at a twelfth of the price. It's for public chain data and the builder's own clips, not visitors' uploads.
+  - **Server-side history isn't used.** `previous_response_id` can't be priced before sending, so the agent resends its input.
+  - **Live checks reuse the training code** on Helius data instead of a separate live implementation, so live and training signals can't drift apart silently.

@@ -1,4 +1,4 @@
-"""Push a Glimmer job to Kaggle: `uv run python kaggle/push.py <mode> [--limit N] [--adapter-from SLUG] [--hours H]`.
+"""Push a Glimmer job to Kaggle: `uv run python kaggle/push.py <mode> [--limit N] [--adapter-from SLUG] [--hours H] [--files F,G]`.
 
 Writes kaggle/jobs/glimmer-<mode>/ (the job script with its settings filled in, plus Kaggle's
 metadata) and starts it on 2× T4 with the private dataset attached. `--adapter-from` attaches an
@@ -26,6 +26,7 @@ def main() -> None:
     ap.add_argument("--adapter-from", help="slug of an earlier job whose output has adapter/")
     ap.add_argument("--hours", type=float, default=11.5, help="Kaggle run-time cap")
     ap.add_argument("--slug", help="job name (default glimmer-<mode>)")
+    ap.add_argument("--files", help="score: comma-separated files to read (default: all four)")
     args = ap.parse_args()
     slug = args.slug or f"glimmer-{args.mode}"
     job = HERE / "jobs" / slug
@@ -37,6 +38,8 @@ def main() -> None:
     code = re.sub(r'^TIME_LIMIT = .*$', f"TIME_LIMIT = {max(0.1, args.hours - 0.35) * 3600:.0f}", code, count=1, flags=re.M)
     code = re.sub(r'^LIMIT = .*$', f"LIMIT = {args.limit!r}", code, count=1, flags=re.M)
     code = re.sub(r'^ADAPTER_FROM = .*$', f"ADAPTER_FROM = {adapter!r}", code, count=1, flags=re.M)
+    files = args.files.split(",") if args.files else None
+    code = re.sub(r'^FILES = .*$', f"FILES = {files!r}", code, count=1, flags=re.M)
     (job / "run.py").write_text(code)
     meta = {
         "id": f"{USER}/{slug}", "title": slug, "code_file": "run.py", "language": "python",

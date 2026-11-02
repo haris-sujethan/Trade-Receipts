@@ -24,7 +24,10 @@ CREDITS = {
     "getAsset": 10,
     "getTokenAccounts": 10,
     "getAssetsByOwner": 10,
+    # 10 per 100 full transactions (a page here), or 10 flat for up to 1,000 signatures
+    "getTransactionsForAddress": 10,
 }
+PAGE = 100  # full transactions per getTransactionsForAddress page
 MIN_INTERVAL = 0.1  # stay near 10 requests a second
 
 
@@ -112,3 +115,30 @@ class Helius:
         """One page of an address's signatures, newest first. The newest page is always refetched."""
         options = {"limit": limit} | ({"before": before} if before else {})
         return self.rpc("getSignaturesForAddress", [address, options], fresh=before is None)
+
+    def history(self, address: str, *, gte: int, lte: int, order: str = "asc", max_pages: int = 10):
+        """An address's successful transactions in [gte, lte] (unix seconds), oldest or newest first.
+
+        Yields (transactions, complete) per page of up to PAGE; `complete` turns true on the last
+        page. Stops after `max_pages`, so the caller learns the history was cut short. Pages that
+        end before now never change, so they're cached for good.
+        """
+        token = None
+        for page in range(max_pages):
+            options = {"transactionDetails": "full", "sortOrder": order, "limit": PAGE,
+                       "filters": {"blockTime": {"gte": int(gte), "lte": int(lte)}, "status": "succeeded"},
+                       "encoding": "json", "maxSupportedTransactionVersion": 0}
+            if token:
+                options["paginationToken"] = token
+            result = self.rpc("getTransactionsForAddress", [address, options], fresh=lte >= time.time() - 60)
+            token = result.get("paginationToken")
+            yield result["data"], token is None
+            if token is None:
+                return
+
+    def count_since(self, address: str, *, gte: int, lte: int) -> int:
+        """How many successful transactions an address had in [gte, lte], up to 1,000 (10 credits)."""
+        options = {"transactionDetails": "signatures", "limit": 1000,
+                   "filters": {"blockTime": {"gte": int(gte), "lte": int(lte)}, "status": "succeeded"}}
+        result = self.rpc("getTransactionsForAddress", [address, options], fresh=lte >= time.time() - 60)
+        return len(result["data"])

@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trade Receipts · Split chart</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Host+Grotesk:wght@400;500&family=Atkinson+Hyperlegible+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Hallmark · v2.0.0 · theme: console graphite (dealt 1/3, seed rug-check-new-crypto-97af·93616b2b·2026-11-01·r0) · genre: modern-minimal · shape: Stage · hero: head on columns 1 to 4, the split chart on 5 to 12 · signature: one frosted glass pane dragged across MOON's chart, the pitch on one side and who really traded on the other · translation: Console's no-glass rule yields to the pinned liquid glass, spent on the one pane · amber is the person (the primary control), cool is the instrument (readings) */
+/* Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V4 · weakest: V, graphite is close to the IDE's old desk; the glass pane and the light readings carry the difference */
+:root{
+  --color-paper:oklch(17% 0.008 250); --color-paper-2:oklch(21% 0.009 250); --color-paper-3:oklch(13.5% 0.007 250);
+  --color-ink:oklch(95% 0.005 250); --color-ink-2:oklch(83% 0.008 250); --color-muted:oklch(71% 0.01 250);
+  --color-rule:oklch(31% 0.01 250); --color-rule-2:oklch(42% 0.012 250);
+  --color-accent:oklch(82% 0.15 80); --color-accent-ink:oklch(18% 0.04 75); --color-focus:oklch(82% 0.15 80);
+  --color-cool:oklch(77% 0.12 245); --color-bad:oklch(70% 0.17 25);
+  --color-pump:oklch(72% 0.17 150); --color-pump-down:oklch(64% 0.19 25);
+  --glass:oklch(95% 0.005 250 / 0.07); --glass-edge:oklch(100% 0 0 / 0.22); --glass-hi:oklch(100% 0 0 / 0.35);
+  --font-display:"Host Grotesk",ui-sans-serif,system-ui,sans-serif; --font-body:var(--font-display); --font-outlier:"Atkinson Hyperlegible Mono",ui-monospace,monospace;
+  --sans:var(--font-body); --mono:var(--font-outlier);
+  --chart-bg:var(--color-paper-3); --chart-grid:oklch(24% 0.01 250); --chart-muted:var(--color-muted); --chart-text:var(--color-ink-2); --candle:var(--color-ink-2);
+  --g-team:#d95926; --g-likelyTeam:#9085e9; --g-sniper:#199e70; --g-bot:#3987e5; --g-fresh:#c98500; --g-independent:#6b6b72;
+  --text-2:var(--color-ink-2);
+}
+*{box-sizing:border-box}
+html,body{margin:0;overflow-x:clip;background:var(--color-paper);color:var(--color-ink)}
+body{font:400 17px/1.55 var(--font-body);font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--color-focus);outline-offset:3px}
+.wrap{max-width:1360px;margin:0 auto;padding:0 40px}
+.nav{display:flex;align-items:center;height:52px;margin-top:20px;border:1px solid var(--color-rule);border-radius:10px;background:var(--color-paper-2)}
+.mark{padding:0 20px;font:500 16px/1 var(--font-display);text-decoration:none;border-right:1px solid var(--color-rule);height:100%;display:flex;align-items:center}
+.nav nav{display:flex;gap:22px;padding:0 20px;font-size:14px;color:var(--color-muted)}
+.nav nav a{text-decoration:none}
+.nav .end{margin-left:auto;padding:0 8px}
+.btn{display:inline-flex;align-items:center;height:44px;padding:0 20px;border-radius:6px;font:500 15px/1 var(--font-body);text-decoration:none}
+.btn--primary{background:var(--color-accent);color:var(--color-accent-ink)}
+.btn--line{box-shadow:inset 0 0 0 1px var(--color-rule-2);background:var(--color-paper-2)}
+.nav .btn{height:36px;padding:0 14px;font-size:14px}
+.hero{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,8fr);gap:48px;align-items:center;padding:56px 0 64px;min-height:calc(100vh - 72px)}
+h1{margin:0;font:500 64px/1.03 var(--font-display);letter-spacing:-.03em;overflow-wrap:break-word;min-width:0}
+.lede{margin:20px 0 28px;font-size:18px;color:var(--color-muted);max-width:28ch}
+.acts{display:flex;gap:10px}
+/* the split chart */
+.split{border:1px solid var(--color-rule);border-radius:10px;background:var(--color-paper-2);overflow:hidden}
+.split-h{display:flex;justify-content:space-between;align-items:center;height:48px;padding:0 16px;border-bottom:1px solid var(--color-rule);font-size:14px;color:var(--color-muted)}
+.split-h b{color:var(--color-ink);font-weight:500}
+.split-h .m{font:400 14px var(--font-outlier);color:var(--color-cool)}
+.view{position:relative;height:440px;background:var(--color-paper-3);touch-action:none}
+.side{position:absolute;inset:0;padding:12px 10px 0}
+.pitch{--g-team:var(--color-pump);--g-likelyTeam:var(--color-pump);--g-sniper:var(--color-pump);--g-bot:var(--color-pump);--g-fresh:var(--color-pump);--g-independent:var(--color-pump);clip-path:inset(0 calc(100% - var(--x)) 0 0)}
+.pitch .trc-vol{stroke:none}
+.pitch .trc-candle.is-up{fill:var(--color-pump);stroke:var(--color-pump)}
+.pitch .trc-candle.is-down{fill:var(--color-pump-down);stroke:var(--color-pump-down)}
+.pitch .trc-sell,.pitch .trc-break,.pitch .trc-anno{display:none}
+.truth{clip-path:inset(0 0 0 var(--x))}
+.cap{position:absolute;top:14px;font:400 13px/1 var(--font-outlier);color:var(--color-muted);z-index:2}
+.cap.l{left:56px}.cap.r{right:16px}
+.pane{position:absolute;top:0;bottom:0;left:calc(var(--x) - 28px);width:56px;z-index:3;background:var(--glass);-webkit-backdrop-filter:blur(10px) saturate(1.8) brightness(1.15);backdrop-filter:blur(10px) saturate(1.8) brightness(1.15);box-shadow:inset 1px 0 0 var(--glass-hi),inset -1px 0 0 var(--glass-edge),inset 8px 0 14px -10px oklch(100% 0 0 / .2),inset -8px 0 14px -10px oklch(100% 0 0 / .12);cursor:ew-resize}
+.pane::after{content:"";position:absolute;left:50%;top:50%;width:4px;height:44px;margin:-22px 0 0 -2px;border-radius:2px;background:var(--color-ink)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;padding:12px 16px;border-top:1px solid var(--color-rule);font-size:13px;color:var(--color-muted)}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:0}
+.readings{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid var(--color-rule)}
+.readings div{padding:16px;border-right:1px solid var(--color-rule);font-size:13.5px;color:var(--color-muted)}
+.readings div:last-child{border-right:0}
+.readings b{display:block;font:400 34px/1 var(--font-outlier);color:var(--color-ink);margin-bottom:6px}
+.readings b.bad{color:var(--color-bad)}
+/* section two: the agent's trail */
+.sec{padding:96px 0 80px;border-top:1px solid var(--color-rule)}
+.sec-grid{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,8fr);gap:48px}
+h2{margin:0;font:500 40px/1.06 var(--font-display);letter-spacing:-.025em}
+.sec p{color:var(--color-muted);max-width:30ch}
+.trail{list-style:none;margin:0;padding:0 0 0 22px;border-left:1px solid var(--color-rule-2)}
+.trail li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;padding:12px 0;border-bottom:1px solid var(--color-rule);font-size:16px}
+.trail li span{color:var(--color-muted);font-size:14.5px;display:block}
+.trail li em{font:400 14px var(--font-outlier);font-style:normal;color:var(--color-cool);white-space:nowrap}
+.foot{padding:28px 0 40px;font-size:13px;color:var(--color-muted);border-top:1px solid var(--color-rule)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="nav"><a class="mark" href="/">Trade Receipts</a><nav aria-label="Site"><a href="#examples">Examples</a><a href="#how">How it works</a></nav><span class="end"><a class="btn btn--primary" href="/signup">Launch IDE</a></span></header>
+  <main>
+    <section class="hero" aria-labelledby="hero-h">
+      <div>
+        <h1 id="hero-h">Check the token before you buy it.</h1>
+        <p class="lede">Paste a pump.fun token or drop in the clip shilling it.</p>
+        <div class="acts"><a class="btn btn--primary" href="/signup">Launch IDE</a><a class="btn btn--line" href="#examples">See it work</a></div>
+      </div>
+      <figure class="split" style="margin:0" aria-label="MOON's chart as pitched beside the same chart split by who traded">
+        <div class="split-h"><span><b>MOON</b>, an example token, 15 minutes after launch</span><span class="m">rug chance 87%</span></div>
+        <div class="view" id="view" style="--x:46%">
+          <div class="side pitch"><div data-slot="chart" data-w="870" data-h="420" data-labels="0"></div></div>
+          <div class="side truth"><div data-slot="chart" data-w="870" data-h="420" data-labels="0"></div></div>
+          <span class="cap l">as pitched</span><span class="cap r">by who traded</span>
+          <div class="pane" role="slider" tabindex="0" aria-label="Move the glass" aria-valuemin="0" aria-valuemax="100" aria-valuenow="46"></div>
+        </div>
+        <div class="legend"><span><i style="background:var(--g-team)"></i>Team</span><span><i style="background:var(--g-likelyTeam)"></i>Likely team</span><span><i style="background:var(--g-sniper)"></i>Snipers</span><span><i style="background:var(--g-bot)"></i>Bots and wash trades</span><span><i style="background:var(--g-fresh)"></i>Fresh wallets</span><span><i style="background:var(--g-independent)"></i>Independent buyers</span></div>
+        <div class="readings"><div><b class="bad">11%</b>of the buying came from independent buyers</div><div><b>23%</b>of supply held by the team</div><div><b>7</b>team sells into new buyers</div></div>
+      </figure>
+    </section>
+  </main>
+</div>
+<section class="sec" id="how" aria-labelledby="s2-h">
+  <div class="wrap sec-grid">
+    <div><h2 id="s2-h">Every step the agent took, on the record.</h2><p>From the clip to the verdict, each step names its source and how long it took.</p></div>
+    <ol class="trail">
+      <li><div>Read the token off the screen<span>Mint shown at 0:21</span></div><em>Muse Spark 1.3, 5.1 s</em></li>
+      <li><div>Pulled MOON's first 15 minutes<span>412 trades, 212 holders, 96 funding transfers</span></div><em>1.9 s</em></li>
+      <li><div>Traced who funded every wallet<span>2 team clusters: 19 wallets hold 23%</span></div><em>chain</em></li>
+      <li><div>Split the buying by who bought<span>Independent buyers: 11% of buy volume</span></div><em>chain</em></li>
+      <li><div>Scored the rug chance<span>Likely rug, 87%</span></div><em>Muse Glimmer</em></li>
+    </ol>
+  </div>
+</section>
+<footer class="foot"><div class="wrap">Example values for a made-up token. For research and education. Not financial advice.</div></footer>
+<script src="shared.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded",()=>{
+  const v=document.getElementById("view"),p=v.querySelector(".pane");let d=false;
+  const set=c=>{const b=v.getBoundingClientRect();const pct=Math.max(8,Math.min(92,(c-b.left)/b.width*100));v.style.setProperty("--x",pct+"%");p.setAttribute("aria-valuenow",Math.round(pct));};
+  p.addEventListener("pointerdown",e=>{d=true;p.setPointerCapture(e.pointerId);});
+  p.addEventListener("pointermove",e=>{if(d)set(e.clientX);});
+  p.addEventListener("pointerup",()=>d=false);
+  p.addEventListener("keydown",e=>{const k={ArrowLeft:-4,ArrowRight:4}[e.key];if(!k)return;e.preventDefault();const b=v.getBoundingClientRect();set(b.left+b.width*(+p.getAttribute("aria-valuenow")+k)/100);});
+});
+</script>
+</body>
+</html>

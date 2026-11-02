@@ -34,6 +34,7 @@ os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 MODE = "smoke"  # set per job by push.py
 LIMIT = None  # examples to use (None: all in the file); set per job by push.py
 ADAPTER_FROM = None  # the earlier job (slug) whose saved adapter to load; set per job by push.py
+FILES = None  # the files a score job reads (None: all four); set per job by push.py
 REPO = "unsloth/Muse-Glimmer-30B-unsloth-bnb-4bit"
 DATA = "/kaggle/input/rug-check-glimmer-data"
 OUT = "/kaggle/working"
@@ -322,7 +323,7 @@ def main() -> None:
     elif MODE == "score":
         if ADAPTER_FROM:
             model = add_lora(model, trainable=False)
-        score(model, processor, ["calibration", "test", "later_aug", "later_sep"])
+        score(model, processor, FILES or ["calibration", "test", "later_aug", "later_sep"])
     note(stage="done")
 
 

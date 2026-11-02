@@ -16,6 +16,7 @@ so the same history can be rebuilt from Helius when a token is scored live.
 
 import datetime as dt
 import os
+import pathlib
 import shutil
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
@@ -53,10 +54,12 @@ class Block:
     trade_days: list[dt.date]
     launch_days: list[dt.date]
     funding: str  # the funding files' date range
+    root: pathlib.Path | None = None  # a live check's own folder (live.py)
+    sources: dict | None = None  # view name -> Parquet files, in place of the pulled days' files
 
     @property
     def dir(self):
-        return ROOT / self.name
+        return self.root or ROOT / self.name
 
     def path(self, table: str):
         return self.dir / f"{table}.parquet"
@@ -82,14 +85,18 @@ def connect(b: Block) -> duckdb.DuckDBPyConnection:
     def view(name, files):
         con.execute(f"CREATE VIEW {name} AS SELECT * FROM read_parquet({files!r}, union_by_name = true)")
 
-    view("launches", parts("launches", b.launch_days))
-    view("all_launches", parts("launches", b.trade_days))
-    view("raw_trades", parts("trades", b.trade_days))
-    view("migrations", parts("migrations", b.trade_days))
-    view("pools", parts("pools", b.trade_days))
-    for kind in ("hop1", "hop2", "busy", "wallets"):
-        view(kind, [str(funding.ROOT / f"{kind}_{b.funding}.parquet")])
-    con.execute(f"CREATE VIEW history AS SELECT * FROM read_parquet('{store.ROOT / 'wallet_history.parquet'}')")
+    if b.sources:
+        for name, files in b.sources.items():
+            view(name, [str(f) for f in files])
+    else:
+        view("launches", parts("launches", b.launch_days))
+        view("all_launches", parts("launches", b.trade_days))
+        view("raw_trades", parts("trades", b.trade_days))
+        view("migrations", parts("migrations", b.trade_days))
+        view("pools", parts("pools", b.trade_days))
+        for kind in ("hop1", "hop2", "busy", "wallets"):
+            view(kind, [str(funding.ROOT / f"{kind}_{b.funding}.parquet")])
+        view("history", [str(store.ROOT / "wallet_history.parquet")])
     # The block's own tables; the token wallets are `token_wallets`, since `wallets` is the funding list.
     for table, name in (("tokens", "tokens"), ("trades", "trades"), ("edges", "edges"),
                         ("wallets", "token_wallets"), ("team", "team"), ("labels", "labels")):
@@ -101,9 +108,9 @@ def connect(b: Block) -> duckdb.DuckDBPyConnection:
 STEPS = ("tokens", "trades", "edges", "wallets")
 
 
-def prepare(name: str, steps: tuple[str, ...] = STEPS) -> dict[str, int]:
+def prepare(name: str | Block, steps: tuple[str, ...] = STEPS) -> dict[str, int]:
     """Tokens, their trades, wallet links and wallet context for a block (or some of these steps)."""
-    b = block(name)
+    b = name if isinstance(name, Block) else block(name)
     b.dir.mkdir(parents=True, exist_ok=True)
     con = connect(b)
     counts = {}
@@ -202,8 +209,11 @@ def _trades(con, b: Block) -> int:
     """, staged / "all.parquet")
     mints = [r[0] for r in con.execute("SELECT mint FROM tokens ORDER BY mint").fetchall()]
     tasks = [(str(staged), n, mints[i:i + 500]) for n, i in enumerate(range(0, len(mints), 500))]
-    with ProcessPoolExecutor(max_workers=max(1, (os.cpu_count() or 2) - 2)) as pool:
-        dropped = sum(pool.map(_verify_part, tasks))
+    if len(tasks) == 1:  # one live token: no worker processes
+        dropped = _verify_part(tasks[0])
+    else:
+        with ProcessPoolExecutor(max_workers=max(1, (os.cpu_count() or 2) - 2)) as pool:
+            dropped = sum(pool.map(_verify_part, tasks))
     count = _copy(con, f"""
         SELECT * EXCLUDE (ok, seq, chain_key, token_reserves), ok IS NOT NULL AS verified
         FROM read_parquet('{staged}/parts/*.parquet')
@@ -402,7 +412,7 @@ def _wallets(con, b: Block) -> int:
     """, b.path("wallets"))
 
 
-def reputation(name: str, label_hours: int) -> dict[str, int]:
+def reputation(name: str | Block, label_hours: int) -> dict[str, int]:
     """Past rugs as of each launch: team wallets and creators whose earlier tokens rugged (7.3).
 
     Needs labels. Only rugs that had happened before the launch count, within HISTORY_LOOKBACK,
@@ -411,7 +421,7 @@ def reputation(name: str, label_hours: int) -> dict[str, int]:
         reputation.parquet  (mint, wallet): earlier rugs this wallet was team in
         creators.parquet    per token: the creator's and its funder group's launches and rugs
     """
-    b = block(name)
+    b = name if isinstance(name, Block) else block(name)
     con = connect(b)
     _funding_graph(con)
     con.execute(f"""

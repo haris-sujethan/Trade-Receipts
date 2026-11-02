@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ember · Trade Receipts</title>
+<script>if (/full/.test(location.search)) document.documentElement.classList.add("full");</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&family=Red+Hat+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme:dark;
+  --sans:"Onest",system-ui,sans-serif; --mono:"Red Hat Mono",ui-monospace,monospace;
+  /* the field takes the verdict's color: ember for Likely rug (KITE, an Unlikely rug, would sit in slate) */
+  --field-1:#4a140c; --field-2:#23100d; --field-0:#0f0807;
+  --text-1:#f6efed; --text-2:#cdbcb7; --text-3:#a8948e; --accent:#ffb199;
+  --bad:#ff8471; --warn:#f0b04a; --ok:#6fcf98;
+  --chart-bg:#1c1311; --chart-grid:#2d211e; --chart-muted:#a8948e; --chart-text:#eadfdc; --candle:#efe6e3;
+  --g-team:#d95926; --g-likelyTeam:#9085e9; --g-sniper:#199e70; --g-bot:#3987e5; --g-fresh:#c98500; --g-independent:#6f6866; --g-other:#625b59;
+  --code-ln:#6e5e59; --code-text:#e0d4d1; --code-h:#fff; --code-t:#a8948e; --code-k:#ffb199; --code-v:#ff8471;
+  --line:rgba(255,226,216,.08);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{font:400 13px/1.45 var(--sans);color:var(--text-1);background:var(--field-0);overflow:hidden;font-feature-settings:"tnum" 1;-webkit-font-smoothing:antialiased}
+::selection{background:rgba(255,132,113,.35)}
+button{font:inherit;color:inherit}
+.field{position:fixed;inset:0;z-index:0;pointer-events:none;background:
+  radial-gradient(900px 620px at 38% 18%,var(--field-1) 0,transparent 70%),
+  radial-gradient(700px 520px at 85% 85%,#3a120b 0,transparent 70%),
+  radial-gradient(1200px 900px at 10% 100%,var(--field-2) 0,transparent 75%),var(--field-0)}
+.app{position:relative;z-index:1;height:100vh;display:grid;grid-template-rows:auto minmax(0,1fr);gap:8px;padding:8px}
+.glass{background:rgba(44,22,19,.36);-webkit-backdrop-filter:blur(28px) saturate(1.5);backdrop-filter:blur(28px) saturate(1.5);border-radius:16px;box-shadow:inset 0 1px 0 rgba(255,232,224,.12),inset 0 0 0 1px var(--line),0 20px 40px -24px rgba(0,0,0,.8)}
+.top{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;height:46px;padding:0 10px 0 16px}
+.brand{display:flex;align-items:center;gap:12px;font-weight:700;font-size:14px;letter-spacing:-.01em}
+.crumb{font-weight:500;color:var(--text-3);font-size:12.5px;display:flex;align-items:center;gap:6px}
+.crumb b{color:var(--text-1);font-weight:600}
+.modes{display:flex;gap:2px;padding:3px;border-radius:10px;background:rgba(0,0,0,.25)}
+.modes button{border:0;background:none;height:26px;padding:0 14px;border-radius:7px;font-size:12.5px;font-weight:600;color:var(--text-3)}
+.modes button[aria-pressed=true]{background:rgba(255,236,230,.14);color:var(--text-1);box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
+.top-r{display:flex;justify-content:flex-end;align-items:center;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:7px;height:26px;padding:0 11px;border-radius:999px;border:0;background:rgba(255,236,230,.08);box-shadow:inset 0 0 0 1px var(--line);font-size:11.5px;font-weight:600;color:var(--text-2)}
+.chip i{width:6px;height:6px;border-radius:50%;background:var(--warn)}
+.ibtn{width:28px;height:28px;display:grid;place-items:center;border:0;border-radius:8px;background:none;color:var(--text-2)}
+.cols{display:grid;grid-template-columns:200px minmax(0,1fr) 336px;gap:8px;min-height:0}
+.pane{display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.pane-h{display:flex;align-items:center;justify-content:space-between;height:40px;padding:0 8px 0 14px;font-size:12px;font-weight:600;color:var(--text-2);flex:none}
+.pane-h > span{display:flex;gap:2px}
+.files .tr-tree{padding:0 6px}
+.tr-file.is-active{background:rgba(255,236,230,.1);font-weight:600}
+.tag{margin-left:auto;font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:999px}
+/* center: dashboard over a source panel */
+.center{display:grid;grid-template-rows:minmax(0,1fr) 168px;gap:8px;min-height:0}
+.board{overflow:auto;border-radius:16px;min-height:0}
+.grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
+.tile{padding:18px 20px}
+.t-verdict{grid-column:span 4;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 20px;align-items:end;padding:22px 24px 20px}
+.meta{grid-column:1/-1;margin:0 0 8px;display:flex;gap:4px 10px;flex-wrap:wrap;font-size:11.5px;color:var(--text-3)}
+.meta .mono{font-family:var(--mono);color:var(--text-2)}
+.verdict{margin:0;font-size:54px;font-weight:800;letter-spacing:-.04em;line-height:.95;color:var(--bad)}
+.pct{margin:0;text-align:right;font-size:74px;font-weight:800;letter-spacing:-.05em;line-height:.85}
+.pct small{display:block;font-size:13px;font-weight:600;letter-spacing:0;color:var(--text-2);margin-top:8px}
+.t-verdict .tr-band{grid-column:1/-1;margin-top:16px}
+.tr-band__track .is-unlikely{background:rgba(255,236,230,.12)}.tr-band__track .is-possible{background:rgba(255,236,230,.22)}.tr-band__track .is-likely{background:#b8442f}
+.tr-band__mark{background:#fff;box-shadow:0 0 0 2px #2a1512}
+.tr-band__seg em{color:var(--text-3)}
+.basis{grid-column:1/-1;margin:6px 0 0;font-size:11.5px;color:var(--text-3)}
+.t-facts{grid-column:span 2;grid-row:span 2;padding:18px}
+.t-why{grid-column:span 4}
+.t-why p{margin:0 0 10px;font-size:14px;line-height:1.6;color:#eadfdc;text-wrap:pretty}
+.t-chart{grid-column:span 6;background:rgba(28,19,17,.72)}
+.t-map{grid-column:span 3;background:rgba(28,19,17,.72)}
+.t-sig{grid-column:span 3}
+.t-claims{grid-column:span 6}
+h2{margin:0 0 3px;font-size:13.5px;font-weight:700}
+.sub{margin:0 0 12px;font-size:12px;color:var(--text-2)}
+.chart-top{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin-bottom:10px}
+.tr-stats{display:flex;gap:26px;margin:0}
+.tr-stats div{display:flex;flex-direction:column-reverse;text-align:right}
+.tr-stats dt{font-size:11px;color:var(--text-2)}
+.tr-stats dd{margin:0;font-size:26px;font-weight:800;letter-spacing:-.03em;line-height:1.05}
+.tr-stats dd.is-bad{color:var(--bad)}
+.tr-legend{margin-bottom:10px}
+.counts{display:flex;gap:6px;margin:0 0 10px}
+.counts span{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 9px;border-radius:999px;background:rgba(255,236,230,.07);font-size:11.5px;font-weight:600}
+.counts .r{color:var(--bad)}.counts .c{color:var(--warn)}.counts .p{color:var(--ok)}
+.tr-sig{grid-template-columns:82px minmax(0,1fr);padding:7px 0;box-shadow:inset 0 -1px 0 var(--line);font-size:12.5px}
+.tr-sig__value{grid-column:2;text-align:left;max-width:none;font-size:11.5px;margin-top:-6px}
+.tr-facts__title{margin:0;font-size:24px;font-weight:800;letter-spacing:-.03em}
+.tr-facts__subject{margin:6px 0 0;font-size:11.5px;font-weight:600}
+.tr-facts__serving{margin:2px 0 10px;font-size:11px;color:var(--text-3);padding-bottom:10px;box-shadow:inset 0 -2px 0 rgba(255,236,230,.5)}
+.tr-facts__claimed,.tr-facts__tested{display:flex;justify-content:space-between;align-items:baseline;font-size:12px}
+.tr-facts__claimed s{font-size:16px;font-weight:700}
+.tr-facts__tested{padding-bottom:8px;box-shadow:inset 0 -1px 0 rgba(255,236,230,.3)}
+.tr-facts__tested b{font-size:30px;font-weight:800;letter-spacing:-.03em}
+.tr-facts__rows div{padding:6px 0;font-size:12px;box-shadow:inset 0 -1px 0 var(--line)}
+.tr-facts__rows div.has-rule{box-shadow:inset 0 -1px 0 rgba(255,236,230,.3)}
+.tr-facts__foot{margin:10px 0 0;font-size:10.5px;color:var(--text-3);line-height:1.45}
+.tr-claims li{padding:8px 0;box-shadow:inset 0 -1px 0 var(--line)}
+.nfa{grid-column:span 6;margin:4px 4px 8px;font-size:11.5px;color:var(--text-3)}
+.panel{display:flex;flex-direction:column;overflow:hidden}
+.ptabs{display:flex;gap:16px;align-items:center;height:36px;padding:0 14px;box-shadow:inset 0 -1px 0 var(--line);font-size:12px;font-weight:600;color:var(--text-3);flex:none}
+.ptabs b{color:var(--text-1);font-weight:600}
+.ptabs .e{color:var(--bad);font-weight:500}
+.panel .tr-code{padding:8px 14px;font-size:11.5px}
+/* thread */
+.thread-body{flex:1;overflow:auto;padding:2px 14px 12px}
+.tr-msg--user{background:rgba(255,236,230,.08);border-radius:14px;padding:10px 12px;box-shadow:inset 0 0 0 1px var(--line)}
+.tr-msg--user p{margin:6px 0 0}
+.tr-steps{margin:12px 0}
+.tr-step__ok{background:rgba(111,207,152,.14);color:var(--ok)}
+.tr-msg--agent p{margin:0;line-height:1.55;color:#eadfdc}
+.composer{margin:0 10px 10px;border-radius:14px;padding:10px 10px 8px 12px;background:rgba(15,8,7,.45);box-shadow:inset 0 0 0 1px rgba(255,236,230,.14)}
+.composer textarea{display:block;width:100%;border:0;background:none;resize:none;font:inherit;color:var(--text-1);height:38px;outline:none}
+.composer textarea::placeholder{color:var(--text-3)}
+.crow{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;color:var(--text-3)}
+.crow .l{display:flex;align-items:center}
+.send{width:28px;height:28px;border-radius:9px;border:0;background:var(--text-1);color:#1b0f0d;display:grid;place-items:center}
+.full,.full body{height:auto;overflow:visible}
+.full .app{height:auto}
+.full .board,.full .thread-body,.full .pane{overflow:visible}
+.full .center{grid-template-rows:auto 168px}
+</style>
+</head>
+<body>
+<div class="field" aria-hidden="true"></div>
+<div class="app">
+  <header class="top glass">
+    <div class="brand"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h14v18l-2.33-1.5L14.33 21 12 19.5 9.67 21 7.33 19.5 5 21Z"/><path d="M9 8h6M9 12h6"/></svg>Trade Receipts<span class="crumb">/ tokens / <b>MOON-7xKX.md</b></span></div>
+    <nav class="modes" aria-label="Mode"><button aria-pressed="false">Backtest</button><button aria-pressed="true">Analyze</button></nav>
+    <div class="top-r"><button class="chip"><i></i>Preview · example data</button><button class="ibtn" aria-label="Help"><span data-icon="help" data-size="16"></span></button></div>
+  </header>
+  <div class="cols">
+    <aside class="pane files glass" aria-label="Files"><div class="pane-h">Project<span><button class="ibtn" aria-label="New file"><span data-icon="plus"></span></button></span></div><div data-slot="tree"></div></aside>
+    <div class="center">
+      <main class="board" data-scroller aria-label="Rug check: MOON">
+        <div class="grid">
+          <section class="tile glass t-verdict" aria-label="Verdict">
+            <p class="meta"><span>MOON · pump.fun</span><span class="mono">7xKX…gAsU</span><span>15 min after launch</span><span>Bonding curve</span><span>From moon_shill.mp4</span></p>
+            <h1 class="verdict">Likely rug</h1>
+            <p class="pct">87%<small>rug chance</small></p>
+            <div data-slot="band"></div>
+            <p class="basis">From Muse Glimmer, trained on thousands of past pump.fun tokens. Accuracy is published when training finishes. Example values for a made-up token.</p>
+          </section>
+          <div class="tile glass t-facts" data-slot="facts"></div>
+          <section class="tile glass t-why" aria-label="Why"><h2>Why</h2><div data-slot="why" style="margin-top:8px"></div></section>
+          <section class="tile glass t-chart" aria-labelledby="h-chart" data-shot2>
+            <div class="chart-top"><div><h2 id="h-chart">The real chart</h2><p class="sub" style="margin:0">Market cap, with volume split by who traded. Hollow candles closed up, solid ones down. Team sells are marked.</p></div><div data-slot="stats"></div></div>
+            <div data-slot="chartLegend"></div>
+            <div data-slot="chart" data-w="820" data-h="300"></div>
+          </section>
+          <section class="tile glass t-map" aria-labelledby="h-map"><h2 id="h-map">Who holds it</h2><p class="sub">Top 50 holders and first 50 buyers, sized by share of supply.</p><div data-slot="mapLegend"></div><div data-slot="map" data-w="400" data-h="360"></div></section>
+          <section class="tile glass t-sig" aria-labelledby="h-sig"><h2 id="h-sig">Every signal</h2><p class="sub">As of the check.</p><p class="counts"><span class="r">10 red flags</span><span class="c">4 cautions</span><span class="p">2 passes</span></p><div data-slot="signals"></div></section>
+          <section class="tile glass t-claims" aria-labelledby="h-cl"><h2 id="h-cl">Claims vs. the chain</h2><p class="sub">Each claim from the clip, checked against on-chain data.</p><div data-slot="claims"></div></section>
+          <p class="nfa">For research and education. Not financial advice.</p>
+        </div>
+      </main>
+      <section class="panel glass" aria-label="Source and problems">
+        <div class="ptabs"><b>Source</b><span>Problems <span class="e">4</span></span><span>Output</span></div>
+        <div data-slot="editor" data-lines="14"></div>
+      </section>
+    </div>
+    <aside class="pane glass" aria-label="Thread">
+      <div class="pane-h">Thread<span><button class="ibtn" aria-label="New thread"><span data-icon="plus"></span></button><button class="ibtn" aria-label="History"><span data-icon="history"></span></button></span></div>
+      <div class="thread-body" data-slot="thread"></div>
+      <form class="composer" onsubmit="return false"><label class="tr-sr" for="ask">Ask the agent</label><textarea id="ask" placeholder="Ask about MOON, paste a mint, or drop a clip"></textarea><div class="crow"><span class="l"><button class="ibtn" type="button" aria-label="Attach a clip or screenshot"><span data-icon="clip"></span></button>Muse Spark 1.3</span><button class="send" aria-label="Send"><span data-icon="arrowUp" data-size="15"></span></button></div></form>
+    </aside>
+  </div>
+</div>
+<script src="shared.js"></script>
+</body>
+</html>

@@ -31,9 +31,9 @@ ALIVE_SECONDS = 3600
 WINDOW_HOURS = (1, 6, 12, 24, 48, 96, 144)
 
 
-def build_team(name: str) -> int:
+def build_team(name: str | dataset.Block) -> int:
     """Each token's team and likely team from everything in the block, for labels."""
-    b = dataset.block(name)
+    b = name if isinstance(name, dataset.Block) else dataset.block(name)
     con = dataset.connect(b)
     tokens = con.sql("SELECT mint, creator, launch_ts FROM tokens").df()
     wallets = con.sql("""
@@ -62,9 +62,9 @@ def build_team(name: str) -> int:
     return table.num_rows
 
 
-def build(name: str) -> pd.DataFrame:
+def build(name: str | dataset.Block) -> pd.DataFrame:
     """Labels for every token in the block, at each window in WINDOW_HOURS."""
-    b = dataset.block(name)
+    b = name if isinstance(name, dataset.Block) else dataset.block(name)
     con = dataset.connect(b)
     con.execute(f"""
         CREATE TEMP TABLE tt AS

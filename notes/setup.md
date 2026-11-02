@@ -45,6 +45,10 @@ Done by the agent (Oct 31):
 ## Before step 6: the agent (Muse Spark, Voice Transcribe)
 
 - [ ] **Meta Model API key** in `.env` as `MODEL_API_KEY`.
+- [ ] **Turn the API on only while building:** set `META_API_ENABLED=true` in `.env`, and set it back to `false` when you stop. Every call goes through the guarded client (`backend/receipts/agent/meta.py`, built Nov 2), which refuses at $100 logged and after Nov 4, 9 PM ET. Check spend with:
+  ```bash
+  cd backend && uv run python -m receipts meta-report
+  ```
 - [x] **Card on file:** yes, confirmed Oct 31. It's the one exception to the no-card rule: the Participant Guide requires a card before any API call works. **Going over the $150 charges this card, and that must never happen.**
   - Meta has **no hard cap**; its "spend limit" only sends an email.
   - The credits are valid for a **10-day window**, and any call after that is charged.

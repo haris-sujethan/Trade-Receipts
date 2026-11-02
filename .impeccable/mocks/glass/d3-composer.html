@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Composer · Trade Receipts</title>
+<script>if (/full/.test(location.search)) document.documentElement.classList.add("full");</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Albert+Sans:wght@400;500;600;700;800&family=Fragment+Mono&display=swap" rel="stylesheet">
+<style>
+:root{
+  --sans:"Albert Sans",system-ui,sans-serif; --mono:"Fragment Mono",ui-monospace,monospace;
+  --bg:#dcdfe3; --text-1:#111417; --text-2:#434950; --text-3:#626970; --accent:#111417;
+  --bad:#c0291e; --warn:#955700; --ok:#1c7348;
+  --chart-bg:#fff; --chart-grid:#eceef0; --chart-muted:#666d75; --chart-text:#23282d; --candle:#16191c;
+  --g-team:#eb6834; --g-likelyTeam:#6250d6; --g-sniper:#1baf7a; --g-bot:#2a78d6; --g-fresh:#eda100; --g-independent:#b2b3b8; --g-other:#a9a9ae;
+  --code-ln:#a0a6ad; --code-text:#2b3035; --code-h:#111417; --code-t:#5a626a; --code-k:#6250d6; --code-v:#c0291e;
+  --hair:rgba(17,20,23,.08);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{font:400 13px/1.45 var(--sans);color:var(--text-1);background:linear-gradient(180deg,#e9ebee,#d9dce1 60%,#d3d7dc);overflow:hidden;font-feature-settings:"tnum" 1;-webkit-font-smoothing:antialiased}
+::selection{background:rgba(98,80,214,.2)}
+button{font:inherit;color:inherit}
+.app{height:100vh;display:grid;grid-template-columns:216px minmax(0,1fr);grid-template-rows:48px minmax(0,1fr)}
+.lens{background:rgba(255,255,255,.5);-webkit-backdrop-filter:blur(22px) saturate(1.8);backdrop-filter:blur(22px) saturate(1.8)}
+.top{grid-column:1/-1;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 12px 0 16px;box-shadow:inset 0 -1px 0 var(--hair);z-index:5}
+.brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:14.5px;letter-spacing:-.015em}
+.modes{display:flex;gap:2px;padding:3px;border-radius:999px;background:rgba(17,20,23,.06);box-shadow:inset 0 1px 1px rgba(17,20,23,.06)}
+.modes button{border:0;background:none;height:26px;padding:0 14px;border-radius:999px;font-size:12.5px;font-weight:600;color:var(--text-2)}
+.modes button[aria-pressed=true]{background:#fff;color:var(--text-1);box-shadow:0 1px 3px rgba(17,20,23,.14)}
+.top-r{display:flex;justify-content:flex-end;align-items:center;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 12px;border-radius:999px;border:0;background:rgba(255,255,255,.75);box-shadow:0 0 0 1px var(--hair);font-size:12px;font-weight:600;color:var(--text-2)}
+.chip i{width:6px;height:6px;border-radius:50%;background:var(--warn)}
+.ibtn{width:28px;height:28px;display:grid;place-items:center;border:0;border-radius:8px;background:none;color:var(--text-2)}
+.side{display:flex;flex-direction:column;background:rgba(255,255,255,.34);-webkit-backdrop-filter:blur(30px) saturate(1.6);backdrop-filter:blur(30px) saturate(1.6);box-shadow:inset -1px 0 0 var(--hair);min-height:0}
+.side-h{display:flex;justify-content:space-between;align-items:center;padding:12px 8px 6px 14px;font-size:11.5px;font-weight:700;color:var(--text-2)}
+.side .tr-tree{padding:0 6px}
+.tr-file.is-active{background:rgba(17,20,23,.07);font-weight:600}
+.side-foot{margin-top:auto;padding:12px 14px;font-size:11.5px;color:var(--text-3);box-shadow:inset 0 1px 0 var(--hair)}
+.side-foot b{color:var(--text-1);font-weight:600}
+.side-foot .e{color:var(--bad)}.side-foot .w{color:var(--warn)}
+.main{position:relative;display:grid;grid-template-columns:400px minmax(0,1fr);gap:12px;padding:12px;min-height:0}
+.sheet{background:#fff;border-radius:14px;box-shadow:0 0 0 1px var(--hair),0 1px 2px rgba(17,20,23,.05),0 24px 48px -32px rgba(17,20,23,.35);display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.sheet-h{display:flex;align-items:center;gap:8px;height:40px;padding:0 10px 0 14px;font-size:12.5px;font-weight:600;box-shadow:inset 0 -1px 0 var(--hair);flex:none}
+.sheet-h .sp{flex:1}
+.sheet-h small{font-weight:500;color:var(--text-3)}
+.editor{background:#fbfbfc}
+.editor .tr-code{padding:12px 14px 200px;font-size:11.5px}
+.editor .tr-cl{white-space:pre-wrap}
+.scroller{flex:1;overflow:auto}
+.report{padding:26px 30px 210px}
+.head{display:grid;grid-template-columns:minmax(0,1fr) 244px;gap:26px;align-items:start}
+.meta{margin:0 0 10px;font-size:11.5px;color:var(--text-3);display:flex;gap:4px 10px;flex-wrap:wrap}
+.meta .mono{font-family:var(--mono);font-size:11px;color:var(--text-2)}
+.verdict{margin:0;font-size:50px;line-height:.98;font-weight:800;letter-spacing:-.04em;color:var(--bad)}
+.chance{margin:6px 0 0;font-size:20px;font-weight:600;letter-spacing:-.015em}
+.chance b{font-weight:800}
+.head .tr-band{margin-top:14px;max-width:300px;padding-bottom:22px}
+.tr-band__track .is-unlikely{background:#e4e6e9}.tr-band__track .is-possible{background:#cfd3d7}.tr-band__track .is-likely{background:#f1b9b2}
+.basis{margin:2px 0 0;font-size:11.5px;color:var(--text-3)}
+.why{margin-top:18px}
+.why p{margin:0 0 10px;font-size:14px;line-height:1.6;text-wrap:pretty;color:#1f2327}
+/* receipt sits at the top, beside the verdict */
+.tr-facts{border-radius:12px;padding:14px 14px 12px;background:#fff;box-shadow:0 0 0 1px rgba(17,20,23,.12),0 18px 36px -24px rgba(17,20,23,.4)}
+.tr-facts__title{margin:0;font-size:22px;font-weight:800;letter-spacing:-.03em}
+.tr-facts__subject{margin:4px 0 0;font-size:11.5px;font-weight:600}
+.tr-facts__serving{margin:1px 0 8px;font-size:11px;color:var(--text-3);padding-bottom:8px;border-bottom:3px solid var(--text-1)}
+.tr-facts__claimed,.tr-facts__tested{display:flex;justify-content:space-between;align-items:baseline;font-size:12px}
+.tr-facts__claimed s{font-size:15px;font-weight:700}
+.tr-facts__tested{padding-bottom:7px;border-bottom:1px solid var(--text-1)}
+.tr-facts__tested b{font-size:26px;font-weight:800;letter-spacing:-.02em}
+.tr-facts__rows div{padding:5px 0;font-size:11.5px;border-bottom:1px solid var(--hair)}
+.tr-facts__rows div.has-rule{border-bottom-color:var(--text-1)}
+.tr-facts__foot{margin:8px 0 0;font-size:10.5px;color:var(--text-3);line-height:1.45}
+section{margin-top:34px}
+h2{margin:0 0 3px;font-size:15px;font-weight:700;letter-spacing:-.01em}
+.sub{margin:0 0 12px;font-size:12px;color:var(--text-2)}
+.tr-stats{display:flex;gap:30px;margin:0 0 12px}
+.tr-stats div{display:flex;flex-direction:column-reverse}
+.tr-stats dt{font-size:11.5px;color:var(--text-2)}
+.tr-stats dd{margin:0;font-size:26px;font-weight:800;letter-spacing:-.025em}
+.tr-stats dd.is-bad{color:var(--bad)}
+.tr-legend{margin-bottom:10px}
+.tr-signals{columns:2;column-gap:28px}
+.tr-sig{break-inside:avoid;grid-template-columns:86px minmax(0,1fr);padding:8px 0;border-top:1px solid var(--hair)}
+.tr-sig__value{grid-column:2;text-align:left;max-width:none;font-size:12px;margin-top:-6px}
+.tr-claims li{padding:8px 0;border-top:1px solid var(--hair)}
+.nfa{margin-top:28px;font-size:11.5px;color:var(--text-3)}
+/* the thread is a floating glass island over the work */
+.island{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);width:640px;border-radius:22px;padding:8px;background:rgba(246,247,249,.55);-webkit-backdrop-filter:blur(26px) saturate(2);backdrop-filter:blur(26px) saturate(2);box-shadow:inset 0 1px 0 rgba(255,255,255,.95),inset 0 0 0 1px rgba(255,255,255,.55),0 0 0 1px rgba(17,20,23,.1),0 24px 60px -18px rgba(17,20,23,.45);z-index:4}
+.last{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:start;padding:8px 10px 10px}
+.last .q{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-2);margin-bottom:6px}
+.last .q b{font-weight:600;color:var(--text-1)}
+.last p{margin:0;font-size:13px;line-height:1.5}
+.steps-pill{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:999px;border:0;background:rgba(17,20,23,.06);font-size:12px;font-weight:600;color:var(--text-2);white-space:nowrap}
+.steps-pill .tr-i{color:var(--ok)}
+.input{display:flex;align-items:center;gap:6px;height:48px;padding:0 6px 0 14px;border-radius:15px;background:rgba(255,255,255,.85);box-shadow:0 0 0 1px rgba(17,20,23,.08),0 1px 2px rgba(17,20,23,.06)}
+.input input{flex:1;border:0;background:none;font:inherit;font-size:13.5px;outline:none;color:var(--text-1)}
+.input input::placeholder{color:var(--text-3)}
+.input small{font-size:11.5px;color:var(--text-3);margin-right:4px}
+.send{width:34px;height:34px;border-radius:11px;border:0;background:var(--text-1);color:#fff;display:grid;place-items:center}
+.full,.full body{height:auto;overflow:visible}
+.full .app{height:auto}
+.full .scroller,.full .sheet{overflow:visible}
+.full .editor .tr-code{padding-bottom:12px}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top lens">
+    <div class="brand"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h14v18l-2.33-1.5L14.33 21 12 19.5 9.67 21 7.33 19.5 5 21Z"/><path d="M9 8h6M9 12h6"/></svg>Trade Receipts</div>
+    <nav class="modes" aria-label="Mode"><button aria-pressed="false">Backtest</button><button aria-pressed="true">Analyze</button></nav>
+    <div class="top-r"><button class="chip"><i></i>Preview · example data</button><button class="ibtn" aria-label="Help"><span data-icon="help" data-size="16"></span></button></div>
+  </header>
+  <aside class="side" aria-label="Files">
+    <div class="side-h">Project<button class="ibtn" aria-label="New file"><span data-icon="plus"></span></button></div>
+    <div data-slot="tree"></div>
+    <div class="side-foot"><b>Problems</b> · <span class="e">2 errors</span> · <span class="w">2 warnings</span></div>
+  </aside>
+  <div class="main">
+    <section class="sheet editor" aria-label="Editor" style="margin:0">
+      <div class="sheet-h"><span data-icon="file" data-size="14"></span>MOON-7xKX.md<small>written by the agent</small><span class="sp"></span><button class="ibtn" aria-label="Copy"><span data-icon="copy"></span></button></div>
+      <div class="scroller" data-slot="editor" data-lines="40"></div>
+    </section>
+    <section class="sheet" aria-label="Report" style="margin:0">
+      <div class="sheet-h"><span data-icon="layers" data-size="14"></span>Rug check · MOON<span class="sp"></span><button class="ibtn" aria-label="Open the report alone"><span data-icon="split"></span></button></div>
+      <div class="scroller" data-scroller>
+        <article class="report" aria-label="Rug check: MOON">
+          <div class="head">
+            <div>
+              <p class="meta"><span>MOON · pump.fun</span><span class="mono">7xKX…gAsU</span><span>15 min after launch</span><span>Bonding curve</span></p>
+              <h1 class="verdict">Likely rug</h1>
+              <p class="chance"><b>87%</b> rug chance</p>
+              <div data-slot="band"></div>
+              <p class="basis">From Muse Glimmer, trained on thousands of past pump.fun tokens. Accuracy is published when training finishes. Example values.</p>
+              <div class="why" data-slot="why"></div>
+            </div>
+            <div data-slot="facts"></div>
+          </div>
+          <section aria-labelledby="h-chart" data-shot2>
+            <h2 id="h-chart">The real chart</h2>
+            <p class="sub">Market cap, with each candle's volume split by who traded. Hollow candles closed up, solid ones down. Team sells are marked.</p>
+            <div data-slot="stats"></div><div data-slot="chartLegend"></div>
+            <div data-slot="chart" data-w="680" data-h="320"></div>
+          </section>
+          <section aria-labelledby="h-map">
+            <h2 id="h-map">Who holds it</h2>
+            <p class="sub">The top 50 holders and first 50 buyers, sized by share of supply.</p>
+            <div data-slot="mapLegend"></div>
+            <div data-slot="map" data-w="680" data-h="400"></div>
+          </section>
+          <section aria-labelledby="h-sig"><h2 id="h-sig">Every signal</h2><p class="sub">As of the check. Live checks link every signal to its transactions.</p><div data-slot="signals"></div></section>
+          <section aria-labelledby="h-cl"><h2 id="h-cl">Claims vs. the chain</h2><p class="sub">Each claim from the clip, checked against on-chain data.</p><div data-slot="claims"></div></section>
+          <p class="nfa">For research and education. Not financial advice.</p>
+        </article>
+      </div>
+    </section>
+    <div class="island" role="region" aria-label="Thread">
+      <div class="last">
+        <div>
+          <div class="q"><span class="tr-clipchip"><span data-icon="film" data-size="14"></span>moon_shill.mp4</span><b>Is this token legit? Someone's shilling it everywhere.</b></div>
+          <p>Likely rug, with an 87% rug chance. Two groups of wallets tied to the creator hold 23% of MOON, most early buys were the same 0.5 SOL, and the team has sold into new buyers seven times.</p>
+        </div>
+        <button class="steps-pill"><span data-icon="pass" data-size="14"></span>9 steps<span data-icon="chevronDown" data-size="13"></span></button>
+      </div>
+      <form class="input" onsubmit="return false"><button class="ibtn" type="button" aria-label="Attach a clip or screenshot"><span data-icon="clip"></span></button><label class="tr-sr" for="ask">Ask the agent</label><input id="ask" placeholder="Ask a follow-up, paste a mint, or drop a clip"><small>Muse Spark 1.3</small><button class="send" aria-label="Send"><span data-icon="arrowUp" data-size="16"></span></button></form>
+    </div>
+  </div>
+</div>
+<script src="shared.js"></script>
+</body>
+</html>

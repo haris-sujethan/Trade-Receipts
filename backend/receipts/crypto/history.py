@@ -22,6 +22,11 @@ def build() -> dict[str, int]:
     con.execute(f"CREATE VIEW trades AS SELECT * FROM read_parquet('{store.ROOT}/trades/*/*.parquet', union_by_name = true)")
     con.execute(f"CREATE VIEW migrations AS SELECT * FROM read_parquet('{store.ROOT}/migrations/*/*.parquet', union_by_name = true)")
     con.execute(f"CREATE VIEW pools AS SELECT * FROM read_parquet('{store.ROOT}/pools/*/*.parquet', union_by_name = true)")
+    return write(con, PATH)
+
+
+def write(con: duckdb.DuckDBPyConnection, path) -> dict[str, int]:
+    """The history table from `launches`, `trades`, `migrations` and `pools` views (live.py reuses it)."""
     con.execute(f"""
         COPY (
           WITH pool_mints AS (
@@ -58,10 +63,10 @@ def build() -> dict[str, int]:
           FULL JOIN created AS c ON t.wallet = c.wallet AND t.mint = c.mint
           LEFT JOIN launches AS l ON l.mint = coalesce(t.mint, c.mint)
           ORDER BY wallet, first_ts
-        ) TO '{PATH}' (FORMAT parquet)
+        ) TO '{path}' (FORMAT parquet)
     """)
     row = con.execute(f"""
         SELECT count(*), count(DISTINCT wallet), count(DISTINCT mint), count(*) FILTER (WHERE launched_ts IS NULL)
-        FROM read_parquet('{PATH}')
+        FROM read_parquet('{path}')
     """).fetchone()
     return {"rows": row[0], "wallets": row[1], "tokens": row[2], "tokens_launched_outside_pull": row[3]}

@@ -131,10 +131,30 @@ def glimmer_eval(args) -> None:
 
     from receipts.crypto import glimmer_eval
 
-    report = glimmer_eval.evaluate(pathlib.Path(args.folder) / "predictions.jsonl", args.name)
+    report = glimmer_eval.evaluate([pathlib.Path(f) / "predictions.jsonl" for f in args.folders], args.name)
     for file in ("test", "later_aug", "later_sep"):
         for model, m in report.get(file, {}).items():
             print(f"{file:10s} {model:22s} fair AUC {m.get('fair_auc')}  AUC {m.get('auc')}  Brier {m.get('brier')}  n {m.get('n')}")
+
+
+def live_check(args) -> None:
+    from receipts.crypto import live
+
+    result = live.check(args.mint, as_of=args.as_of, progress=lambda **kv: print(kv, flush=True))
+    print(json.dumps({k: v for k, v in result.items() if k != "signals"}, indent=2, default=str))
+
+
+def live_parity(args) -> None:
+    from receipts.crypto import live
+
+    report = live.parity(args.n)
+    print(json.dumps({k: v for k, v in report.items() if k not in ("checks", "signals_matching_share")}, indent=2, default=str))
+
+
+def meta_report(args) -> None:
+    from receipts.agent.meta import Meta
+
+    print(json.dumps(Meta().report(), indent=2))
 
 
 def main() -> None:
@@ -162,9 +182,17 @@ def main() -> None:
     sub.add_parser("train-baselines", help="train and test the checklist and LightGBM baselines").set_defaults(run=train_baselines)
     sub.add_parser("glimmer-data", help="write Glimmer's prompts, bubble maps and fine-tuning answers").set_defaults(run=glimmer_data)
     p = sub.add_parser("glimmer-eval", help="score a Kaggle job's Glimmer predictions against the outcomes")
-    p.add_argument("folder", help="the downloaded job output (holds predictions.jsonl)")
+    p.add_argument("folders", nargs="+", help="the downloaded job outputs (each holds predictions.jsonl)")
     p.add_argument("--name", default="glimmer")
     p.set_defaults(run=glimmer_eval)
+    p = sub.add_parser("live-check", help="a live rug check of one token from Helius (no Meta API)")
+    p.add_argument("mint")
+    p.add_argument("--as-of", type=int, help="unix seconds (default now)")
+    p.set_defaults(run=live_check)
+    p = sub.add_parser("live-parity", help="live checks of May 16 test tokens compared with their training snapshots")
+    p.add_argument("-n", type=int, default=8)
+    p.set_defaults(run=live_parity)
+    sub.add_parser("meta-report", help="Meta Model API spend so far against the guard's limit").set_defaults(run=meta_report)
     p = sub.add_parser("goplus", help="GoPlus token security for a mint")
     p.add_argument("mint")
     p.set_defaults(run=goplus)

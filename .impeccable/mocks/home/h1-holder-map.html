@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trade Receipts · Holder map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Geist:wght@400;500&family=Geist+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+/* Hallmark · v2.0.0 · theme: lumen night (dealt 1/3, seed rug-check-new-crypto-97af·93616b2b·2026-11-01·r0) · genre: atmospheric · shape: Stage, map ground · hero: head left on 5 columns, the holder map as the ground on 7 · signature: MOON's holder map, three liquid-glass lenses magnifying the team, the likely team and the snipers · direction: impeccable assigned, seed:f965526a8bff8ebf · translation: Lumen's no-glass rule yields to the pinned liquid glass, spent only on the lenses */
+/* Hallmark · pre-emit critique: P5 H5 E4 S5 R4 V4 · weakest: E, the lenses are static in a still; the build drifts them between clusters on scroll */
+/* Hallmark · waive 38iii · Lumen's one rose verb in the hero head */
+:root{
+  --color-paper:oklch(12.5% 0.027 290); --color-paper-2:oklch(16% 0.03 290); --color-paper-3:oklch(20% 0.032 290);
+  --color-ink:oklch(96% 0.01 300); --color-ink-2:oklch(85% 0.017 298); --color-muted:oklch(69% 0.026 295);
+  --color-rule:oklch(27% 0.034 290); --color-rule-2:oklch(36% 0.04 292); --rule-blueprint:oklch(96% 0.01 300 / 0.05);
+  --color-accent:oklch(80% 0.15 62); --color-accent-2:oklch(72% 0.15 12); --color-accent-ink:oklch(14% 0.028 290);
+  --color-focus:oklch(80% 0.15 62); --glass-edge:oklch(100% 0 0 / 0.22); --glass-hi:oklch(100% 0 0 / 0.55); --glass-fill:oklch(100% 0 0 / 0.035); --glass-shade:oklch(4% 0.02 290 / 0.75);
+  --font-display:"Instrument Serif",ui-serif,Georgia,serif; --font-body:"Geist",ui-sans-serif,system-ui,sans-serif; --font-mono:"Geist Mono",ui-monospace,monospace;
+  --sans:var(--font-body); --mono:var(--font-mono);
+  /* wallet groups, dark steps validated on the dark surface */
+  --g-team:#d95926; --g-likelyTeam:#9085e9; --g-sniper:#199e70; --g-bot:#3987e5; --g-fresh:#c98500; --g-independent:#6b6b72; --g-other:#4d4b5e;
+  --chart-bg:var(--color-paper); --chart-grid:var(--color-rule); --chart-muted:var(--color-muted); --chart-text:var(--color-ink-2); --candle:var(--color-ink-2);
+  --text-2:var(--color-ink-2); --text-3:var(--color-muted);
+  --ease-out:cubic-bezier(.16,1,.3,1); --dur-long:900ms;
+}
+*{box-sizing:border-box}
+html,body{margin:0;overflow-x:clip;background:var(--color-paper);color:var(--color-ink)}
+body{font:400 17px/1.55 var(--font-body);font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+::selection{background:var(--color-accent);color:var(--color-accent-ink)}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--color-focus);outline-offset:3px}
+.wrap{max-width:1360px;margin:0 auto;padding:0 40px}
+.nav{position:absolute;top:20px;left:50%;transform:translateX(-50%);z-index:5;display:flex;align-items:center;gap:26px;height:48px;padding:0 6px 0 22px;border-radius:999px;background:var(--color-paper-2);box-shadow:inset 0 0 0 1px var(--color-rule)}
+.nav .mark{font:400 24px/1 var(--font-display);text-transform:lowercase;text-decoration:none;margin-right:8px}
+.nav a.l{font-size:14px;color:var(--color-muted);text-decoration:none;text-transform:lowercase}
+.nav a.l:hover{color:var(--color-ink)}
+.btn{display:inline-flex;align-items:center;height:44px;padding:0 22px;border-radius:999px;font:500 15px/1 var(--font-body);text-transform:lowercase;text-decoration:none}
+.btn--primary{background:var(--color-accent);color:var(--color-accent-ink)}
+.btn--primary:hover{background:var(--color-ink)}
+.btn--secondary{box-shadow:inset 0 0 0 1px var(--color-rule-2);color:var(--color-ink)}
+.btn--secondary:hover{background:var(--color-paper-2)}
+.nav .btn{height:36px;padding:0 16px;font-size:14px}
+/* hero: the map is the ground */
+.hero{position:relative;height:100vh;min-height:760px;max-height:980px;background-image:linear-gradient(var(--rule-blueprint) 1px,transparent 1px),linear-gradient(90deg,var(--rule-blueprint) 1px,transparent 1px);background-size:48px 48px;overflow:clip}
+.stage{position:absolute;right:max(0px,calc(50% - 720px));top:96px;width:900px;height:760px}
+.stage>.ground{position:absolute;inset:0;opacity:.42}
+.lens{position:absolute;border-radius:50%;overflow:hidden;background:var(--glass-fill);box-shadow:inset 0 1px 1px var(--glass-hi),inset 0 0 0 1px var(--glass-edge),inset 0 -18px 30px -12px oklch(100% 0 0 / .08),0 30px 60px -20px var(--glass-shade)}
+.lens>.in{position:absolute;filter:saturate(1.25) brightness(1.08)}
+.lens::after{content:"";position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 32% 22%,oklch(100% 0 0 / .22),transparent 34%),radial-gradient(circle at 70% 85%,oklch(100% 0 0 / .07),transparent 30%);pointer-events:none}
+.tag{position:absolute;font:400 13px/1.45 var(--font-mono);color:var(--color-ink-2);text-transform:lowercase;white-space:nowrap}
+.tag b{display:block;font:400 30px/1 var(--font-display);color:var(--color-ink);letter-spacing:-.01em;margin-bottom:4px}
+.tag::before{content:"";position:absolute;top:13px;width:36px;border-top:1px solid var(--color-rule-2)}
+.tag.b::before{display:none}
+.tag.r::before{right:calc(100% + 10px)} .tag.l{text-align:right} .tag.l::before{left:calc(100% + 10px)}
+.copy{position:absolute;left:max(40px,calc(50% - 680px));bottom:96px;width:560px;z-index:3}
+h1{margin:0;font:400 116px/.92 var(--font-display);letter-spacing:-.015em;text-transform:lowercase;overflow-wrap:break-word;min-width:0}
+.verb{display:inline-block;color:var(--color-accent-2)}
+.verb::after{content:"";display:block;height:1px;margin-top:-6px;background:currentColor;transform-origin:left;animation:draw var(--dur-long) var(--ease-out) both .2s}
+@keyframes draw{from{transform:scaleX(0)}}
+.lede{margin:26px 0 30px;max-width:30ch;font-size:19px;color:var(--color-ink-2)}
+.acts{display:flex;gap:10px}
+.readout{position:absolute;right:max(40px,calc(50% - 680px));bottom:40px;display:flex;gap:28px;font:400 13px/1.4 var(--font-mono);color:var(--color-muted);text-transform:lowercase;z-index:3}
+.readout span b{display:block;font:400 13px var(--font-mono);color:var(--color-ink)}
+/* section two */
+.sec{padding:120px 0 80px;border-top:1px solid var(--color-rule)}
+.sec-grid{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,8fr);gap:56px;align-items:start}
+h2{margin:0;font:400 64px/.98 var(--font-display);letter-spacing:-.015em;text-transform:lowercase}
+.sec p{color:var(--color-ink-2);max-width:34ch}
+.figs{display:flex;gap:40px;margin-top:36px}
+.figs div{font:400 13px/1.4 var(--font-mono);color:var(--color-muted);text-transform:lowercase}
+.figs b{display:block;font:400 64px/1 var(--font-display);color:var(--color-ink);margin-bottom:6px}
+.well{background:var(--color-paper-2);border:1px solid var(--color-rule);border-radius:10px;padding:24px 24px 14px;background-image:linear-gradient(var(--rule-blueprint) 1px,transparent 1px),linear-gradient(90deg,var(--rule-blueprint) 1px,transparent 1px);background-size:48px 48px}
+.well .tr-legend{margin-bottom:12px;text-transform:lowercase;font-family:var(--font-mono);font-size:12px}
+.well{--chart-bg:var(--color-paper-2)}
+.foot{padding:28px 0 40px;font-size:13px;color:var(--color-muted);border-top:1px solid var(--color-rule)}
+@media (prefers-reduced-motion:reduce){.verb::after{animation:none}}
+</style>
+</head>
+<body>
+<header class="nav" aria-label="Site"><a class="mark" href="/">trade receipts</a><a class="l" href="#examples">examples</a><a class="l" href="#how">how it works</a><a class="btn btn--primary" href="/signup">launch ide</a></header>
+<main>
+  <section class="hero" aria-labelledby="hero-h">
+    <div class="stage" aria-hidden="true">
+      <div class="ground" data-slot="map" data-w="900" data-h="760" data-notes="0"></div>
+    </div>
+    <div class="copy">
+      <h1 id="hero-h"><span class="verb">check</span> the token before you buy it.</h1>
+      <p class="lede">Paste a pump.fun token or drop in the clip shilling it.</p>
+      <div class="acts"><a class="btn btn--primary" href="/signup">launch ide</a><a class="btn btn--secondary" href="#examples">see it work</a></div>
+    </div>
+    <div class="readout" aria-label="Example check"><span>example token<b>moon, made up</b></span><span>rug chance<b>87%</b></span><span>verdict<b>likely rug</b></span></div>
+  </section>
+  <section class="sec" id="examples" aria-labelledby="s2-h">
+    <div class="wrap sec-grid">
+      <div>
+        <h2 id="s2-h">the chart, split by who traded</h2>
+        <p>A manipulated chart looks real. The same candles, with every buy and sell traced to the wallet that made it.</p>
+        <div class="figs"><div><b>11%</b>of the buying came from independent buyers</div><div><b>$41K</b>the team could sell into now</div></div>
+      </div>
+      <figure class="well" style="margin:0"><div data-slot="chartLegend"></div><div data-slot="chart" data-w="780" data-h="340"></div></figure>
+    </div>
+  </section>
+  <footer class="foot"><div class="wrap">Example values for a made-up token. For research and education. Not financial advice.</div></footer>
+</main>
+<script src="shared.js"></script>
+<script>
+// liquid-glass lenses: each holds a magnified copy of the map, centred on a cluster
+document.addEventListener("DOMContentLoaded",function(){
+  const W=900,H=760,sx=(W/2-26)/.98,sy=(H/2-26)/.98,X=x=>W/2+x*sx,Y=y=>H/2-y*sy;
+  const lenses=[
+    {x:-.5,y:.16,r:150,m:1.28,tag:["team a, 16%","14 wallets, one funder"],side:"b",dx:-40,dy:168},
+    {x:.48,y:.48,r:96,m:1.45,tag:["likely team, 9%","6 wallets at 1.50% each"],side:"l",dx:-112,dy:-60},
+    {x:.58,y:-.4,r:86,m:1.5,tag:["snipers, 6%","bought in the first seconds"],side:"l",dx:-102,dy:-20},
+  ];
+  const stage=document.querySelector(".stage"),src=stage.querySelector(".ground").innerHTML;
+  lenses.forEach(L=>{
+    const cx=X(L.x),cy=Y(L.y),el=document.createElement("div");
+    el.className="lens";Object.assign(el.style,{left:cx-L.r+"px",top:cy-L.r+"px",width:2*L.r+"px",height:2*L.r+"px"});
+    const inn=document.createElement("div");inn.className="in";inn.innerHTML=src;
+    Object.assign(inn.style,{left:-(cx-L.r)+"px",top:-(cy-L.r)+"px",width:W+"px",height:H+"px",transformOrigin:cx+"px "+cy+"px",transform:"scale("+L.m+")"});
+    el.appendChild(inn);stage.appendChild(el);
+    const t=document.createElement("div");t.className="tag "+L.side;t.innerHTML="<b>"+L.tag[0]+"</b>"+L.tag[1];
+    if(L.side==="r"||L.side==="b"){t.style.left=cx+L.dx+"px";}else{t.style.right=(W-cx-L.dx)+"px";}
+    t.style.top=cy+L.dy+"px";stage.appendChild(t);
+  });
+});
+</script>
+</body>
+</html>

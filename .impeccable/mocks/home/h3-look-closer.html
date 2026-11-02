@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trade Receipts · Look closer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&family=Figtree:wght@400;500;600&family=Geist+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+/* Hallmark · v2.0.0 · theme: custom (look closer) · genre: modern-minimal · shape: Settled, centred head over a stage · hero: head and actions centred, the pitch-and-lens stage beneath at 1120px · signature: a liquid-glass lens dragged across the token as it was pitched shows the chain underneath · direction: impeccable grounded alternate (the counterfeit check: hold it to the light) · inspiration: 21st liquid glass cursor and blur reveal, rebuilt in plain CSS */
+/* Hallmark · pre-emit critique: P5 H5 E5 S5 R4 V4 · weakest: R, the stage is one object; the page below carries the receipt instead of more pitch */
+:root{
+  --color-paper:oklch(98.2% 0.002 250); --color-paper-2:oklch(95.5% 0.003 250); --color-ink:oklch(17% 0.006 250); --color-ink-2:oklch(42% 0.008 250); --color-muted:oklch(53% 0.008 250); --color-rule:oklch(90% 0.004 250);
+  --color-pump:oklch(72% 0.17 150); --color-pump-down:oklch(64% 0.19 25); --color-pitch-bg:oklch(19% 0.012 250); --color-pitch-ink:oklch(93% 0.006 250); --color-pitch-muted:oklch(70% 0.01 250);
+  --color-bad:oklch(53% 0.19 28); --color-focus:oklch(17% 0.006 250);
+  --lens-hi:oklch(100% 0 0 / 0.9); --lens-edge:oklch(100% 0 0 / 0.45); --lens-shade:oklch(20% 0.02 250 / 0.35); --lens-r:oklch(65% 0.25 25 / 0.35); --lens-b:oklch(65% 0.2 250 / 0.35);
+  --font-display:"Source Serif 4",ui-serif,Georgia,serif; --font-body:"Figtree",ui-sans-serif,system-ui,sans-serif; --font-mono:"Geist Mono",ui-monospace,monospace;
+  --sans:var(--font-body); --mono:var(--font-mono);
+}
+*{box-sizing:border-box}
+html,body{margin:0;overflow-x:clip;background:var(--color-paper);color:var(--color-ink)}
+body{font:400 17px/1.55 var(--font-body);font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--color-focus);outline-offset:3px}
+.wrap{max-width:1240px;margin:0 auto;padding:0 40px}
+.nav{display:flex;align-items:center;justify-content:space-between;height:68px}
+.mark{font:500 18px/1 var(--font-body);text-decoration:none;letter-spacing:-.01em}
+.nav nav{display:flex;align-items:center;gap:26px;font-size:15px;color:var(--color-ink-2)}
+.nav nav a{text-decoration:none}
+.btn{display:inline-flex;align-items:center;height:44px;padding:0 20px;border-radius:8px;font:500 15px/1 var(--font-body);text-decoration:none}
+.btn--primary{background:var(--color-ink);color:var(--color-paper)}
+.btn--line{box-shadow:inset 0 0 0 1px var(--color-rule);background:var(--color-paper)}
+.nav .btn{height:36px;padding:0 14px}
+.nav nav a.btn--primary{color:var(--color-paper)}
+.head{text-align:center;padding:56px 0 40px}
+h1{margin:0 auto;font:400 76px/1.02 var(--font-display);letter-spacing:-.02em;max-width:14ch;text-wrap:balance;overflow-wrap:break-word;min-width:0}
+.lede{margin:20px auto 28px;font-size:19px;color:var(--color-ink-2)}
+.acts{display:flex;justify-content:center;gap:10px}
+/* the stage: the pitch, and the chain under a lens */
+.stage{position:relative;max-width:1120px;height:500px;margin:0 auto;border-radius:20px;overflow:hidden;background:var(--color-pitch-bg);box-shadow:0 0 0 1px var(--color-rule),0 50px 90px -60px oklch(20% 0.02 250 / .6);touch-action:none;cursor:grab}
+.layer{position:absolute;inset:0;padding:22px 26px}
+.pitch{--chart-bg:var(--color-pitch-bg);--chart-grid:oklch(26% 0.012 250);--chart-muted:var(--color-pitch-muted);--chart-text:var(--color-pitch-ink);--candle:var(--color-pump);--g-team:var(--color-pump);--g-likelyTeam:var(--color-pump);--g-sniper:var(--color-pump);--g-bot:var(--color-pump);--g-fresh:var(--color-pump);--g-independent:var(--color-pump);color:var(--color-pitch-ink)}
+.pitch .trc-candle.is-up{fill:var(--color-pump);stroke:var(--color-pump)}
+.pitch .trc-candle.is-down{fill:var(--color-pump-down);stroke:var(--color-pump-down)}
+.pitch .trc-wick{stroke:var(--color-pitch-muted)}
+.pitch .trc-sell,.pitch .trc-break,.pitch .trc-anno{display:none}
+.pitch .trc-vol{stroke:none}
+.truth{--chart-bg:var(--color-paper);--chart-grid:var(--color-rule);--chart-muted:var(--color-muted);--chart-text:var(--color-ink);--candle:var(--color-ink);--g-team:#eb6834;--g-likelyTeam:#6250d6;--g-sniper:#1baf7a;--g-bot:#2a78d6;--g-fresh:#eda100;--g-independent:#b2b3b8;background:var(--color-paper);color:var(--color-ink);clip-path:circle(var(--r) at var(--x) var(--y))}
+.top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.top b{font:600 20px/1 var(--font-body);letter-spacing:-.01em}
+.top span{font:400 13px/1 var(--font-mono);color:inherit;opacity:.7}
+.quote{position:absolute;left:96px;top:84px;width:400px;font:400 36px/1.1 var(--font-display);letter-spacing:-.01em;margin:0}
+.quote small{display:block;margin-top:8px;font:400 13px/1.4 var(--font-mono);opacity:.75}
+.truth .quote s{text-decoration:none;position:relative;color:var(--color-muted)}
+.truth .quote s::after{content:"";position:absolute;left:-2px;right:-2px;top:55%;height:3px;border-radius:2px;background:var(--color-bad)}
+.callout{position:absolute;left:318px;top:236px;margin:0;padding:6px 10px;border-radius:8px;background:var(--color-paper);font:400 30px/1.1 var(--font-display);letter-spacing:-.01em}
+.callout em{display:block;font-style:normal;color:var(--color-bad)}
+.callout small{display:block;margin-top:4px;font:400 13px/1.4 var(--font-mono);color:var(--color-muted)}
+.lens{position:absolute;left:calc(var(--x) - var(--r));top:calc(var(--y) - var(--r));width:calc(var(--r) * 2);height:calc(var(--r) * 2);border-radius:50%;pointer-events:none;box-shadow:inset 0 2px 1px var(--lens-hi),inset 0 0 0 1.5px var(--lens-edge),inset 3px 0 6px -2px var(--lens-r),inset -3px 0 6px -2px var(--lens-b),inset 0 -24px 40px -20px oklch(20% 0.02 250 / .25),0 30px 60px -20px var(--lens-shade),0 0 0 1px oklch(20% 0.02 250 / .12)}
+.lens::after{content:"";position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 30% 20%,oklch(100% 0 0 / .55),transparent 26%),radial-gradient(circle at 75% 88%,oklch(100% 0 0 / .18),transparent 22%)}
+.hint{position:absolute;left:26px;bottom:18px;font:400 13px/1 var(--font-mono);color:var(--color-pitch-muted)}
+/* section two */
+.sec{padding:120px 0 90px}
+.split{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:64px;align-items:center}
+h2{margin:0;font:400 52px/1.04 var(--font-display);letter-spacing:-.02em}
+.sec p{color:var(--color-ink-2);max-width:36ch}
+.shot{margin:0;border-radius:16px;overflow:hidden;box-shadow:0 0 0 1px var(--color-rule),0 40px 80px -50px oklch(20% 0.02 250 / .45)}
+.shot img{display:block;width:100%;height:auto}
+.foot{padding:28px 0 40px;font-size:13px;color:var(--color-muted);border-top:1px solid var(--color-rule)}
+@media (prefers-reduced-motion:reduce){.stage{cursor:default}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="nav"><a class="mark" href="/">Trade Receipts</a><nav aria-label="Site"><a href="#examples">Examples</a><a href="#how">How it works</a><a class="btn btn--primary" href="/signup">Launch IDE</a></nav></header>
+</div>
+<main>
+  <section class="head wrap" aria-labelledby="hero-h">
+    <h1 id="hero-h">Check the token before you buy it.</h1>
+    <p class="lede">Paste a pump.fun token or drop in the clip shilling it.</p>
+    <div class="acts"><a class="btn btn--primary" href="/signup">Launch IDE</a><a class="btn btn--line" href="#examples">See it work</a></div>
+  </section>
+  <div class="wrap">
+    <div class="stage" id="stage" style="--x:470px;--y:262px;--r:192px" role="img" aria-label="MOON as it was pitched, a clean green chart and the claim 'community token, no team'. Under the lens, the same chart split by who traded: the team holds 23% and sold into buyers seven times.">
+      <div class="layer pitch">
+        <div class="top"><b>MOON</b><span>example token, made up</span></div>
+        <div data-slot="chart" data-w="1068" data-h="440" data-labels="0"></div>
+        <p class="quote">“Community token, no team.”<small>moon_shill.mp4 at 0:12</small></p>
+      </div>
+      <div class="layer truth">
+        <div class="top"><b>MOON</b><span>example token, made up</span></div>
+        <div data-slot="chart" data-w="1068" data-h="440" data-labels="0"></div>
+        <p class="quote"><s>“Community token, no team.”</s></p>
+        <p class="callout"><em>The team holds 23%.</em><small>19 linked wallets, one funder</small></p>
+      </div>
+      <div class="lens"></div>
+      <span class="hint">drag the lens</span>
+    </div>
+  </div>
+  <section class="sec" id="examples" aria-labelledby="s2-h">
+    <div class="wrap split">
+      <div><h2 id="s2-h">Every check ends on a receipt.</h2><p>Token Facts puts the pitch beside the chain, with every number traced to the transactions behind it.</p></div>
+      <figure class="shot"><img src="img/ide-receipt.png" alt="The Trade Receipts IDE showing MOON's Token Facts label: team supply pitched as none, 23% on-chain"></figure>
+    </div>
+  </section>
+  <footer class="foot"><div class="wrap">Example values for a made-up token. For research and education. Not financial advice.</div></footer>
+</main>
+<script src="shared.js"></script>
+<script>
+// drag the lens; arrow keys move it too
+document.addEventListener("DOMContentLoaded",()=>{
+  const st=document.getElementById("stage");let drag=false;
+  const set=(x,y)=>{const b=st.getBoundingClientRect();st.style.setProperty("--x",Math.max(0,Math.min(b.width,x))+"px");st.style.setProperty("--y",Math.max(0,Math.min(b.height,y))+"px");};
+  st.addEventListener("pointerdown",e=>{drag=true;st.setPointerCapture(e.pointerId);const b=st.getBoundingClientRect();set(e.clientX-b.left,e.clientY-b.top);});
+  st.addEventListener("pointermove",e=>{if(!drag)return;const b=st.getBoundingClientRect();set(e.clientX-b.left,e.clientY-b.top);});
+  st.addEventListener("pointerup",()=>drag=false);
+  st.tabIndex=0;st.addEventListener("keydown",e=>{const k={ArrowLeft:[-24,0],ArrowRight:[24,0],ArrowUp:[0,-24],ArrowDown:[0,24]}[e.key];if(!k)return;e.preventDefault();const cs=getComputedStyle(st);set(parseFloat(cs.getPropertyValue("--x"))+k[0],parseFloat(cs.getPropertyValue("--y"))+k[1]);});
+});
+</script>
+</body>
+</html>
