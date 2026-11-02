@@ -69,15 +69,36 @@ def real_chart(tok, sig: dict, ctx: dict) -> dict:
 
 
 def bubble_map(tok, ctx: dict) -> dict:
+    """Links are the funding links between shown wallets, plus a `launch_bundle` link from the
+    creator to each wallet that bought in its launch block: how most teams join (roles.py)."""
     groups = prompt.group_of(ctx)
     held, first_buy = ctx["held"], ctx["first_buy"]
+    creator = ctx["roles"].creator
     holders = [i for i in np.argsort(-held, kind="stable") if held[i] > 0][:prompt.MAP_HOLDERS]
     buyers = [i for i in np.argsort(first_buy, kind="stable") if math.isfinite(first_buy[i])][:prompt.MAP_BUYERS]
-    shown = [i for i in dict.fromkeys(holders + buyers) if groups[i] != "agent"]
+    shown = [i for i in dict.fromkeys(holders + buyers + ([tok.index[creator]] if creator in tok.index else []))
+             if groups[i] != "agent"]
     names = {tok.names[i] for i in shown}
     nodes = [{"wallet": str(tok.names[i]), "share": round(float(held[i] / programs.TOTAL_SUPPLY), 6), "group": groups[i],
-              "cluster": str(ctx["cluster_of"][i]), "sold_out": bool(held[i] <= 0),
+              "cluster": str(ctx["cluster_of"][i]), "sold_out": bool(held[i] <= 0), "creator": tok.names[i] == creator,
               "first_buy_s": None if not math.isfinite(first_buy[i]) else int(first_buy[i] - tok.launch_ts)}
              for i in shown]
     links = [{"source": w1, "target": w2, "kind": kind} for w1, w2, _, kind in ctx["edges"] if w1 in names and w2 in names]
+    links += [{"source": creator, "target": w, "kind": "launch_bundle"} for w in sorted(ctx["roles"].bundle)
+              if creator in names and w in names]
     return {"nodes": nodes, "links": links}
+
+
+def same_size_buys(tok, ctx: dict, top: int = 8) -> list[dict]:
+    """The most repeated exact buy sizes, as signals.snapshot counts them: what the buyer sent
+    (fees included), to 0.001 SOL, Mayhem agent excluded, kept when 3 or more buys share a size."""
+    n = ctx["n"]
+    buys = tok.is_buy[:n] & ~ctx["agent"][tok.code[:n]]
+    gross = np.round(tok.gross_sol[:n][buys], 3)
+    wallets = tok.code[:n][buys]
+    if not len(gross):
+        return []
+    sizes, counts = np.unique(gross, return_counts=True)
+    order = [i for i in np.argsort(-counts, kind="stable") if counts[i] >= 3][:top]
+    return [{"sol": float(sizes[i]), "count": int(counts[i]), "wallets": int(len(np.unique(wallets[gross == sizes[i]])))}
+            for i in order]

@@ -8,7 +8,7 @@ served from its cache. To keep repeats identical, tool outputs carry no timings 
     run(message, image=None, emit=print) -> the answer event
 
 Events for the thread (server-sent events, SPEC.md 8.3):
-    {"type": "step", "tool": ..., "status": "running" | "done" | "error", "summary": ..., "ms": ...}
+    {"type": "step", "tool": ..., "status": "running" | "done" | "error", "summary": ..., "ms": ..., "result": ...}
     {"type": "answer", "text": ..., "audit": {...}, "check": {...}}
 """
 
@@ -220,7 +220,7 @@ class Run:
             result, status = {"error": f"{type(e).__name__}: {e}"[:300]}, "error"
         self.outputs.append(result)
         self.emit({"type": "step", "tool": name, "status": status, "summary": summary(name, result),
-                   "ms": int(1000 * (time.time() - started))})
+                   "ms": int(1000 * (time.time() - started)), "result": result})
         return result
 
     # The loop

@@ -786,10 +786,16 @@ Added Nov 2:
 - **Name search and copycats** read the BigQuery launch history, so they cover launches through mid-September 2026 for now.
 - **Token names are hidden when they contain slurs.** Names are written by anyone.
 - **The demo's runs** are saved once with `save-demo` and replayed by `GET /api/demo/<id>` with no Meta or Helius calls.
-  - Saved Nov 2: 5 tokens from the May 16 test day, each as it stood 15 minutes after launch. Drake's run starts from the builder's mock shill clip.
-  - The live verdicts: Drake Likely rug at 99% (rugged 7.7 h later), GANG Likely rug at 66% (rugged 11.6 h later), Napoleon Possible rug at 54% (rugged 2.9 h later), gnosis Possible rug at 42% (still trading a day later), Jim Possible rug at 28% (faded).
-  - All 5 answers passed the numbers audit on the first try.
-  - Meta spend for all development so far: $0.007.
+  - Saved Nov 2: 6 tokens from the May 16 test day, each as it stood 15 minutes after launch. Each run starts from what a user would type: a pump.fun link or a mint, not a clip.
+  - **The hero, BABYBULL:** 26 team wallets tied by funding (one funder paid 24 of the wallets on the map). 68.5% of buys are at repeated exact sizes, and the team sold into outside buys every time. Likely rug at 86%; Glimmer's second opinion is 92%. It rugged 31 minutes after the check.
+  - **The other five:** Drake Likely rug at 99% (rugged 7.7 h later), GANG Likely rug at 66% (11.6 h), Napoleon Possible rug at 54% (2.9 h), gnosis Possible rug at 42% (still trading a day later), Jim Possible rug at 28% (faded).
+  - **What each run adds:**
+    - the bubble map's funder hubs;
+    - the top repeated buy sizes;
+    - each tool's result;
+    - `after`: hindsight kept outside the check, with the market cap to 1 hour and the rug time.
+  - All answers passed the numbers audit on the first try.
+  - Meta spend for all development so far: $0.011.
 - **Measured cost:** a full check, clip included, costs about $0.001 on the contributor model.
 
 Tool outputs carry no timings or credit counts, so a repeated check sends identical requests and is served from the Meta cache.

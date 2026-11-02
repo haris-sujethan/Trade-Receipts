@@ -343,10 +343,23 @@ class Check:
         self.token_view = (tok, sig, ctx)
         result["chart"] = chart.real_chart(tok, sig, ctx)
         result["bubble_map"] = chart.bubble_map(tok, ctx)
+        result["bubble_map"]["funders"] = self.funders(result["bubble_map"], hop1, busy)
+        result["same_size_buys"] = chart.same_size_buys(tok, ctx)
         result["similar"] = similar.similar(sig | {"mint": self.mint}, tok.launch_ts)
         if copycats.covered(self.T):
             result["copycats"] = copycats.search(launch.symbol, self.T, exclude=self.mint)
         return self._finish(result)
+
+    def funders(self, bubble: dict, hop1: list, busy: dict) -> list[dict]:
+        """Wallets that directly funded 2 or more wallets on the bubble map by T (0.01 SOL or more,
+        never a busy sender), with the wallets they funded: the hubs behind `shared_funder` links."""
+        shown = {n["wallet"] for n in bubble["nodes"]}
+        funded: dict[str, set[str]] = {}
+        for ts, src, dst, lamports in hop1:
+            if dst in shown and src not in shown and src not in busy and lamports >= dataset.MIN_LINK_LAMPORTS and ts <= self.T:
+                funded.setdefault(src, set()).add(dst)
+        hubs = sorted(((f, ws) for f, ws in funded.items() if len(ws) >= 2), key=lambda kv: (-len(kv[1]), kv[0]))
+        return [{"wallet": f, "funds": sorted(ws)} for f, ws in hubs[:20]]
 
     def _finish(self, result: dict) -> dict:
         result["helius_credits"] = self.h.spent_this_month() - self.credits_start
