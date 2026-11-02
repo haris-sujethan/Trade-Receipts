@@ -770,7 +770,21 @@ Muse Spark 1.3 with tool calling. It plans, calls tools, reads results, asks the
 - `token_security`: GoPlus.
 - `read_address`: reads a screenshot with structured output.
 
-Clips, copycats and name search come next. Tool outputs carry no timings or credit counts, so a repeated check sends identical requests and is served from the Meta cache.
+- `find_token`: name or ticker search.
+
+Added Nov 2:
+- **Clips:** `read_address` reads clips too. The mp4 is uploaded through the Files API and Muse Spark watches the frames and audio. It returns the mint, the ticker, and each claim with the second it appears. Tested on a mock clip: the exact 44-character mint, and every claim with its time.
+- **Reasoning effort:** reading runs at minimal effort. At low effort, Muse Spark spent its whole output cap reasoning.
+- **What a live check also returns:**
+  - the real chart's data and the bubble map's data (`backend/receipts/crypto/chart.py`);
+  - 5 similar past tokens (`similar.py`);
+  - copycats (`copycats.py`): tokens that used the same ticker or name in the week before, the most active first.
+- **Name search and copycats** read the BigQuery launch history, so they cover launches through mid-September 2026 for now.
+- **Token names are hidden when they contain slurs.** Names are written by anyone.
+- **The demo's runs** are saved once with `save-demo` and replayed by `GET /api/demo/<id>` with no Meta or Helius calls.
+- **Measured cost:** a full check, clip included, costs about $0.001 on the contributor model.
+
+Tool outputs carry no timings or credit counts, so a repeated check sends identical requests and is served from the Meta cache.
 
 ### 8.2 Tools
 

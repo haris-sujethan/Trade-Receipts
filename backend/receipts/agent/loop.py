@@ -13,6 +13,7 @@ Events for the thread (server-sent events, SPEC.md 8.3):
 """
 
 import base64
+import hashlib
 import json
 import math
 import time
@@ -21,10 +22,12 @@ import uuid
 import base58
 
 from receipts.agent import audit, meta
-from receipts.crypto import live, prompt
+from receipts.config import settings
+from receipts.crypto import copycats, live, prompt
 from receipts.crypto.goplus import CREDIT as GOPLUS_CREDIT, GoPlus
 
 MODEL = "muse-spark-1.3"
+UPLOADS = settings.data_dir / "uploads"  # clips sent to the agent (gitignored with data/)
 MAX_ROUNDS = 6
 MAX_OUTPUT = 1500
 NOT_ADVICE = "Not financial advice."
@@ -37,9 +40,9 @@ NOT_CHECKED_LIVE = ("creator_rugs_24h", "group_rugs_24h", "group_launches_24h", 
 SYSTEM = f"""You are the rug check in Trade Receipts. You check new pump.fun tokens on Solana for the chance that their team rugs: sells its supply into buyers.
 
 How to work:
-- Get the token's mint. If the user sent a screenshot, call read_address on it. If they gave only a name or ticker, ask for the mint.
+- Get the token's mint. If the user sent a screenshot or clip, call read_address on it. If they gave only a name or ticker, call find_token, list the tokens it finds with their age, market cap and holders, and ask which one they mean. Never pick one for them.
 - Call check_token with the mint. Call token_security as a cross-check.
-- Then explain in plain, short sentences what the evidence shows: the verdict and rug chance first, then the 2 to 4 signals that matter most, with their numbers.
+- Then explain in plain, short sentences what the evidence shows: the verdict and rug chance first, then the 2 to 4 signals that matter most, with their numbers. If check_token has a second opinion from Muse Glimmer, give its rug chance and say whether it agrees.
 
 Rules:
 - Never compute, estimate or convert a number. Use only numbers that appear in tool results, written as they appear there.
@@ -58,8 +61,13 @@ TOOLS = [
     {"type": "function", "name": "token_security",
      "description": "Mint, freeze and other authority fields for a token, from GoPlus. A cross-check: on pump.fun they're usually revoked.",
      "parameters": {"type": "object", "properties": {"mint": {"type": "string"}}, "required": ["mint"], "additionalProperties": False}},
+    {"type": "function", "name": "find_token",
+     "description": "Find pump.fun tokens by ticker or name, the most active first, with their age, market cap and holders.",
+     "parameters": {"type": "object", "properties": {"query": {"type": "string", "description": "a ticker or name"}},
+                    "required": ["query"], "additionalProperties": False}},
     {"type": "function", "name": "read_address",
-     "description": "Read the token mint address, ticker and any claims (such as 'dev doxxed' or a market cap) from the screenshot the user sent.",
+     "description": "Read the token mint address, ticker and any claims (such as 'dev doxxed' or a market cap) from the screenshot "
+                    "or clip the user sent. For a clip, each claim comes with when it was shown or said.",
      "parameters": {"type": "object", "properties": {}, "additionalProperties": False}},
 ]
 
@@ -68,7 +76,11 @@ ADDRESS_SCHEMA = {
     "properties": {
         "mint": {"type": ["string", "null"], "description": "the Solana mint address exactly as shown, or null"},
         "ticker": {"type": ["string", "null"]},
-        "claims": {"type": "array", "items": {"type": "string"}, "description": "claims made about the token, quoted"},
+        "claims": {"type": "array", "description": "claims made about the token, quoted",
+                   "items": {"type": "object", "properties": {
+                       "quote": {"type": "string"},
+                       "at_s": {"type": ["number", "null"], "description": "seconds into the clip; null for a screenshot"}},
+                       "required": ["quote", "at_s"], "additionalProperties": False}},
     },
     "required": ["mint", "ticker", "claims"], "additionalProperties": False,
 }
@@ -82,11 +94,14 @@ def valid_mint(mint: str) -> bool:
 
 
 class Run:
-    def __init__(self, client: meta.Meta | None = None, emit=print, image: bytes | None = None, image_type: str = "image/png"):
+    def __init__(self, client: meta.Meta | None = None, emit=print, image: bytes | None = None, image_type: str = "image/png",
+                 as_of: int | None = None, video: bytes | None = None):
         self.meta = client or meta.Meta()
+        self.as_of = as_of  # check tokens as they stood at this time (the demo's past tokens); default now
         self.emit = emit
         self.image = image
         self.image_type = image_type
+        self.video = video  # an mp4 clip
         self.outputs: list = []  # every tool output, for the numbers audit
         self.check: dict | None = None
         self.id = uuid.uuid4().hex[:12]
@@ -96,7 +111,7 @@ class Run:
     def check_token(self, mint: str) -> dict:
         if not valid_mint(mint):
             return {"error": f"{mint} isn't a valid Solana address"}
-        c = live.Check(mint, progress=lambda **kv: self.emit({"type": "progress", "tool": "check_token", **kv}))
+        c = live.Check(mint, as_of=self.as_of, progress=lambda **kv: self.emit({"type": "progress", "tool": "check_token", **kv}))
         try:
             result = c.run()
         except live.NotPumpFun:
@@ -110,38 +125,90 @@ class Run:
             out["verdict"] = result["verdict"]
             out["rug_chance"] = f"{round(100 * result['trees_rug_chance'])}%"
             out["model"] = "gradient-boosted trees on the token's signals, calibrated on held-out launches"
+            if result.get("glimmer"):
+                out["second_opinion"] = {"model": result["glimmer"]["model"],
+                                         "rug_chance": f"{round(100 * result['glimmer']['rug_chance'])}%",
+                                         "its_reasons": result["glimmer"]["reasons"]}
         if getattr(c, "token_view", None):
             sig = dict(c.token_view[1])
             for k in NOT_CHECKED_LIVE:
                 sig[k] = math.nan
             out["signals"] = prompt.signal_lines(sig)
             out["not_checked_live"] = "Past rugs by these wallets and the creator's group aren't checked in a live check yet (shown as n/a)."
+        if result.get("similar"):
+            out["similar_past_tokens"] = [
+                f"{x['ended']}" + (f" {prompt._secs(x['rugged_after_s'])} after launch" if x["rugged_after_s"] else "")
+                + f"; market cap {prompt._sol(x['mcap_sol'])}; {x['holders']} holders" for x in result["similar"]]
+        if result.get("copycats", {}).get("total"):
+            cc = result["copycats"]
+            out["copycats"] = (f"{cc['total']} other tokens used this ticker or name in the week before. The most active: "
+                               + "; ".join(f"{x['symbol']} ({x['mint']}): {prompt._secs(x['age_s'])} old, "
+                                           + (f"market cap {prompt._sol(x['mcap_sol'])}, {x['holders']} holders" if x["mcap_sol"] is not None else "little activity")
+                                           for x in cc["tokens"]))
         if result["gaps"]:
             out["partial"] = "Some busy wallets' history was read only in part."
         return out
+
+    def find_token(self, query: str) -> dict:
+        when = self.as_of or int(time.time())
+        if not copycats.covered(when):
+            return {"error": "Name search covers launches through mid-September 2026 for now. Ask the user for the token's mint address."}
+        found = copycats.search(query, when)
+        if not found["total"]:
+            return {"error": f"No pump.fun token named {query} launched in the week before. Ask for the mint address."}
+        return {"found": found["total"], "most_active": [
+            f"{x['name']} ({x['symbol']}), mint {x['mint']}: {prompt._secs(x['age_s'])} old, "
+            + (f"market cap {prompt._sol(x['mcap_sol'])}, {x['holders']} holders" if x["mcap_sol"] is not None else "little activity")
+            for x in found["tokens"]]}
 
     def token_security(self, mint: str) -> dict:
         if not valid_mint(mint):
             return {"error": f"{mint} isn't a valid Solana address"}
         result = GoPlus().token_security(mint) or {}
-        keep = ("mintable", "freezable", "closable", "metadata_mutable", "transfer_fee", "transfer_hook", "default_account_state")
-        return {"source": GOPLUS_CREDIT, **{k: result[k] for k in keep if k in result}}
+        if not result:
+            return {"error": "GoPlus has no security data for this token yet."}
+
+        def can(field: str) -> str:
+            status = (result.get(field) or {}).get("status")
+            return {"0": "no", "1": "yes"}.get(status, "unknown")
+
+        return {
+            "source": GOPLUS_CREDIT,
+            "new tokens can be minted": can("mintable"),
+            "holders' accounts can be frozen": can("freezable"),
+            "the token can be closed": can("closable"),
+            "name and image can be changed": can("metadata_mutable"),
+            "has a transfer fee": "yes" if result.get("transfer_fee") else "no",
+            "has a transfer hook": "yes" if result.get("transfer_hook") else "no",
+        }
 
     def read_address(self) -> dict:
-        if self.image is None:
-            return {"error": "The user didn't send a screenshot."}
-        url = f"data:{self.image_type};base64,{base64.b64encode(self.image).decode()}"
+        if self.video is not None:
+            UPLOADS.mkdir(parents=True, exist_ok=True)
+            path = UPLOADS / f"{hashlib.sha256(self.video).hexdigest()[:16]}.mp4"
+            path.write_bytes(self.video)
+            media = {"type": "input_file", "file_id": self.meta.upload(path)}
+            ask = ("Watch this clip, frames and audio. Read the Solana token mint address shown on screen or said aloud "
+                   "(base58, 32–44 characters), the ticker, and every claim made about the token, with the second it's shown "
+                   "or said. Copy them exactly; use null if not shown.")
+        elif self.image is not None:
+            media = {"type": "input_image", "image_url": f"data:{self.image_type};base64,{base64.b64encode(self.image).decode()}",
+                     "detail": "high"}
+            ask = ("Read the Solana token mint address shown (base58, 32–44 characters), the ticker, and any claims made "
+                   "about the token. Copy them exactly; use null if not shown.")
+        else:
+            return {"error": "The user didn't send a screenshot or clip."}
+        # Reading is transcription: at "low" effort Muse Spark spent its whole output cap reasoning (Nov 2).
         response = self.meta.respond({
-            "model": MODEL, "max_output_tokens": 400, "store": False, "reasoning": {"effort": "low"},
+            "model": MODEL, "max_output_tokens": 2000, "store": False, "reasoning": {"effort": "minimal"},
             "text": {"format": {"type": "json_schema", "name": "token_address", "schema": ADDRESS_SCHEMA, "strict": True}},
-            "input": [{"role": "user", "content": [
-                {"type": "input_text", "text": "Read the Solana token mint address shown (base58, 32–44 characters), the ticker, "
-                                               "and any claims made about the token. Copy them exactly; use null if not shown."},
-                {"type": "input_image", "image_url": url, "detail": "high"}]}],
+            "input": [{"role": "user", "content": [{"type": "input_text", "text": ask}, media]}],
         }, purpose="read address")
+        if response.get("status") != "completed":
+            return {"error": "Couldn't finish reading the address; ask the user to paste the mint."}
         found = json.loads(meta.text_of(response) or "{}")
         if found.get("mint") and not valid_mint(found["mint"]):
-            found["mint_note"] = "The address read from the image isn't a valid Solana address; ask the user to paste it."
+            found["mint_note"] = "The address read isn't a valid Solana address; ask the user to paste it."
         return found
 
     def call(self, name: str, args: dict) -> dict:
@@ -166,8 +233,9 @@ class Run:
 
     def run(self, message: str) -> dict:
         content = [{"type": "input_text", "text": message or "Check this token."}]
-        if self.image is not None:
-            content.append({"type": "input_text", "text": "(The user attached a screenshot; call read_address to read it.)"})
+        if self.image is not None or self.video is not None:
+            kind = "clip" if self.video is not None else "screenshot"
+            content.append({"type": "input_text", "text": f"(The user attached a {kind}; call read_address to read it.)"})
         items: list = [{"role": "user", "content": content}]
         text = ""
         for _ in range(MAX_ROUNDS):
@@ -221,10 +289,13 @@ def summary(name: str, result: dict) -> str:
                 "too_old": "Older than a day: signals only"}.get(result["status"], result["status"])
     if name == "read_address":
         return f"Read {result.get('mint') or 'no address'}" + (f" ({result['ticker']})" if result.get("ticker") else "")
+    if name == "find_token":
+        return f"Found {result['found']} tokens"
     if name == "token_security":
         return "Authorities checked (Powered by GoPlus)"
     return "done"
 
 
-def run(message: str, image: bytes | None = None, image_type: str = "image/png", emit=print, client: meta.Meta | None = None) -> dict:
-    return Run(client=client, emit=emit, image=image, image_type=image_type).run(message)
+def run(message: str, image: bytes | None = None, image_type: str = "image/png", emit=print, client: meta.Meta | None = None,
+        as_of: int | None = None, video: bytes | None = None) -> dict:
+    return Run(client=client, emit=emit, image=image, image_type=image_type, as_of=as_of, video=video).run(message)

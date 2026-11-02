@@ -2,6 +2,7 @@
 
     POST /api/check   {"mint": ..., "as_of": null}            a live rug check, no Meta API
     POST /api/agent   {"message": ..., "image": "data:..."}   the agent: tools plus an audited explanation
+    GET  /api/demo    the saved demo runs; GET /api/demo/<id> replays one
     GET  /api/meta    Meta API spend against the guard's limit
     GET  /api/health
 
@@ -18,7 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from receipts.agent import loop, meta
+from receipts.agent import demo, loop, meta
 from receipts.crypto import live
 
 app = FastAPI(title="Trade Receipts")
@@ -26,6 +27,7 @@ app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http
                    allow_methods=["GET", "POST"], allow_headers=["Content-Type"])
 
 MAX_IMAGE_BYTES = 8 * 2**20
+MAX_VIDEO_BYTES = 25 * 2**20
 
 
 class CheckRequest(BaseModel):
@@ -36,6 +38,8 @@ class CheckRequest(BaseModel):
 class AgentRequest(BaseModel):
     message: str = ""
     image: str | None = None  # a data URL
+    video: str | None = None  # an mp4 data URL
+    as_of: int | None = None  # check tokens as they stood then (the demo's past tokens)
 
 
 def stream(work) -> StreamingResponse:
@@ -67,6 +71,20 @@ def stream(work) -> StreamingResponse:
 @app.get("/api/health")
 def health() -> dict:
     return {"ok": True}
+
+
+@app.get("/api/demo")
+def demo_runs() -> list[dict]:
+    """The saved demo runs, replayed without the Meta API or Helius."""
+    return demo.runs()
+
+
+@app.get("/api/demo/{run_id}")
+def demo_run(run_id: str) -> dict:
+    found = demo.run(run_id)
+    if found is None:
+        raise HTTPException(404, "No saved run with that id")
+    return found
 
 
 @app.get("/api/meta")
@@ -101,4 +119,13 @@ def agent(req: AgentRequest) -> StreamingResponse:
         if len(image) > MAX_IMAGE_BYTES:
             raise HTTPException(413, "image is over 8 MB")
 
-    return stream(lambda emit: loop.run(req.message, image=image, image_type=image_type, emit=emit))
+    video = None
+    if req.video:
+        header, _, data = req.video.partition(",")
+        if header != "data:video/mp4;base64":
+            raise HTTPException(400, "video must be an mp4 data URL")
+        video = base64.b64decode(data)
+        if len(video) > MAX_VIDEO_BYTES:
+            raise HTTPException(413, "clip is over 25 MB")
+
+    return stream(lambda emit: loop.run(req.message, image=image, image_type=image_type, emit=emit, as_of=req.as_of, video=video))

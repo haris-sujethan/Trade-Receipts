@@ -27,6 +27,8 @@ def main() -> None:
     ap.add_argument("--hours", type=float, default=11.5, help="Kaggle run-time cap")
     ap.add_argument("--slug", help="job name (default glimmer-<mode>)")
     ap.add_argument("--files", help="score: comma-separated files to read (default: all four)")
+    ap.add_argument("--ids", help="score: a file listing the record ids to score, one per line")
+    ap.add_argument("--generate", action="store_true", help="score: also write each answer with its reasons")
     args = ap.parse_args()
     slug = args.slug or f"glimmer-{args.mode}"
     job = HERE / "jobs" / slug
@@ -40,6 +42,9 @@ def main() -> None:
     code = re.sub(r'^ADAPTER_FROM = .*$', f"ADAPTER_FROM = {adapter!r}", code, count=1, flags=re.M)
     files = args.files.split(",") if args.files else None
     code = re.sub(r'^FILES = .*$', f"FILES = {files!r}", code, count=1, flags=re.M)
+    ids = pathlib.Path(args.ids).read_text().split() if args.ids else None
+    code = re.sub(r'^IDS = .*$', f"IDS = {ids!r}", code, count=1, flags=re.M)
+    code = re.sub(r'^GENERATE = .*$', f"GENERATE = {args.generate!r}", code, count=1, flags=re.M)
     (job / "run.py").write_text(code)
     meta = {
         "id": f"{USER}/{slug}", "title": slug, "code_file": "run.py", "language": "python",

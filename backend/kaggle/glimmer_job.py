@@ -35,6 +35,9 @@ MODE = "smoke"  # set per job by push.py
 LIMIT = None  # examples to use (None: all in the file); set per job by push.py
 ADAPTER_FROM = None  # the earlier job (slug) whose saved adapter to load; set per job by push.py
 FILES = None  # the files a score job reads (None: all four); set per job by push.py
+IDS = None  # score only these record ids (the demo's snapshots); set per job by push.py
+GENERATE = False  # score jobs also write each answer, reasons included; set per job by push.py
+ANSWER_TOKENS = 120
 REPO = "unsloth/Muse-Glimmer-30B-unsloth-bnb-4bit"
 DATA = "/kaggle/input/rug-check-glimmer-data"
 OUT = "/kaggle/working"
@@ -270,15 +273,23 @@ def score(model, processor, names: list[str]) -> None:
     model.eval()
     with open(f"{OUT}/predictions.jsonl", "w") as f:
         for name in names:
-            for i, rec in enumerate(records(name, LIMIT)):
+            rows = [r for r in records(name) if r["id"] in IDS] if IDS else records(name, LIMIT)
+            for i, rec in enumerate(rows):
                 if time.time() - STARTED > TIME_LIMIT:
                     note(stage="time limit", file=name, scored=i)
                     return
                 with torch.no_grad():
                     inputs, _ = encode(processor, model, rec)
                     p = rug_chance(number_logprobs(model, inputs))
-                f.write(json.dumps({"file": name, "id": rec["id"], "p": round(p, 5), "rugged": rec["rugged"],
-                                    "age_s": rec["age_s"], "mayhem": rec["mayhem"], "tree_p": rec["tree_p"]}) + "\n")
+                row = {"file": name, "id": rec["id"], "p": round(p, 5), "rugged": rec["rugged"],
+                       "age_s": rec["age_s"], "mayhem": rec["mayhem"], "tree_p": rec["tree_p"]}
+                if GENERATE:
+                    with torch.no_grad():
+                        out = model.generate(**inputs, max_new_tokens=ANSWER_TOKENS, do_sample=False, use_cache=True,
+                                             eos_token_id=processor.tokenizer.convert_tokens_to_ids("<|eot|>"))
+                    text = processor.tokenizer.decode(out[0, inputs["input_ids"].shape[1]:], skip_special_tokens=False)
+                    row["answer"] = "Rug chance: " + text.split("<|")[0].strip()
+                f.write(json.dumps(row) + "\n")
                 f.flush()
                 if (i + 1) % 100 == 0:
                     note(stage="scoring", file=name, scored=i + 1)

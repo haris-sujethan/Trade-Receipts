@@ -40,7 +40,8 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from receipts.config import settings
-from receipts.crypto import baselines, dataset, events, funding, helius, history, labels, programs, roles, signals, transactions
+from receipts.crypto import (baselines, chart, copycats, dataset, events, funding, glimmer_scores, helius, history, labels,
+                            programs, roles, signals, similar, transactions)
 
 ROOT = settings.data_dir / "live"
 TOKEN_PAGES = 300  # up to 30,000 of the token's transactions
@@ -313,7 +314,7 @@ class Check:
                      "busy": [raw / "busy.parquet"], "wallets": [raw / "wallets.parquet"],
                      "history": [raw / "history.parquet"]})
         result = {"mint": self.mint, "as_of": self.T, "launch_ts": launch.ctx.block_time, "age_s": self.T - launch.ctx.block_time,
-                  "name": launch.name, "symbol": launch.symbol, "creator": launch.creator,
+                  "name": copycats.clean_name(launch.name), "symbol": copycats.clean_name(launch.symbol), "creator": launch.creator,
                   "transactions_read": len(self.seen), "traced_wallets": len(traced), "gaps": self.gaps}
         counts = dataset.prepare(b)
         if not counts["tokens"]:
@@ -337,7 +338,14 @@ class Check:
             _, _, rug_chance = baselines.tree_model()
             p = rug_chance(sig)
             result |= {"status": "scored", "trees_rug_chance": p, "verdict": verdict(p)}
+            if (g := glimmer_scores.lookup(self.mint, age)) is not None:
+                result["glimmer"] = g
         self.token_view = (tok, sig, ctx)
+        result["chart"] = chart.real_chart(tok, sig, ctx)
+        result["bubble_map"] = chart.bubble_map(tok, ctx)
+        result["similar"] = similar.similar(sig | {"mint": self.mint}, tok.launch_ts)
+        if copycats.covered(self.T):
+            result["copycats"] = copycats.search(launch.symbol, self.T, exclude=self.mint)
         return self._finish(result)
 
     def _finish(self, result: dict) -> dict:

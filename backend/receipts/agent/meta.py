@@ -19,6 +19,7 @@ import datetime as dt
 import fcntl
 import hashlib
 import json
+import mimetypes
 import pathlib
 import sqlite3
 import time
@@ -284,8 +285,9 @@ class Meta:
         row = self.cache.execute("SELECT response FROM responses WHERE key = ?", (key,)).fetchone()
         if row:
             return json.loads(row[0])["id"]
+        kind = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
         with path.open("rb") as f:
-            reply = self._post("/files", data={"purpose": purpose}, files={"file": (path.name, f)})
+            reply = self._post("/files", data={"purpose": purpose}, files={"file": (path.name, f, kind)})
         self._log(call=None, kind="upload", model=None, purpose=f"upload {path.name}", usd=0.0)
         if reply.status_code != 200:
             raise MetaError(f"Meta API upload {reply.status_code}: {reply.text[:500]}")

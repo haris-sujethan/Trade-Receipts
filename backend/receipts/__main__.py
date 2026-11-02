@@ -151,6 +151,24 @@ def live_parity(args) -> None:
     print(json.dumps({k: v for k, v in report.items() if k not in ("checks", "signals_matching_share")}, indent=2, default=str))
 
 
+def agent(args) -> None:
+    from receipts.agent import loop
+
+    def emit(event):
+        if event["type"] == "step" and event["status"] != "running":
+            print(f'  {event["tool"]}: {event["summary"]} ({event["ms"]} ms)', flush=True)
+        elif event["type"] == "answer":
+            print("\n" + event["text"] + "\n\naudit:", json.dumps(event["audit"]), flush=True)
+
+    loop.run(args.message, emit=emit, as_of=args.as_of)
+
+
+def save_demo(args) -> None:
+    from receipts.agent import demo
+
+    demo.save()
+
+
 def meta_report(args) -> None:
     from receipts.agent.meta import Meta
 
@@ -192,6 +210,11 @@ def main() -> None:
     p = sub.add_parser("live-parity", help="live checks of May 16 test tokens compared with their training snapshots")
     p.add_argument("-n", type=int, default=8)
     p.set_defaults(run=live_parity)
+    p = sub.add_parser("agent", help="the rug check agent on one message (Meta API, guarded)")
+    p.add_argument("message")
+    p.add_argument("--as-of", type=int, help="check tokens as they stood at this unix time")
+    p.set_defaults(run=agent)
+    sub.add_parser("save-demo", help="run the agent on the demo tokens and save the runs (Meta API, guarded)").set_defaults(run=save_demo)
     sub.add_parser("meta-report", help="Meta Model API spend so far against the guard's limit").set_defaults(run=meta_report)
     p = sub.add_parser("goplus", help="GoPlus token security for a mint")
     p.add_argument("mint")
