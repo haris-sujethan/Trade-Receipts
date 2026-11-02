@@ -1,8 +1,8 @@
 """The demo's saved runs (SPEC.md 13): the agent run once on each demo token, as it stood at a set
 age after launch, with every event kept so the site can replay it with the Meta API off.
 
-The tokens are past launches from the May 16 test day, which no model trained on: two that
-rugged hours after the check, one the models called a possible rug, and two that didn't rug.
+The tokens are past launches from the May 16 test day, which no model trained on: three that
+rugged hours after the check and two that didn't. `about` says only what happened next.
 
     uv run python -m receipts save-demo        runs the agent (Meta API, guarded) and saves
     data/demo/<mint>_<age>.json                 {"events": [...], "token": {...}}
@@ -22,10 +22,10 @@ AGE = 900  # 15 minutes after launch (SPEC.md 13)
 TOKENS = [
     # mint, what the demo shows, the clip that shills it (the builder's own mock clip)
     ("CQLRgHND9E4K4ed8xPAmhyQY61EgLmsUqTN5MDFcpump", "rugged 7.7 hours later; the team held 74% through 7 wallets", "drake-shill.mp4"),
-    ("9vBnYs7Y6xEfysisxD6BXZhWz9p6F1UBEJretHJpump", "rugged 11.6 hours later; 8 launch-slot wallets", None),
-    ("4i8XQih162ZrpE5ATkowkUz2qm6DSKJeNVS6wZZcpump", "a possible rug that rugged 2.9 hours later", None),
-    ("2CqJo99Xwww753TfXDGjxUeVKPazn1sEwDZf4576Fcmm", "an unlikely rug that was still trading a day later", None),
-    ("BnK8QgRW6BGPbPV2b1tAZgxVwAJvJpEC9xPoQikRpump", "an unlikely rug that faded without a rug", None),
+    ("9vBnYs7Y6xEfysisxD6BXZhWz9p6F1UBEJretHJpump", "rugged 11.6 hours later; 8 wallets bought in the launch block", None),
+    ("4i8XQih162ZrpE5ATkowkUz2qm6DSKJeNVS6wZZcpump", "rugged 2.9 hours later", None),
+    ("2CqJo99Xwww753TfXDGjxUeVKPazn1sEwDZf4576Fcmm", "didn't rug: still trading a day later", None),
+    ("BnK8QgRW6BGPbPV2b1tAZgxVwAJvJpEC9xPoQikRpump", "didn't rug: faded within the day", None),
 ]
 
 

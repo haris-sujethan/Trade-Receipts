@@ -2,18 +2,19 @@
 
 Glimmer has no free GPU to serve it live, so the fine-tuned model scores the demo tokens' snapshots
 on Kaggle ahead of time (`kaggle/push.py score --ids ... --generate`), writing each rug chance and
-the reasons it gives. Its raw rug chance is calibrated with isotonic regression on the
-fine-tuned model's calibration scores (May 15), the same way the receipt calibrates it.
+the answer it gives.
 
-    data/glimmer/runs/demo/predictions.jsonl       the demo job's output
-    data/glimmer/runs/score-sft/predictions.jsonl  the fine-tuned model's calibration scores
+The rug chance is Glimmer's own: the expected value of its distribution over 1–99, uncalibrated.
+Isotonic calibration fit on the 300 calibration snapshots scored so far puts most values on one
+step (56%), while the raw value scored about as well on the test day (Brier 0.077 vs 0.076).
+Its written reasons are kept for "How the model saw it" but not given to the agent: fine-tuning
+taught a fixed template, and the same phrase can appear as raising and lowering the chance.
+
+    data/glimmer/runs/demo/predictions.jsonl  the demo job's output
 """
 
 import functools
 import json
-
-import numpy as np
-from sklearn.isotonic import IsotonicRegression
 
 from receipts.config import settings
 
@@ -24,18 +25,12 @@ MODEL = "Muse Glimmer 30B, fine-tuned by us on May 11–14 launches"
 @functools.lru_cache(maxsize=1)
 def _scores() -> dict[str, dict]:
     demo = RUNS / "demo" / "predictions.jsonl"
-    cal = RUNS / "score-sft" / "predictions.jsonl"
-    if not demo.exists() or not cal.exists():
+    if not demo.exists():
         return {}
-    rows = [json.loads(line) for line in cal.read_text().splitlines()]
-    rows = [r for r in rows if r["file"] == "calibration"]
-    iso = IsotonicRegression(out_of_bounds="clip", y_min=0.01, y_max=0.99).fit(
-        np.array([r["p"] for r in rows]), np.array([int(r["rugged"]) for r in rows]))
     out = {}
     for line in demo.read_text().splitlines():
         r = json.loads(line)
-        reasons = r.get("answer", "").partition("\n")[2].strip()
-        out[r["id"]] = {"rug_chance": float(iso.predict([r["p"]])[0]), "raw": r["p"], "reasons": reasons, "model": MODEL}
+        out[r["id"]] = {"rug_chance": r["p"], "answer": r.get("answer", ""), "model": MODEL}
     return out
 
 

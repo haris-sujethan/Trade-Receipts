@@ -49,7 +49,7 @@ Rules:
 - Facts and flags, never advice: never say buy, sell or hold, and never call a token safe. A low rug chance means fewer of the warning signs past rugs showed, nothing more.
 - Describe wallets, not people. No names, no accusations.
 - Say "token", not "coin".
-- If check_token says the token is below the activity floor, already rugged, or older than a day, say so plainly instead of giving a rug chance.
+- If check_token's status is below_floor, rugged or too_old, say so plainly instead of giving a rug chance. When the status is scored, don't mention these statuses.
 - End with: {NOT_ADVICE}"""
 
 TOOLS = [
@@ -127,8 +127,7 @@ class Run:
             out["model"] = "gradient-boosted trees on the token's signals, calibrated on held-out launches"
             if result.get("glimmer"):
                 out["second_opinion"] = {"model": result["glimmer"]["model"],
-                                         "rug_chance": f"{round(100 * result['glimmer']['rug_chance'])}%",
-                                         "its_reasons": result["glimmer"]["reasons"]}
+                                         "rug_chance": f"{round(100 * result['glimmer']['rug_chance'])}%"}
         if getattr(c, "token_view", None):
             sig = dict(c.token_view[1])
             for k in NOT_CHECKED_LIVE:

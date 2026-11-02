@@ -690,6 +690,10 @@ No accuracy claim appears anywhere without these numbers behind it.
   - its funders' incoming transfers;
   - for wallets that bought in the first 10 seconds, the launches of tokens they bought in the day before, to tell sniper bots from the creator's bundle.
 - **Scored by the trees for now.** Glimmer has no free GPU to serve it live (Modal's credits weren't claimed), so its rug chance is precomputed on Kaggle for the demo tokens.
+- **Glimmer on the demo tokens** (Nov 2): fine-tuned Glimmer scored the 5 demo tokens at every age on Kaggle, in 20 GPU minutes.
+  - At 15 minutes it gives 78–88% to the three that rugged, and 79% and 63% to the two that didn't. The trees give 57–96% to the rugs and 30–33% to the others.
+  - The report shows Glimmer's own rug chance (uncalibrated) as a second opinion. Calibration fit on only 300 snapshots puts most values on one step.
+  - Its written reasons follow a fixed template learned in fine-tuning, and one phrase can appear on both sides, so the agent doesn't use them.
 - **Thinner than training, by design:**
   - busy traders' scans stop after a few pages;
   - funding reaches back two days before the launch;
@@ -782,6 +786,10 @@ Added Nov 2:
 - **Name search and copycats** read the BigQuery launch history, so they cover launches through mid-September 2026 for now.
 - **Token names are hidden when they contain slurs.** Names are written by anyone.
 - **The demo's runs** are saved once with `save-demo` and replayed by `GET /api/demo/<id>` with no Meta or Helius calls.
+  - Saved Nov 2: 5 tokens from the May 16 test day, each as it stood 15 minutes after launch. Drake's run starts from the builder's mock shill clip.
+  - The live verdicts: Drake Likely rug at 99% (rugged 7.7 h later), GANG Likely rug at 66% (rugged 11.6 h later), Napoleon Possible rug at 54% (rugged 2.9 h later), gnosis Possible rug at 42% (still trading a day later), Jim Possible rug at 28% (faded).
+  - All 5 answers passed the numbers audit on the first try.
+  - Meta spend for all development so far: $0.007.
 - **Measured cost:** a full check, clip included, costs about $0.001 on the contributor model.
 
 Tool outputs carry no timings or credit counts, so a repeated check sends identical requests and is served from the Meta cache.
