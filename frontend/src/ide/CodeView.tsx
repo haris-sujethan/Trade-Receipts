@@ -6,7 +6,7 @@ import { problemsFor, useIde } from "./state";
  * Problems from runs show under the line they point at. */
 export function CodeView({ file }: { file: ProjectFile }) {
   const { state } = useIde();
-  const problems = problemsFor(state.ranRuns).filter((p) => p.file === file.name && p.line);
+  const problems = problemsFor(state).filter((p) => p.file === file.name && p.line);
   const lines = file.content.split("\n");
 
   return (

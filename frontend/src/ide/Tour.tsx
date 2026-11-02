@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import { ArrowRight } from "lucide-react";
-import { markTourDone, useIde } from "./state";
+import { HERO_KEY, markTourDone, useIde } from "./state";
 
 type Ide = ReturnType<typeof useIde>;
 
@@ -12,58 +12,55 @@ type Step = {
   enter?: (dispatch: Ide["dispatch"], state: Ide["state"]) => void;
 };
 
-function startReplay(dispatch: Ide["dispatch"], state: Ide["state"]) {
-  if (!state.replaying && !state.replayed) dispatch({ type: "startReplay" });
+function startHero(dispatch: Ide["dispatch"], state: Ide["state"]) {
+  if (state.checks[HERO_KEY]?.status === "waiting") dispatch({ type: "startHero" });
 }
 
-/** Scroll the report so the target sits at its top. Only the report pane moves; scrollIntoView would also shift
- * the IDE's own overflow-hidden frame. */
-function scrollReportTo(target: string) {
-  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  // Wait a frame so a tab that just opened has rendered.
-  requestAnimationFrame(() => {
-    const el = document.querySelector(`[data-tour="${target}"]`);
-    const desk = el?.closest<HTMLElement>(".report-desk");
-    if (!el || !desk) return;
-    const top = el.getBoundingClientRect().top - desk.getBoundingClientRect().top + desk.scrollTop - 12;
-    desk.scrollTo({ top, behavior: reduce ? "auto" : "smooth" });
-  });
+/** Jump the example check to its end, so its answer and flags are there to point at. */
+function finishHero(dispatch: Ide["dispatch"], state: Ide["state"]) {
+  startHero(dispatch, state);
+  dispatch({ type: "finishCheck", key: HERO_KEY });
 }
 
 const steps: Step[] = [
   {
     target: "ask",
-    title: "Start with a token or a clip",
-    body: "Someone dropped in a clip shilling MOON. You can also paste a token's mint.",
+    title: "Start with a token",
+    body: "Paste a pump.fun link, a ticker or a token’s address. This one is a saved check of a token 15 minutes after it launched.",
   },
   {
     target: "thread",
     title: "The agent traces every wallet",
-    body: "It reads the mint off the screen, pulls the token's first 15 minutes, traces who funded each wallet, and splits the team and the bots from independent buyers.",
-    enter: startReplay,
+    body: "It reads every trade since launch, traces who funded each wallet, and splits the team, the snipers and the bots from independent buyers.",
+    enter: startHero,
+  },
+  {
+    target: "holders",
+    title: "Who really holds it",
+    body: "Wallets tied by funding gather around the wallets that paid for them. The team is blue; snipers, bots and everyone else sit apart.",
+    enter: (dispatch, state) => {
+      startHero(dispatch, state);
+      dispatch({ type: "open", id: `check:${HERO_KEY}` });
+      dispatch({ type: "checkView", key: HERO_KEY, view: "holders" });
+    },
   },
   {
     target: "problems",
-    title: "Red flags, like errors in code",
-    body: "What the check found shows up here, the way an editor lists problems. Click one to jump to the evidence.",
+    title: "Flags, like errors in code",
+    body: "The verdict and the signals the agent called out show up here, the way an editor lists problems.",
     enter: (dispatch, state) => {
-      if (!state.replayed) dispatch({ type: "finishReplay" });
+      finishHero(dispatch, state);
       dispatch({ type: "bottomTab", tab: "problems" });
     },
   },
   {
     target: "results",
-    title: "The verdict, with the evidence",
-    body: "Likely rug, with the rug chance from a model trained on thousands of past pump.fun tokens. Under it: a plain explanation, the real chart, and who holds the token.",
-    enter: (dispatch) => dispatch({ type: "open", id: "moon" }),
-  },
-  {
-    target: "receipt",
-    title: "Every report ends on a receipt",
-    body: "The pitch said no team; the chain says the team holds 23%. Switch to Backtest at the top to test a trading strategy the same honest way.",
-    enter: (dispatch) => {
-      dispatch({ type: "open", id: "moon" });
-      scrollReportTo("receipt");
+    title: "The verdict, with a second opinion",
+    body: "The rug chance comes from a model trained on thousands of past pump.fun tokens, with Muse Glimmer’s second opinion and how similar launches ended. Switch to Backtest at the top to test a strategy.",
+    enter: (dispatch, state) => {
+      finishHero(dispatch, state);
+      dispatch({ type: "open", id: `check:${HERO_KEY}` });
+      dispatch({ type: "checkView", key: HERO_KEY, view: "overview" });
     },
   },
 ];
@@ -151,7 +148,7 @@ function TourCard() {
       window.removeEventListener("resize", remeasure);
       window.removeEventListener("scroll", onScroll, true);
     };
-  }, [remeasure, state.openTabs, state.active, state.workTab, state.revealed]);
+  }, [remeasure, state.openTabs, state.active, state.workTab, state.checkViews, state.checks]);
 
   useLayoutEffect(() => {
     if (cardRef.current) setCardH(cardRef.current.offsetHeight);

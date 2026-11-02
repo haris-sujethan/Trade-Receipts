@@ -20,8 +20,8 @@ export const INK = token("--ink", "#111111");
 export const INK_2 = token("--ink-2", "#444447");
 export const INK_3 = token("--ink-3", "#66666b");
 export const PAPER = token("--paper", "#ffffff");
-export const GRID = "#ececea";
-const FONT = "Public Sans Variable, Public Sans, system-ui, sans-serif";
+export const GRID = "#eceef1";
+const FONT = "Hanken Grotesk Variable, system-ui, sans-serif";
 
 /** Below this width a chart switches to its narrow layout, if it has one. */
 const NARROW = 520;

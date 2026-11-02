@@ -1,0 +1,63 @@
+/* The site's tokens: home, sign-up and the IDE share them. Meta blue is the accent; the wallet palette follows data/tokens.ts. */
+
+:root {
+  /* Home (theme-glass) tokens */
+  --color-paper: oklch(99.2% 0 0);
+  --color-paper-2: oklch(97.2% 0.002 250);
+  --color-paper-3: oklch(94.6% 0.003 250);
+  --color-ink: oklch(20% 0.006 250);
+  --color-ink-2: oklch(42% 0.008 250);
+  --color-muted: oklch(52% 0.008 250);
+  --color-faint: oklch(72% 0.006 250);
+  --color-rule: oklch(91.5% 0.004 250);
+  --color-focus: #0064e0;
+  /* Meta blue: #0081fb for fills, marks and large text; #0064e0 (5.4:1 on white) for small text and buttons */
+  --color-accent: #0081fb;
+  --color-accent-ink: #0064e0;
+  --color-accent-deep: #0050b8;
+  --color-accent-wash: oklch(95% 0.03 250);
+  --color-accent-wash-2: oklch(92% 0.045 250);
+  --color-ok-bg: oklch(95.5% 0.04 155);
+  --color-ok: oklch(50% 0.12 155);
+
+  --color-win: oklch(100% 0 0);
+  --color-win-side: oklch(98.4% 0.002 250);
+  --color-win-line: oklch(92.6% 0.004 250);
+  --color-win-edge: oklch(20% 0.01 250 / 0.22);
+  --color-shadow: oklch(22% 0.03 250 / 0.38);
+  --color-shadow-soft: oklch(22% 0.02 250 / 0.12);
+  --color-wall: oklch(62% 0.06 245);
+  --color-scrim: oklch(20% 0.02 250 / 0.42);
+  --color-on-photo: oklch(99% 0 0);
+  --color-glass: oklch(100% 0 0 / 0.5);
+  --color-glass-hover: oklch(100% 0 0 / 0.68);
+  --color-glass-on: oklch(100% 0 0);
+  --color-glass-edge: oklch(100% 0 0 / 0.42);
+  --color-glass-shine: oklch(100% 0 0 / 0.5);
+  --color-glass-bar: oklch(97% 0.01 240 / 0.55);
+  --color-light-red: oklch(68% 0.2 27);
+  --color-light-yellow: oklch(83% 0.16 80);
+  --color-light-green: oklch(73% 0.2 145);
+
+  --color-likely-ink: oklch(48% 0.17 30);
+  --color-likely-bg: oklch(95.5% 0.03 30);
+  --color-possible-ink: oklch(48% 0.1 70);
+  --color-possible-bg: oklch(95.5% 0.045 85);
+  /* Candle direction in the rug illustration */
+  --color-up: oklch(64% 0.15 152);
+  --color-down: oklch(57% 0.21 27);
+
+  /* The wallet palette in data/tokens.ts order, the team in Meta blue. Validated light on #fcfcfb: CVD worst 9.1, normal-vision worst 17.0; the grey fails the chroma floor by design */
+  --g-team: #0081fb;
+  --g-likely: #c03fa8;
+  --g-sniper: #1baf7a;
+  --g-bot: #d9502e;
+  --g-fresh: #eda100;
+  --g-independent: #a9a9ae;
+  --map-pending: oklch(87% 0.004 250);
+
+  --font-display: "Literata Variable", ui-serif, Georgia, serif;
+  --font-body: "Hanken Grotesk Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", monospace;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}

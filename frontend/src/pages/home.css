@@ -1,406 +1,335 @@
-.home {
-  --gutter: clamp(20px, 4vw, 56px);
-  --max: 1360px;
+/* Hallmark · v2.0.0 · theme: custom (the category standard the user picked, direction 5, played straight) · genre: modern-minimal · shape: Settled, centred head over the product on a desktop · hero: head and actions centred, the live demo below on a Mac desktop at 1240px · signature: a saved rug check replayed from the user's message to the result, on a Mac screen · nav: edge-aligned wordmark, two links, one action · footer: credits and the disclaimer · photo: Moraine Lake (Gorgo, public domain, Wikimedia Commons) */
+/* Hallmark · pre-emit critique: P5 H4 E4 S4 R5 V5 · weakest: H, the centred head over a product band is the category's opener; kept because the user asked for it by reference */
+/* waive 47a: the user asked for the demo to sit on a Mac screen, so the window chrome is drawn on purpose (no menu bar, per the user) */
+/* waive 29: liquid glass is the brief; it is used for the token pills on the photograph only */
+/* waive 38iii: the muted second line of the head is the reference look the user picked (direction 5) */
+/* waive 58: the words on the demo screen are the product's own UI, replayed */
+/* waive 59: the demo belongs to the hero, so it sits 36px under the actions, as the user asked */
+/* waive 72: the thread and the result scroll inside the window; their overflow is not crowding */
+/* waive 73: the flagged text is scrolled out of view inside the window's own scrollers, so the hero only covers its hit point */
+/* waive 62: result parts hide only while a replay prints them (.result--live); the finished result is visible */
+
+
+html:has(.theme-glass),
+body:has(.theme-glass) {
+  overflow-x: clip;
+  background: var(--color-paper);
 }
 
-.home main > section,
-.home-nav,
-.home-foot {
-  padding-inline: var(--gutter);
+.hn {
+  min-height: 100dvh;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font: 400 16px/1.55 var(--font-body);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
 }
 
-.home main > section > *,
-.home-nav > *,
-.home-foot > * {
-  max-width: var(--max);
+.hn ::selection {
+  background: var(--color-ink);
+  color: var(--color-paper);
 }
 
-/* Skip link: hidden until a keyboard user reaches it */
+.hn a {
+  color: inherit;
+}
 
-.skip {
+.hn :focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 3px;
+}
+
+.hn main:focus {
+  outline: none;
+}
+
+.hn-skip {
   position: absolute;
-  top: 12px;
   left: 12px;
+  top: -48px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--color-ink);
+  color: var(--color-paper);
   z-index: 10;
-  padding: 10px 14px;
-  font-weight: 800;
-  background: var(--ink);
-  color: var(--paper);
+}
+
+.hn .hn-skip {
+  color: var(--color-paper);
+}
+
+.hn-skip:focus {
+  top: 12px;
+}
+
+/* ---------- Nav ---------- */
+
+.hn-nav {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  max-width: 1240px;
+  height: 72px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.hn-mark {
+  justify-self: start;
+  font: 500 22px/1 var(--font-display);
+  letter-spacing: -0.015em;
   text-decoration: none;
-  transform: translateY(-160%);
 }
 
-.skip:focus-visible {
-  transform: none;
+.hn-links {
+  display: flex;
+  gap: 32px;
+  font-size: 15px;
+  color: var(--color-ink-2);
 }
 
-.home main:focus {
-  outline: 0;
+.hn-links a {
+  text-decoration: none;
+  transition: color 160ms var(--ease-out);
 }
 
-/* Buttons */
+.hn-links a:hover {
+  color: var(--color-ink);
+}
 
-.btn {
+.hn-nav > .hn-btn {
+  justify-self: end;
+}
+
+/* ---------- Buttons ---------- */
+
+.hn-btn {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 10px;
-  font-size: 16px;
-  font-weight: 800;
-  padding: 12px 20px;
-  border: 3px solid var(--ink);
+  gap: 8px;
+  height: 44px;
+  padding: 0 20px;
+  border-radius: 8px;
+  font: 500 15px/1 var(--font-body);
+  text-decoration: none;
+  transition: background-color 160ms var(--ease-out), box-shadow 160ms var(--ease-out), transform 120ms var(--ease-out);
+}
+
+.hn-btn:active {
+  transform: scale(0.98);
+}
+
+.hn .hn-btn--primary {
+  background: var(--color-accent-ink);
+  color: var(--color-paper);
+}
+
+.hn .hn-btn--primary:hover {
+  background: var(--color-accent-deep);
+}
+
+.hn-btn--line {
+  background: var(--color-paper);
+  box-shadow: inset 0 0 0 1px var(--color-rule);
+}
+
+.hn-btn--line:hover {
+  background: var(--color-paper-2);
+}
+
+.hn-btn--sm {
+  height: 34px;
+  padding: 0 16px;
+  font-size: 14px;
+}
+
+.hn-link {
+  color: var(--color-accent-ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
   text-decoration: none;
   white-space: nowrap;
-  transition: background-color 160ms var(--ease-out), color 160ms var(--ease-out);
 }
 
-.btn--ink {
-  background: var(--ink);
-  color: var(--paper);
+.hn-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 
-.btn--ink:hover {
-  background: var(--paper);
-  color: var(--ink);
-}
+/* ---------- Hero ---------- */
 
-.btn--paper {
-  background: var(--paper);
-  color: var(--ink);
-  border-color: var(--paper);
-}
-
-.btn--paper:hover {
-  background: var(--ink);
-  color: var(--paper);
-}
-
-/* Nav: page chrome takes a hairline at column width. Heavy rules belong inside labels, where they group data. */
-
-.home-nav {
-  --inset: max(var(--gutter), calc((100% - var(--max)) / 2));
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 40px;
-  height: 76px;
-  padding-inline: var(--inset);
-}
-
-.home-nav::after {
-  content: "";
-  position: absolute;
-  left: var(--inset);
-  right: var(--inset);
-  bottom: 0;
-  height: var(--rule-hair);
-  background: var(--ink);
-}
-
-.wordmark {
-  font-size: 22px;
-  font-weight: 900;
-  letter-spacing: -0.02em;
-  text-decoration: none;
-  margin-right: auto;
-}
-
-.home-nav nav {
-  display: flex;
-  gap: 28px;
-}
-
-.home-nav nav a {
-  font-size: 16px;
-  font-weight: 600;
-  text-decoration: none;
-  text-underline-offset: 6px;
-  text-decoration-thickness: 2px;
-}
-
-.home-nav nav a:hover {
-  text-decoration-line: underline;
-}
-
-/* Hero */
-
-.hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(380px, 500px);
-  gap: clamp(40px, 6vw, 88px);
-  align-items: start;
-  padding-top: clamp(40px, 6vw, 72px);
-  padding-bottom: clamp(56px, 8vw, 104px);
-  margin-inline: auto;
-  max-width: calc(var(--max) + 2 * var(--gutter));
-}
-
-.hero h1 {
-  font-size: clamp(48px, 6.4vw, 88px);
-  font-weight: 900;
-  line-height: 0.95;
-  letter-spacing: -0.035em;
-  text-wrap: balance;
-  max-width: 13ch;
-}
-
-.hero__tagline {
-  font-size: clamp(20px, 1.9vw, 25px);
-  font-weight: 800;
-  line-height: 1.3;
-  letter-spacing: -0.01em;
-  max-width: 30em;
-  margin-top: 32px;
-  padding-top: 14px;
-  border-top: var(--rule-hair) solid var(--ink);
-}
-
-.hero__sub {
-  font-size: clamp(18px, 1.5vw, 20px);
-  line-height: 1.55;
-  color: var(--ink-2);
-  max-width: 34em;
-  margin-top: 12px;
-}
-
-.hero__ctas {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 32px;
-}
-
-.btn--lg {
-  font-size: 18px;
-  padding: 15px 24px;
-}
-
-.btn--line {
-  background: var(--paper);
-  color: var(--ink);
-}
-
-.btn--line:hover {
-  background: var(--ink);
-  color: var(--paper);
-}
-
-/* Tabs that sit on top of the hero label, set in the label's own rules */
-.label-tabs {
-  display: flex;
-  border: var(--rule-bar) solid var(--ink);
-  border-bottom: 0;
-}
-
-.label-tabs button {
-  flex: 1;
-  background: var(--paper);
-  color: var(--ink);
-  border: 0;
-  border-right: 3px solid var(--ink);
-  font-size: 15px;
-  font-weight: 700;
-  padding: 10px 8px;
-  transition: background-color 160ms var(--ease-out), color 160ms var(--ease-out);
-}
-
-.label-tabs button:last-child {
-  border-right: 0;
-}
-
-.label-tabs button:hover {
-  background: var(--paper-2);
-}
-
-.label-tabs button.is-on {
-  background: var(--ink);
-  color: var(--paper);
-}
-
-.hero__label {
-  position: sticky;
-  top: 24px;
-}
-
-/* Showcase */
-
-.showcase {
-  padding-top: clamp(56px, 8vw, 112px);
-  padding-bottom: clamp(56px, 8vw, 112px);
-}
-
-.showcase > * {
-  margin-inline: auto;
-}
-
-.section-head {
-  display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
-  gap: 48px;
-  align-items: end;
-  margin-bottom: 40px;
-  padding-top: 20px;
-  border-top: var(--rule-hair) solid var(--ink);
-}
-
-.section-head h2 {
-  font-size: clamp(36px, 4.4vw, 60px);
-  font-weight: 900;
-  line-height: 1;
-  letter-spacing: -0.03em;
-  text-wrap: balance;
-}
-
-.section-head p {
-  font-size: 19px;
-  line-height: 1.55;
-  color: var(--ink-2);
-  max-width: 34em;
-}
-
-/* How it works: set as one wide label */
-
-.how {
-  padding-bottom: clamp(56px, 8vw, 112px);
-}
-
-.how > * {
-  margin-inline: auto;
-}
-
-.how__title {
-  font-size: clamp(40px, 5vw, 64px);
-  font-weight: 900;
-  letter-spacing: -0.03em;
-  line-height: 1;
-  border: var(--rule-bar) solid var(--ink);
-  border-bottom: var(--rule-slab) solid var(--ink);
-  padding: 14px 22px 12px;
-}
-
-.how__steps {
-  list-style: none;
+.hn-hero {
+  max-width: 1240px;
   margin: 0 auto;
-  padding: 0 22px;
-  border: var(--rule-bar) solid var(--ink);
-  border-top: 0;
+  padding: 60px 24px 36px;
+  text-align: center;
 }
 
-.how__steps li {
-  display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.4fr);
-  gap: 40px;
-  padding: 26px 0 24px;
-  border-bottom: var(--rule-bar) solid var(--ink);
+.hn-hero h1 {
+  margin: 0;
+  font: 400 72px/1.04 var(--font-display);
+  letter-spacing: -0.025em;
+  overflow-wrap: break-word;
+  min-width: 0;
 }
 
-.how__steps li:last-child {
-  border-bottom: 0;
+.hn-hero h1 span {
+  display: block;
+  color: var(--color-muted);
 }
 
-.how__steps h3 {
-  font-size: clamp(26px, 2.6vw, 36px);
-  font-weight: 900;
-  letter-spacing: -0.02em;
-  line-height: 1.05;
+.hn-lede {
+  margin: 20px auto 28px;
+  max-width: 46ch;
+  font-size: 18px;
+  color: var(--color-ink-2);
+  text-wrap: balance;
 }
 
-.how__steps p {
-  font-size: 19px;
-  line-height: 1.55;
-  color: var(--ink-2);
-  max-width: 38em;
-}
-
-/* Closing band */
-
-.close {
-  background: var(--ink);
-  color: var(--paper);
-  padding-top: clamp(64px, 9vw, 120px);
-  padding-bottom: clamp(64px, 9vw, 120px);
+.hn-acts {
   display: flex;
-  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+/* ---------- Demo ---------- */
+
+.hn-demo {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* ---------- What we check ---------- */
+
+.hn-checks {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 128px 24px 40px;
+}
+
+.hn-checks__head {
+  display: flex;
   justify-content: space-between;
-  gap: 32px;
+  align-items: end;
+  gap: 24px;
+  margin-bottom: 48px;
+}
+
+.hn-checks__head h2 {
+  margin: 0;
+  max-width: 20ch;
+  font: 400 56px/1.06 var(--font-display);
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+  overflow-wrap: break-word;
+  min-width: 0;
+}
+
+/* ---------- Close and footer ---------- */
+
+.hn-close {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 120px 24px 120px;
+  text-align: center;
+}
+
+.hn-close h2 {
+  margin: 0;
+  font: 400 64px/1.04 var(--font-display);
+  letter-spacing: -0.025em;
+}
+
+.hn-close p {
+  margin: 16px auto 28px;
+  max-width: 52ch;
+  color: var(--color-ink-2);
+}
+
+.hn-foot {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 28px 24px 44px;
+  border-top: 1px solid var(--color-rule);
+  display: flex;
   flex-wrap: wrap;
+  gap: 8px 28px;
+  font-size: 13px;
+  color: var(--color-muted);
 }
 
-.close h2 {
-  font-size: clamp(40px, 6vw, 84px);
-  font-weight: 900;
-  letter-spacing: -0.035em;
-  line-height: 0.95;
+.hn-foot p {
+  margin: 0;
 }
 
-.close .btn {
-  font-size: 19px;
-  padding: 16px 26px;
+.hn-foot__name {
+  color: var(--color-ink);
+  font-weight: 600;
 }
 
-.close ::selection {
-  background: var(--paper);
-  color: var(--ink);
-}
+/* ---------- Narrow screens ---------- */
 
-/* Footer */
+@media (max-width: 1080px) {
 
-.home-foot {
-  padding-top: 28px;
-  padding-bottom: 40px;
-  display: grid;
-  grid-template-columns: repeat(4, auto);
-  justify-content: space-between;
-  gap: 12px 32px;
-  font-size: 14px;
-  color: var(--ink-2);
-}
-
-.home-foot__name {
-  font-weight: 900;
-  color: var(--ink);
-}
-
-@media (max-width: 960px) {
-  .hero {
-    grid-template-columns: 1fr;
+  .hn-hero h1 {
+    font-size: 56px;
   }
 
-  .hero__label {
-    position: static;
-    max-width: 520px;
-  }
-
-  .section-head {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-
-  .how__steps li {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-
-  .home-foot {
-    grid-template-columns: 1fr;
+  .hn-checks__head h2 {
+    font-size: 44px;
   }
 }
 
-@media (max-width: 560px) {
-  .home-nav {
-    gap: 16px;
+@media (max-width: 640px) {
+  .hn-nav {
+    padding: 0 16px;
   }
 
-  .home-nav nav {
+  .hn-links {
     display: none;
   }
 
-  .hero__ctas .btn {
-    flex: 1;
+  .hn-hero {
+    padding: 48px 16px 32px;
   }
 
-  .label-tabs button {
-    font-size: 13px;
-    padding-inline: 4px;
+  .hn-hero h1 {
+    font-size: 42px;
+  }
+
+  .hn-demo,
+  .hn-checks,
+  .hn-close,
+  .hn-foot {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .hn-checks {
+    padding-top: 88px;
+  }
+
+  .hn-checks__head {
+    flex-direction: column;
+    align-items: start;
+  }
+
+  .hn-checks__head h2 {
+    font-size: 36px;
+  }
+
+
+  .hn-close h2 {
+    font-size: 34px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hn-btn,
+  .hn-links a {
+    transition: none;
   }
 }

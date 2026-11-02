@@ -21,7 +21,7 @@ export function CodeEditor({ file }: Props) {
   useEffect(() => {
     const model = editor?.getModel();
     if (!model) return;
-    const markers = problemsFor(state.ranRuns)
+    const markers = problemsFor(state)
       .filter((p) => p.file === file.name && p.line)
       .map((p) => {
         const line = Math.min(p.line!, model.getLineCount());

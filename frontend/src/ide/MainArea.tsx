@@ -1,19 +1,24 @@
 import { lazy, Suspense, useState } from "react";
-import { Check, Columns2, Copy, Download, FileCode2, FileText, FileVideo, Play, X } from "lucide-react";
+import { Check, Columns2, Copy, Download, FileCode2, FileText, FileVideo, Play, ScanSearch, X } from "lucide-react";
 import { runs, type ProjectFile } from "../data/examples";
-import { tokenChecks, type TokenCheck } from "../data/tokens";
+import { answerOf } from "../demo/runs";
 import { onTablistKeyDown } from "../lib/tabs";
-import { fileById, fileOf, hasRun, useIde, WRITTEN_FILE, type TabId } from "./state";
+import { checkOf, fileById, fileOf, hasRun, useIde, type TabId } from "./state";
 import { CodeView } from "./CodeView";
 import { ResultsView } from "./ResultsView";
-import { TokenReport } from "./report/TokenReport";
+import { CheckTab } from "./CheckTab";
 import { ClipView } from "./ClipView";
 import { useNarrow } from "./useNarrow";
 
 // Monaco is the heaviest part of the IDE; it loads only when a file first opens on a wide screen.
 const CodeEditor = lazy(() => import("./CodeEditor").then((m) => ({ default: m.CodeEditor })));
 
-function tabLabel(id: TabId): string {
+function tabLabel(id: TabId, state: ReturnType<typeof useIde>["state"]): string {
+  const check = checkOf(state, id);
+  if (check) {
+    const symbol = answerOf(check.run)?.check?.symbol;
+    return symbol ? `${symbol} check` : "New check";
+  }
   if (id.startsWith("results:")) {
     const f = fileById(id.slice(8));
     return `Results · ${f?.name.replace(/\.\w+$/, "") ?? id}`;
@@ -26,6 +31,7 @@ function tabDomId(id: TabId) {
 }
 
 function TabIcon({ id }: { id: TabId }) {
+  if (id.startsWith("check:")) return <ScanSearch size={14} aria-hidden />;
   if (id.startsWith("results:")) return <Check size={14} aria-hidden />;
   const kind = fileById(id)?.kind;
   if (kind === "clip") return <FileVideo size={14} aria-hidden />;
@@ -57,9 +63,9 @@ export function MainArea() {
                 onClick={() => dispatch({ type: "open", id })}
               >
                 <TabIcon id={id} />
-                {tabLabel(id)}
+                {tabLabel(id, state)}
               </button>
-              <button className="tab__close" aria-label={`Close ${tabLabel(id)}`} onClick={() => dispatch({ type: "close", id })}>
+              <button className="tab__close" aria-label={`Close ${tabLabel(id, state)}`} onClick={() => dispatch({ type: "close", id })}>
                 <X size={13} aria-hidden />
               </button>
             </div>
@@ -82,7 +88,6 @@ export function MainArea() {
       </div>
 
       {fileId && (isCode || active?.startsWith("results:")) && <RunBar fileId={fileId} />}
-      {file?.kind === "token" && <CheckBar token={tokenChecks[file.id as TokenCheck["id"]]} />}
 
       <div
         id="main-panel"
@@ -108,6 +113,9 @@ function Code({ file, narrow }: { file: ProjectFile; narrow: boolean }) {
 
 function TabContent({ id, split, narrow }: { id: TabId; split: boolean; narrow: boolean }) {
   const { state } = useIde();
+  const check = checkOf(state, id);
+  if (check) return <CheckTab check={check} />;
+  if (id.startsWith("check:")) return <EmptyState />;
   const fileId = fileOf(id)!;
   const file = fileById(fileId);
 
@@ -124,11 +132,6 @@ function TabContent({ id, split, narrow }: { id: TabId; split: boolean; narrow: 
   }
 
   if (!file) return <EmptyState />;
-  // While the replay writes the report, show it being written; the finished report prints when the check is done.
-  if (file.kind === "token") {
-    if (file.id === WRITTEN_FILE && state.replaying) return <CodeView file={file} />;
-    return <TokenReport id={file.id as TokenCheck["id"]} />;
-  }
   if (file.kind === "clip") return <ClipView clipId={file.id} />;
   if (split && state.ranRuns.includes(file.id)) {
     return (
@@ -195,33 +198,6 @@ function RunBar({ fileId }: { fileId: string }) {
   );
 }
 
-/** What the check covered, stated as facts. Example checks can't be rerun in this preview. */
-function CheckBar({ token }: { token: TokenCheck }) {
-  return (
-    <div className="runbar">
-      <dl className="runbar__settings" aria-label="What this example check covered">
-        <div>
-          <dt>Mint</dt>
-          <dd className="mono">{token.mintShort}</dd>
-        </div>
-        <div>
-          <dt>Checked at</dt>
-          <dd className="mono">{token.age} after launch</dd>
-        </div>
-        <div>
-          <dt>Stage</dt>
-          <dd className="mono">{token.stage}</dd>
-        </div>
-      </dl>
-      <p className="runbar__note">Example check · live checks come with the backend</p>
-      <button className="run-btn" disabled>
-        <Play size={13} aria-hidden fill="currentColor" />
-        Check again
-      </button>
-    </div>
-  );
-}
-
 function ExportButtons({ file }: { file: ProjectFile }) {
   const [copy, setCopy] = useState<"idle" | "copied" | "failed">("idle");
 
@@ -269,9 +245,9 @@ function ExportButtons({ file }: { file: ProjectFile }) {
 function EmptyState() {
   return (
     <div className="empty">
-      <p className="empty__title">Open a file to see it here.</p>
+      <p className="empty__title">Open a check or a file to see it here.</p>
       <p className="empty__body">
-        Tokens open as a rug check report. Strategies open as code with their results next to them.
+        Saved checks open with their chart, holders and signals. Strategies open as code with their results next to them.
       </p>
     </div>
   );

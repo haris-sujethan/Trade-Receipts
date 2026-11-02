@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { CircleHelp, Settings, Share2 } from "lucide-react";
 import { APP_NAME } from "../config";
+import { useBackend } from "./live";
 import { clearTourDone, useIde, type WorkTab } from "./state";
 
 const workTabs: WorkTab[] = ["Backtest", "Analyze"];
@@ -57,6 +58,7 @@ export function TopBar() {
 
 /** Says plainly what this preview can and can't do yet. */
 function PreviewNote() {
+  const backend = useBackend();
   const [open, setOpen] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
@@ -88,20 +90,22 @@ function PreviewNote() {
         aria-controls="preview-note"
         onClick={() => setOpen((v) => !v)}
       >
-        Preview<span className="preview__more"> · example data</span>
+        {backend === "online" ? "Live" : "Preview"}
+        <span className="preview__more">{backend === "online" ? ", backend connected" : ", saved checks"}</span>
       </button>
       {open && (
         <div id="preview-note" className="preview__note" role="region" aria-label="About this preview">
-          <p className="preview__title">This preview runs on example data</p>
+          <p className="preview__title">{backend === "online" ? "Connected to the backend" : "This preview replays saved checks"}</p>
           <p className="preview__head">Works now</p>
           <ul>
-            <li>Two example rug checks: one from a shill clip, one from a pasted mint</li>
-            <li>An example backtest: a strategy from a clip, coded and tested</li>
-            <li>The full reports, with every chart and its numbers</li>
+            <li>Six saved rug checks of real pump.fun tokens, each 15 minutes after launch, replayed step by step</li>
+            <li>Their chart, holders and every signal, with the rug chance and a second opinion</li>
+            <li>An example backtest, with its code and results (example values)</li>
+            {backend === "online" && <li>Live checks: ask about any pump.fun token in the thread</li>}
           </ul>
           <p className="preview__head">Coming next</p>
           <ul>
-            <li>Live rug checks on any pump.fun token, scored by a model trained on thousands of past tokens</li>
+            {backend !== "online" && <li>Live checks on any pump.fun token</li>}
             <li>Running your own strategies on real prices</li>
             <li>Attaching clips and screenshots</li>
             <li>Saving your own projects</li>

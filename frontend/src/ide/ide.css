@@ -1,4 +1,6 @@
-/* The IDE: a dark desk. Results print on white labels. */
+/* Hallmark · v2.0.0 · theme: custom (the home page's system, carried into the app) · genre: modern-minimal · scope: app · the IDE is the light app window from the home demo, full size: Literata wordmark and heads, Hanken Grotesk, Meta blue accent · tokens: styles/tokens.css and base.css */
+/* Hallmark · pre-emit critique: P4 H4 E4 S4 R4 V4 · weakest: E, an IDE is a familiar layout; kept because people know where things are */
+/* waive 40: disabled view tabs (exempt as inactive controls) and controls under the tour's scrim */
 
 .ide {
   height: 100vh;
@@ -43,7 +45,7 @@
 }
 
 .icon-btn:disabled {
-  color: #4f4f56;
+  color: var(--color-faint);
 }
 
 .icon-btn--sm {
@@ -72,7 +74,7 @@
 }
 
 .tool-btn:disabled {
-  color: #5c5c63;
+  color: var(--color-faint);
   border-color: var(--desk-line);
 }
 
@@ -89,8 +91,8 @@
 }
 
 .tool-btn--solid:hover:not(:disabled) {
-  background: #ffffff;
-  color: var(--desk-0);
+  background: var(--color-accent-deep);
+  color: var(--color-paper);
 }
 
 .mono {
@@ -137,7 +139,8 @@
 }
 
 .topbar__tabs button.is-on {
-  color: #ffffff;
+  color: var(--desk-text);
+  box-shadow: inset 0 -2px 0 var(--color-accent);
 }
 
 .topbar__tools {
@@ -174,11 +177,11 @@
 }
 
 .preview__chip:hover {
-  background: #ffffff;
+  background: var(--color-accent-wash-2);
 }
 
 .preview__chip[aria-expanded="true"] {
-  background: #ffffff;
+  background: var(--color-accent-wash-2);
 }
 
 .preview__more {
@@ -195,7 +198,7 @@
   background: var(--paper);
   color: var(--ink);
   border: 3px solid var(--ink);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 0 0 1px var(--color-rule), 0 18px 40px -16px var(--color-shadow);
 }
 
 .preview__note ::selection {
@@ -345,7 +348,7 @@
 
 .tree__file.is-active {
   background: var(--desk-3);
-  color: #ffffff;
+  color: var(--desk-text);
 }
 
 .tree__name {
@@ -438,8 +441,8 @@
 
 .tab.is-active {
   background: var(--desk-0);
-  color: #ffffff;
-  box-shadow: inset 0 1px 0 var(--desk-text);
+  color: var(--desk-text);
+  box-shadow: inset 0 -2px 0 var(--color-accent);
 }
 
 .tabbar__tools {
@@ -516,7 +519,7 @@
 }
 
 .run-btn:hover:not(:disabled) {
-  background: #ffffff;
+  background: var(--color-accent-deep);
 }
 
 .run-btn:disabled {
@@ -871,7 +874,7 @@
   border-color: var(--desk-text-3);
 }
 
-.steps {
+.steps-ex {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -961,13 +964,13 @@
 }
 
 .diff__minus {
-  background: rgba(240, 103, 92, 0.12);
-  color: #f2a39c;
+  background: var(--color-likely-bg);
+  color: var(--color-likely-ink);
 }
 
 .diff__plus {
-  background: rgba(108, 194, 135, 0.12);
-  color: #a8dcb8;
+  background: var(--color-ok-bg);
+  color: var(--color-ok);
 }
 
 .edit-card {
@@ -1002,11 +1005,6 @@
   gap: 6px;
 }
 
-.steps__working {
-  padding: 8px 0 8px 26px;
-  color: var(--desk-text-3);
-  animation: working 1.4s ease-in-out infinite;
-}
 
 .thread__start {
   margin: auto 0;
@@ -1122,7 +1120,7 @@
   padding: 8px 0;
   background: var(--desk-2);
   border: 1px solid var(--desk-line-2);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 0 0 1px var(--color-rule), 0 18px 40px -16px var(--color-shadow);
 }
 
 .history__head,
@@ -1157,7 +1155,7 @@
 }
 
 .history__list button[aria-current="true"] {
-  color: #ffffff;
+  color: var(--color-accent-ink);
   font-weight: 600;
 }
 
@@ -1330,12 +1328,11 @@
 
 .tour__spot {
   position: absolute;
-  box-shadow: 0 0 0 200vmax rgba(5, 5, 6, 0.72);
-  outline: 2px solid #ffffff;
+  box-shadow: 0 0 0 200vmax var(--color-scrim);
+  outline: 2px solid var(--color-accent);
   outline-offset: 0;
   pointer-events: none;
-  transition: top 420ms var(--ease-out), left 420ms var(--ease-out), width 420ms var(--ease-out),
-    height 420ms var(--ease-out);
+  /* Jumps to each target: positions are never animated. */
 }
 
 .tour__spot.is-none {
@@ -1352,7 +1349,6 @@
   color: var(--ink);
   border: 3px solid var(--ink);
   padding: 10px 16px 14px;
-  transition: top 420ms var(--ease-out), left 420ms var(--ease-out);
 }
 
 .tour__card:focus {
@@ -1360,39 +1356,33 @@
 }
 
 .tour__card ::selection {
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--color-accent);
+  color: var(--color-paper);
 }
 
 .tour__count {
   font-size: 12px;
-  font-weight: 700;
-  padding-bottom: 6px;
-  border-bottom: var(--rule-hair) solid var(--ink);
+  color: var(--color-muted);
 }
 
 .tour__title {
-  font-size: 24px;
-  font-weight: 900;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
-  padding: 8px 0 8px;
-  border-bottom: var(--rule-mid) solid var(--ink);
+  margin-top: 4px;
+  font: 400 24px/1.12 var(--font-display);
+  letter-spacing: -0.015em;
 }
 
 .tour__body {
+  margin-top: 8px;
   font-size: 14px;
   line-height: 1.55;
-  color: var(--ink-2);
-  padding: 10px 0 14px;
-  border-bottom: var(--rule-hair) solid var(--ink);
+  color: var(--color-ink-2);
 }
 
 .tour__actions {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding-top: 12px;
+  margin-top: 16px;
 }
 
 .tour__spacer {
@@ -1404,37 +1394,39 @@
   border: 0;
   padding: 0;
   font-size: 14px;
-  font-weight: 600;
-  color: var(--ink-2);
+  font-weight: 500;
+  color: var(--color-ink-2);
   text-decoration: underline;
   text-underline-offset: 4px;
 }
 
 .tour__link:hover {
-  color: var(--ink);
+  color: var(--color-ink);
 }
 
 .tour__next {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: var(--ink);
-  color: var(--paper);
-  border: 2px solid var(--ink);
+  height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 8px;
   font-size: 14px;
-  font-weight: 800;
-  padding: 8px 14px;
+  font-weight: 500;
+  color: var(--color-paper);
+  background: var(--color-accent-ink);
+  transition: background-color 160ms var(--ease-out);
 }
 
 .tour__next:hover {
-  background: var(--paper);
-  color: var(--ink);
+  background: var(--color-accent-deep);
 }
 
 .tour__next:focus-visible,
 .tour__link:focus-visible {
-  outline: 3px solid var(--ink);
-  outline-offset: 3px;
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
 }
 
 /* Narrow screens: one pane at a time, chosen from a row of tabs under the top bar */
@@ -1494,8 +1486,8 @@
 }
 
 .panes button.is-on {
-  color: #ffffff;
-  box-shadow: inset 0 -2px 0 var(--desk-text);
+  color: var(--desk-text);
+  box-shadow: inset 0 -2px 0 var(--color-accent);
 }
 
 .ide__pane,
@@ -1534,5 +1526,301 @@
 @keyframes working {
   50% {
     opacity: 0.4;
+  }
+}
+
+
+/* ---------- Light theme: controls, top bar and popovers in the home page's language ---------- */
+
+.tool-btn {
+  border-radius: 7px;
+}
+
+.tool-btn.is-on,
+.tool-btn--solid {
+  color: var(--color-paper);
+  background: var(--color-accent-ink);
+  border-color: var(--color-accent-ink);
+}
+
+.tool-btn--solid:hover:not(:disabled) {
+  background: var(--color-accent-deep);
+  color: var(--color-paper);
+}
+
+.icon-btn {
+  border-radius: 7px;
+}
+
+.topbar {
+  background: var(--desk-1);
+}
+
+.topbar__mark {
+  font: 500 18px/1 var(--font-display);
+  letter-spacing: -0.015em;
+}
+
+.topbar__tabs button {
+  padding: 12px 0;
+  border-radius: 0;
+}
+
+.topbar__guest {
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+
+.preview__chip {
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-weight: 600;
+  color: var(--color-accent-ink);
+  background: var(--color-accent-wash);
+}
+
+.preview__chip:hover,
+.preview__chip[aria-expanded="true"] {
+  background: var(--color-accent-wash-2);
+}
+
+.preview__note {
+  top: 34px;
+  padding: 14px 16px 16px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  box-shadow: 0 0 0 1px var(--color-rule), 0 18px 40px -16px var(--color-shadow);
+}
+
+.preview__note ::selection {
+  background: var(--color-accent);
+  color: var(--color-paper);
+}
+
+.preview__title {
+  padding-bottom: 8px;
+  font: 400 19px/1.2 var(--font-display);
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.preview__head {
+  margin-top: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-muted);
+  border-bottom: 0;
+}
+
+.preview__note li {
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.run-btn {
+  border-radius: 7px;
+  background: var(--color-accent-ink);
+  color: var(--color-paper);
+}
+
+.run-btn:hover:not(:disabled) {
+  background: var(--color-accent-deep);
+}
+
+.tab {
+  border-radius: 0;
+}
+
+.tree__meta {
+  margin-left: auto;
+  font-size: 11.5px;
+  color: var(--desk-text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.tree__empty {
+  padding: 4px 12px 4px 34px;
+  color: var(--desk-text-3);
+}
+
+/* The thread: the shared agent steps (demo/CheckViews) sit in the IDE's own thread */
+
+.thread__run {
+  display: grid;
+  gap: 10px;
+  padding: 4px 0 8px;
+}
+
+.thread__tag {
+  margin: 0;
+  font-size: 12px;
+  color: var(--desk-text-3);
+}
+
+.thread__error {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 9px;
+  color: var(--color-likely-ink);
+  background: var(--color-likely-bg);
+}
+
+.thread__run .tool-btn {
+  justify-self: start;
+}
+
+.msg--user p {
+  overflow-wrap: anywhere;
+}
+
+.composer {
+  border-radius: 12px;
+}
+
+.thread__note {
+  flex-shrink: 0;
+  margin: -4px 14px 12px;
+  font-size: 12px;
+  color: var(--desk-text-3);
+}
+
+.composer:focus-within {
+  border-color: var(--color-accent);
+}
+
+.send {
+  border-radius: 50%;
+  background: var(--color-accent-ink);
+  color: var(--color-paper);
+}
+
+.send:disabled {
+  background: var(--desk-3);
+  color: var(--desk-text-3);
+}
+
+/* A rug check in the editor area */
+
+.check {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.check__tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--desk-line);
+}
+
+.check__tabs button {
+  height: 36px;
+  padding: 0 12px;
+  border: 0;
+  background: transparent;
+  font: 500 13px/1 var(--font-sans);
+  color: var(--desk-text-2);
+  box-shadow: inset 0 -2px 0 transparent;
+  transition: color 160ms var(--ease-out), box-shadow 200ms var(--ease-out);
+}
+
+.check__tabs button:hover:not(:disabled) {
+  color: var(--desk-text);
+}
+
+.check__tabs button.is-on {
+  color: var(--desk-text);
+  box-shadow: inset 0 -2px 0 var(--color-accent);
+}
+
+.check__tabs button:disabled {
+  color: var(--color-faint);
+}
+
+.check__tabs button:focus-visible {
+  outline-offset: -2px;
+}
+
+.check__body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 20px 24px 32px;
+  --color-win: var(--desk-0);
+  --color-win-line: var(--desk-line);
+}
+
+.check__body > div {
+  max-width: 1080px;
+}
+
+.check__state {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--desk-1);
+  color: var(--desk-text-2);
+}
+
+.check__state--error {
+  color: var(--color-likely-ink);
+  background: var(--color-likely-bg);
+}
+
+.check__state p {
+  margin: 0;
+}
+
+.check__state-title {
+  font-weight: 600;
+  color: var(--desk-text);
+}
+
+.check__signals .checks__note {
+  margin-top: 16px;
+}
+
+.result__explain {
+  padding: 4px 0 2px;
+  font-size: 14.5px;
+  line-height: 1.55;
+  max-width: 72ch;
+}
+
+/* The tour, in the same language */
+
+.tour__card {
+  border: 0;
+  border-radius: 14px;
+  padding: 16px 18px 16px;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  box-shadow: 0 0 0 1px var(--color-rule), 0 24px 48px -20px var(--color-shadow);
+}
+
+/* The message box shows focus on its frame, so the text area inside draws none of its own. */
+.composer textarea:focus-visible {
+  outline: none;
+}
+
+.ide :focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ide *,
+  .ide *::before,
+  .ide *::after {
+    transition: none;
+    animation: none;
   }
 }

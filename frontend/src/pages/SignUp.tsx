@@ -8,12 +8,13 @@ export function SignUp() {
   const navigate = useNavigate();
 
   return (
-    <div className="theme-paper signup">
-      <header className="home-nav">
-        <Link to="/" className="wordmark">
+    <div className="theme-glass hn signup">
+      <header className="hn-nav">
+        <Link to="/" className="hn-mark">
           {APP_NAME}
         </Link>
-        <Link to="/" className="signup-back">
+        <span aria-hidden />
+        <Link to="/" className="hn-link signup-back">
           Back to home
         </Link>
       </header>
@@ -38,11 +39,11 @@ export function SignUp() {
           </div>
 
           <p className="signup-for">For hackathon judges and participants</p>
-          <button type="button" className="btn btn--ink signup-skip" onClick={() => navigate("/ide")}>
+          <button type="button" className="hn-btn hn-btn--primary signup-skip" onClick={() => navigate("/ide")}>
             Meta Hackathon: skip sign-up
-            <ArrowRight size={20} strokeWidth={2.5} aria-hidden />
+            <ArrowRight size={18} strokeWidth={2.25} aria-hidden />
           </button>
-          <p className="signup-fine">No account is created. The preview runs on example data.</p>
+          <p className="signup-fine">No account is created. The preview replays saved checks and example backtests.</p>
         </section>
       </main>
     </div>

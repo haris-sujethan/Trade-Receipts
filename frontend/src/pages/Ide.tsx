@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Group, Panel, Separator } from "react-resizable-panels";
 import { APP_NAME } from "../config";
-import { IdeProvider, problemsFor, useIde } from "../ide/state";
+import { HERO_KEY, IdeProvider, problemsFor, useIde } from "../ide/state";
 import { TopBar } from "../ide/TopBar";
 import { Explorer } from "../ide/Explorer";
 import { MainArea } from "../ide/MainArea";
@@ -15,7 +15,7 @@ import "../ide/ide.css";
 
 export function Ide() {
   const narrow = useNarrow();
-  useThemeColor("#0b0b0c");
+  useThemeColor("#fcfcfc");
 
   return <IdeProvider>{narrow ? <NarrowIde /> : <WideIde />}</IdeProvider>;
 }
@@ -29,7 +29,7 @@ function WideIde() {
   }, []);
 
   return (
-    <div className="theme-desk ide">
+    <div className="theme-glass ide">
       {/* Everything behind the tour is inert while it's open. */}
       <div className="ide__frame" inert={state.tourOpen}>
         <h1 className="sr-only">{APP_NAME} IDE</h1>
@@ -77,13 +77,14 @@ const panes: { id: Pane; label: string }[] = [
  * steps simply play in the thread instead. */
 function NarrowIde() {
   const { state, dispatch } = useIde();
-  const [pane, setPane] = useState<Pane>(() => (state.replayed ? "main" : "thread"));
-  const problems = problemsFor(state.ranRuns).length;
+  const hero = state.checks[HERO_KEY];
+  const [pane, setPane] = useState<Pane>(() => (hero?.status === "done" ? "main" : "thread"));
+  const problems = problemsFor(state).length;
 
+  // The tour needs the full layout, so here the example simply plays in the thread once it has loaded.
   useEffect(() => {
-    if (!state.replaying && !state.replayed && state.edit !== "rejected") dispatch({ type: "startReplay" });
-    // On arrival, and when the example is started again.
-  }, [state.tourRun]);
+    if (hero?.status === "waiting") dispatch({ type: "startHero" });
+  }, [hero?.status, state.tourRun]);
 
   // Whatever the visitor opens, or the replay finishes on, comes to the front.
   const seen = useRef(state.openSeq);
@@ -91,14 +92,15 @@ function NarrowIde() {
     if (state.openSeq !== seen.current) setPane("main");
     seen.current = state.openSeq;
   }, [state.openSeq]);
-  const finished = useRef(state.replayed);
+  const finished = useRef(hero?.status === "done");
   useEffect(() => {
-    if (state.replayed && !finished.current) setPane("main");
-    finished.current = state.replayed;
-  }, [state.replayed]);
+    const done = hero?.status === "done";
+    if (done && !finished.current) setPane("main");
+    finished.current = done;
+  }, [hero?.status]);
 
   return (
-    <div className="theme-desk ide ide--narrow">
+    <div className="theme-glass ide ide--narrow">
       <h1 className="sr-only">{APP_NAME} IDE</h1>
       <TopBar />
       <div className="panes" role="tablist" aria-label="Panes" onKeyDown={onTablistKeyDown}>

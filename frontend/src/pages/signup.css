@@ -1,78 +1,82 @@
+/* Hallmark · v2.0.0 · theme: custom (the home page's system) · genre: modern-minimal · sign-up: the home nav, one card in the middle */
+/* Hallmark · pre-emit critique: P4 H4 E4 S4 R4 V4 · weakest: E, a centred card is the expected sign-up */
+
 .signup {
-  --gutter: clamp(20px, 4vw, 56px);
-  --max: 1360px;
   display: flex;
   flex-direction: column;
-}
-
-.signup-back {
-  font-size: 16px;
-  font-weight: 600;
-  text-underline-offset: 6px;
-  text-decoration-thickness: 2px;
 }
 
 .signup-main {
   flex: 1;
   display: grid;
   place-items: center;
-  padding: clamp(40px, 8vh, 96px) var(--gutter);
+  padding: 64px 24px 96px;
 }
 
 .signup-card {
-  width: min(100%, 520px);
-  border: var(--rule-bar) solid var(--ink);
-  padding: 12px 22px 22px;
+  width: min(100%, 460px);
+  padding: 32px 32px 28px;
+  border-radius: 14px;
+  background: var(--color-paper);
+  box-shadow: inset 0 0 0 1px var(--color-rule), 0 24px 48px -32px var(--color-shadow);
 }
 
 .signup-card h1 {
-  font-size: clamp(38px, 5vw, 52px);
-  font-weight: 900;
-  letter-spacing: -0.03em;
-  line-height: 1.02;
-  padding-bottom: 6px;
-  border-bottom: var(--rule-hair) solid var(--ink);
+  margin: 0;
+  font: 400 40px/1.08 var(--font-display);
+  letter-spacing: -0.02em;
 }
 
 .signup-status {
-  font-size: 17px;
-  font-weight: 700;
-  padding: 8px 0 10px;
-  border-bottom: var(--rule-slab) solid var(--ink);
+  margin: 8px 0 0;
+  color: var(--color-ink-2);
 }
 
 .signup-options {
   display: grid;
-  gap: 10px;
-  padding: 18px 0 20px;
-  border-bottom: var(--rule-mid) solid var(--ink);
+  gap: 8px;
+  margin: 24px 0 0;
 }
 
 .signup-options button {
-  width: 100%;
-  font-size: 17px;
-  font-weight: 700;
-  padding: 14px 18px;
-  background: var(--paper-2);
-  color: #8b8b90;
-  border: 2px solid var(--paper-3);
-  text-align: center;
+  height: 44px;
+  border: 0;
+  border-radius: 8px;
+  font: 500 15px/1 var(--font-body);
+  color: var(--color-muted);
+  background: var(--color-paper-2);
+  box-shadow: inset 0 0 0 1px var(--color-rule);
+  cursor: not-allowed;
 }
 
 .signup-for {
-  font-size: 15px;
-  color: var(--ink-2);
-  padding: 16px 0 10px;
+  margin: 28px 0 8px;
+  font-size: 14px;
+  color: var(--color-muted);
 }
 
 .signup-skip {
   width: 100%;
-  font-size: 18px;
-  padding: 16px 20px;
+  justify-content: center;
+  border: 0;
+  cursor: pointer;
 }
 
 .signup-fine {
-  font-size: 14px;
-  color: var(--ink-2);
-  padding-top: 12px;
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+.signup-back {
+  justify-self: end;
+}
+
+.signup .hn-nav {
+  width: 100%;
+}
+
+.signup :focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
 }

@@ -13,3 +13,6 @@ __pycache__/
 
 # generated per Kaggle run by backend/kaggle/push.py
 backend/kaggle/jobs/
+
+# demo runs copied from data/demo by frontend/scripts/copy-demo.mjs (derived chain data)
+frontend/public/demo/

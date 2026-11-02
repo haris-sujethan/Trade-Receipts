@@ -1,0 +1,319 @@
+/* The signal cards: the home page's What we check, and the Signals view of a check in the IDE. */
+
+.checks__grid {
+  display: grid;
+  /* Four across on the home page, fewer wherever there is less room (the IDE's workspace, phones). */
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 268px), 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.checks__grid--loading {
+  min-height: 900px;
+}
+
+.check-card {
+  display: flex;
+  flex-direction: column;
+  border-radius: 10px;
+  background: var(--color-paper);
+  box-shadow: inset 0 0 0 1px var(--color-rule);
+  overflow: hidden;
+}
+
+.check-card__viz {
+  display: grid;
+  align-items: center;
+  height: 136px;
+  padding: 16px 16px;
+  background: var(--color-paper-2);
+  border-bottom: 1px solid var(--color-rule);
+  --color-win: var(--color-paper-2);
+  --color-win-line: var(--color-rule);
+}
+
+.check-card__viz .bmap,
+.check-card__viz .mchart {
+  height: 108px;
+  width: 100%;
+}
+
+.check-card__viz .bmap svg {
+  height: 108px;
+}
+
+.check-card h3 {
+  margin: 20px 20px 2px;
+  font: 400 26px/1.15 var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+.check-card__sub {
+  margin: 0 20px 16px;
+  font-size: 14.5px;
+  color: var(--color-muted);
+}
+
+.check-card dl {
+  margin: auto 20px 20px;
+  font-size: 14px;
+}
+
+.check-card dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--color-rule);
+}
+
+.check-card dt {
+  color: var(--color-ink-2);
+}
+
+.check-card dd {
+  margin: 0;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.checks__note,
+.checks__empty {
+  margin: 20px 0 0;
+  font-size: 14px;
+  color: var(--color-muted);
+}
+
+/* The cards' small visuals */
+
+.viz-bars {
+  --bars-label: 104px;
+  --bars-value: 40px;
+  position: relative;
+  display: grid;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--color-ink-2);
+}
+
+.viz-bars__row {
+  display: grid;
+  grid-template-columns: var(--bars-label) minmax(0, 1fr) var(--bars-value);
+  align-items: center;
+  gap: 0;
+}
+
+.viz-bars__row > span:first-child {
+  padding-right: 8px;
+  line-height: 1.2;
+}
+
+.viz-bars__track {
+  height: 10px;
+  border-radius: 3px;
+  background: var(--color-paper-3);
+  overflow: hidden;
+}
+
+.viz-bars__fill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+}
+
+.viz-bars__fill--ink {
+  background: var(--color-ink);
+}
+
+.viz-bars__fill--muted {
+  background: var(--color-faint);
+}
+
+.viz-bars__v {
+  text-align: right;
+  color: var(--color-ink);
+}
+
+.viz-cols {
+  display: flex;
+  gap: 8px;
+  height: 92px;
+}
+
+.viz-cols__col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: 11px;
+  color: var(--color-muted);
+}
+
+.viz-cols__well {
+  flex: 1;
+  display: flex;
+  align-items: end;
+  width: 100%;
+}
+
+.viz-cols__well i {
+  width: 100%;
+  border-radius: 3px 3px 0 0;
+  background: var(--color-ink);
+}
+
+.viz-cols__n {
+  color: var(--color-ink);
+}
+
+.viz-cols__k {
+  white-space: nowrap;
+}
+
+.viz-cols__unit {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: var(--color-muted);
+  text-align: center;
+}
+
+.viz-svg {
+  display: block;
+  width: 100%;
+  height: 108px;
+}
+
+.viz-zone {
+  fill: var(--color-paper-3);
+}
+
+.viz-axis,
+.viz-run {
+  stroke: var(--color-rule);
+  stroke-width: 1;
+}
+
+.viz-run {
+  stroke: var(--color-faint);
+}
+
+.viz-tick {
+  font: 400 11px var(--font-body);
+  fill: var(--color-muted);
+}
+
+.viz-dot {
+  stroke: var(--color-paper-2);
+  stroke-width: 1;
+}
+
+.viz-rug {
+  fill: var(--color-likely-ink);
+}
+
+.viz-line {
+  fill: none;
+  stroke: var(--color-ink);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+
+.viz-candle line {
+  stroke-width: 1;
+}
+
+.viz-candle--up line {
+  stroke: var(--color-up);
+}
+
+.viz-candle--up rect {
+  fill: var(--color-up);
+}
+
+.viz-candle--down line {
+  stroke: var(--color-down);
+}
+
+.viz-candle--down rect {
+  fill: var(--color-down);
+}
+
+.viz-team-bar {
+  fill: var(--g-team);
+}
+
+.viz-copy {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+
+.viz-copy li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.viz-copy__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.viz-copy__name span {
+  font-weight: 400;
+  color: var(--color-ink-2);
+}
+
+.viz-copy__age {
+  flex: none;
+  color: var(--color-muted);
+}
+
+.viz-empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+.viz-alive {
+  fill: var(--color-paper-2);
+  stroke: var(--color-ink-2);
+  stroke-width: 1.2;
+}
+
+.viz-stack__bar {
+  display: flex;
+  gap: 2px;
+  height: 28px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.viz-stack__bar i {
+  display: block;
+  min-width: 2px;
+}
+
+.viz-stack__rest {
+  background: var(--color-paper-3);
+}
+
+.viz-stack__keys {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+

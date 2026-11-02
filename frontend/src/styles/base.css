@@ -1,39 +1,39 @@
 :root {
-  --font-sans: "Public Sans Variable", "Public Sans", system-ui, sans-serif;
+  --font-sans: "Hanken Grotesk Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", monospace;
 
-  /* Paper: the label stock the home page and sign-up are printed on */
-  --ink: #111111;
-  --ink-2: #444447;
-  --ink-3: #66666b;
+  /* Older names the IDE's reports and charts read; they follow the site tokens in tokens.css. */
+  /* In hex: Plotly reads these and can't parse oklch. */
+  --ink: #141618;
+  --ink-2: #4a4d51;
+  --ink-3: #63666a;
   --paper: #ffffff;
-  --paper-2: #f2f2ef;
-  --paper-3: #e6e6e2;
-  --red: #c3261c;
+  --paper-2: #f5f6f8;
+  --paper-3: #eceef1;
+  --red: #b4361f;
 
-  /* Rule weights, from the facts panel: hairline, bar, mid, slab */
   --rule-hair: 1px;
-  --rule-bar: 4px;
-  --rule-mid: 7px;
-  --rule-slab: 14px;
+  --rule-bar: 2px;
+  --rule-mid: 2px;
+  --rule-slab: 3px;
 
-  /* Desk: the dark surface the IDE sits on */
-  --desk-0: #0b0b0c;
-  --desk-1: #111113;
-  --desk-2: #17171a;
-  --desk-3: #1f1f23;
-  --desk-line: #26262b;
-  --desk-line-2: #36363d;
-  --desk-text: #ededeb;
-  --desk-text-2: #a6a6ab;
-  --desk-text-3: #85858b;
-  --desk-amber: #e3a53c;
-  --desk-red: #f0675c;
-  --desk-green: #6cc287;
+  /* The IDE's surfaces: light now, like the app window on the home page. */
+  --desk-0: oklch(100% 0 0);
+  --desk-1: oklch(98.4% 0.002 250);
+  --desk-2: oklch(97.2% 0.002 250);
+  --desk-3: oklch(94.6% 0.003 250);
+  --desk-line: oklch(92.6% 0.004 250);
+  --desk-line-2: oklch(87% 0.005 250);
+  --desk-text: oklch(20% 0.006 250);
+  --desk-text-2: oklch(42% 0.008 250);
+  --desk-text-3: oklch(52% 0.008 250);
+  --desk-amber: oklch(48% 0.1 70);
+  --desk-red: oklch(48% 0.17 30);
+  --desk-green: oklch(50% 0.12 155);
   /* Input borders: 3:1 against the panels they sit on */
-  --desk-field: #66666b;
+  --desk-field: oklch(62% 0.006 250);
   /* Line numbers: 4.5:1 on the editor background */
-  --desk-ln: #7a7a80;
+  --desk-ln: oklch(52% 0.008 250);
 
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -114,57 +114,27 @@ pre,
   border: 0;
 }
 
-/* Paper theme */
-.theme-paper {
-  background: var(--paper);
-  color: var(--ink);
+/* The site's one theme: light, Meta blue accent (tokens.css). */
+.theme-glass {
+  background: var(--color-paper);
+  color: var(--color-ink);
   min-height: 100vh;
+  color-scheme: light;
 }
 
-.theme-paper ::selection {
-  background: var(--ink);
-  color: var(--paper);
+.theme-glass ::selection {
+  background: var(--color-accent);
+  color: var(--color-paper);
 }
 
-.theme-paper :focus-visible {
-  outline: 3px solid var(--ink);
-  outline-offset: 3px;
+.theme-glass :focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
 }
 
-/* Desk theme */
-.theme-desk {
-  background: var(--desk-0);
-  color: var(--desk-text);
-  color-scheme: dark;
-}
-
-.theme-desk ::selection {
-  background: #ededeb;
-  color: #0b0b0c;
-}
-
-.theme-desk :focus-visible {
-  outline: 2px solid var(--desk-text);
-  outline-offset: -2px;
-}
-
-.theme-desk * {
+.theme-glass * {
   scrollbar-width: thin;
   scrollbar-color: var(--desk-line-2) transparent;
-}
-
-.theme-desk ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-.theme-desk ::-webkit-scrollbar-thumb {
-  background: var(--desk-line-2);
-  border: 3px solid var(--desk-1);
-}
-
-.theme-desk ::-webkit-scrollbar-track {
-  background: transparent;
 }
 
 @media (prefers-reduced-motion: reduce) {

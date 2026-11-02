@@ -1,5 +1,4 @@
-/* The Strategy Facts label: the product's signature object.
-   Always printed on white stock, whether it sits on paper or on the desk. */
+/* The Strategy Facts summary in a backtest's results, in the site's look: hairlines and a serif title. */
 
 .facts {
   --f-pad: 18px;
@@ -8,7 +7,7 @@
   --f-row: 17px;
   background: var(--paper);
   color: var(--ink);
-  border: var(--rule-bar) solid var(--ink);
+  border: 1px solid var(--color-rule);
   padding: 10px var(--f-pad) 14px;
   font-family: var(--font-sans);
   width: 100%;
@@ -28,7 +27,7 @@
   line-height: 1;
   letter-spacing: -0.02em;
   padding-bottom: 4px;
-  border-bottom: var(--rule-hair) solid var(--ink);
+  border-bottom: 1px solid var(--color-rule);
 }
 
 .facts__subject {
@@ -40,7 +39,7 @@
 .facts__serving {
   font-size: var(--f-row);
   padding: 2px 0 8px;
-  border-bottom: var(--rule-slab) solid var(--ink);
+  border-bottom: 1px solid var(--color-rule);
 }
 
 .facts--compact .facts__serving {
@@ -55,7 +54,7 @@
   font-size: var(--f-big);
   font-weight: 900;
   padding: 7px 0 6px;
-  border-bottom: var(--rule-hair) solid var(--ink);
+  border-bottom: 1px solid var(--color-rule);
 }
 
 .facts__big > span:first-child {
@@ -98,7 +97,7 @@
 }
 
 .facts__tested {
-  border-bottom: var(--rule-mid) solid var(--ink);
+  border-bottom: 1px solid var(--color-rule);
 }
 
 .facts__tested.is-bad > span:last-child {
@@ -115,7 +114,7 @@
   gap: 16px;
   font-size: var(--f-row);
   padding: 5px 0 4px;
-  border-bottom: var(--rule-hair) solid var(--ink);
+  border-bottom: 1px solid var(--color-rule);
 }
 
 .facts__row dt,
@@ -134,11 +133,11 @@
 }
 
 .facts__row.rule-mid {
-  border-bottom: var(--rule-mid) solid var(--ink);
+  border-bottom: 1px solid var(--color-rule);
 }
 
 .facts__row.rule-bar {
-  border-bottom: var(--rule-bar) solid var(--ink);
+  border-bottom: 1px solid var(--color-rule);
 }
 
 .facts__row .is-bad,
@@ -151,4 +150,17 @@
   line-height: 1.4;
   padding-top: 8px;
   color: var(--ink-2);
+}
+
+
+.facts {
+  border: 0;
+  border-radius: 12px;
+  box-shadow: inset 0 0 0 1px var(--color-rule);
+}
+
+.facts__title {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -0.02em;
 }

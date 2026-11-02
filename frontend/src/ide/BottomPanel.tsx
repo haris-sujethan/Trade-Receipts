@@ -1,7 +1,8 @@
 import { AlertTriangle, Info, XCircle } from "lucide-react";
 import { projectFiles } from "../data/examples";
+import { answerOf } from "../demo/runs";
 import { onTablistKeyDown } from "../lib/tabs";
-import { outputFor, problemsFor, useIde } from "./state";
+import { focusCheck, outputFor, problemsFor, useIde } from "./state";
 
 const icons = {
   error: <XCircle size={14} aria-hidden className="sev sev--error" />,
@@ -11,10 +12,17 @@ const icons = {
 
 export function BottomPanel() {
   const { state, dispatch } = useIde();
-  const problems = problemsFor(state.ranRuns);
-  const output = outputFor(state.ranRuns);
+  const problems = problemsFor(state);
+  const output = outputFor(state);
+  const check = focusCheck(state);
 
   function jump(file: string) {
+    // A check's flags open its overview.
+    if (check && file === answerOf(check.run)?.check?.symbol) {
+      dispatch({ type: "open", id: `check:${check.key}` });
+      dispatch({ type: "checkView", key: check.key, view: "overview" });
+      return;
+    }
     if (file === "Results") {
       const last = state.ranRuns[state.ranRuns.length - 1];
       if (last) dispatch({ type: "open", id: `results:${last}` });
@@ -47,7 +55,7 @@ export function BottomPanel() {
       <div id="bottom-panel" className="bottom__body" role="tabpanel" aria-labelledby={`bottom-tab-${state.bottomTab}`} tabIndex={0}>
         {state.bottomTab === "problems" &&
           (problems.length === 0 ? (
-            <p className="bottom__empty">No problems yet. Compile errors and honesty issues show up here after a run.</p>
+            <p className="bottom__empty">No problems yet. A check’s flags and a backtest’s honesty issues show up here.</p>
           ) : (
             <ul className="problems">
               {problems.map((p, i) => (

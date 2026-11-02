@@ -19,14 +19,15 @@ export const GROUP_LABEL: Record<Group, string> = {
   independent: "Independent buyers",
 };
 
-// Validated with the dataviz palette checks on white: lightness, chroma, CVD and normal-vision separation pass for
-// adjacent pairs; snipers and fresh wallets sit under 3:1, so the chart carries a legend and a data table.
+// The wallet palette, in this order everywhere (styles/tokens.css mirrors it as --g-*). The team is Meta blue.
+// Validated with the dataviz palette checks on #fcfcfb: CVD worst adjacent 9.1, normal-vision worst 17.0; the
+// grey fails the chroma floor by design. Snipers, fresh wallets and the grey sit under 3:1, so charts carry a legend.
 // Independent buyers are deliberately neutral: color marks the wallets worth worrying about.
 export const GROUP_COLOR: Record<Group, string> = {
-  team: "#eb6834",
-  likelyTeam: "#6250d6",
+  team: "#0081fb",
+  likelyTeam: "#c03fa8",
   sniper: "#1baf7a",
-  bot: "#2a78d6",
+  bot: "#d9502e",
   fresh: "#eda100",
   independent: "#a9a9ae",
 };

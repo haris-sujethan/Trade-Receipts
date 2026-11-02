@@ -2,7 +2,6 @@
 // Every number here is an illustrative example value, not a real backtest.
 
 import { drawdown, walk, type Point } from "./series";
-import { tokenChecks, tokenMarkdown } from "./tokens";
 
 /* ---------- Strategy Facts labels ---------- */
 
@@ -269,11 +268,8 @@ last year, free cash flow was negative, and the share count rose 9%.
 
 // The demo project is crypto only for now; the stock examples below stay in the code for later.
 export const projectFiles: ProjectFile[] = [
-  { id: "moon", name: "MOON-7xKX.md", folder: "tokens", kind: "token", content: tokenMarkdown(tokenChecks.moon) },
-  { id: "kite", name: "KITE-4nPq.md", folder: "tokens", kind: "token", content: tokenMarkdown(tokenChecks.kite) },
   { id: "rsi", name: "rsi_dip.pine", folder: "strategies", kind: "pine", content: rsiPine },
   { id: "golden", name: "golden_cross.pine", folder: "strategies", kind: "pine", content: goldenCrossPine },
-  { id: "moonclip", name: "moon_shill.mp4", folder: "clips", kind: "clip", content: "" },
   { id: "clip", name: "guru_clip.mp4", folder: "clips", kind: "clip", content: "" },
 ];
 
