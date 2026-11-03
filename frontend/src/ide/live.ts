@@ -12,8 +12,12 @@ const API = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
 export type Backend = "checking" | "online" | "offline";
 
 let probe: Promise<boolean> | null = null;
+let failedAt = 0;
+/** After a failed probe, wait this long before asking again: the backend may come up after the page. */
+const RETRY_MS = 5000;
 
 function reachable(): Promise<boolean> {
+  if (!probe && Date.now() - failedAt < RETRY_MS) return Promise.resolve(false);
   probe ??= (async () => {
     try {
       const ctl = new AbortController();
@@ -27,16 +31,32 @@ function reachable(): Promise<boolean> {
       return false;
     }
   })();
-  return probe;
+  const p = probe;
+  // A success is kept for the page; a failure is forgotten, so the next ask tries again.
+  void p.then((ok) => {
+    if (!ok && probe === p) {
+      probe = null;
+      failedAt = Date.now();
+    }
+  });
+  return p;
 }
 
 export function useBackend(): Backend {
   const [state, setState] = useState<Backend>("checking");
   useEffect(() => {
     let live = true;
-    reachable().then((ok) => live && setState(ok ? "online" : "offline"));
+    let timer = 0;
+    const check = () =>
+      reachable().then((ok) => {
+        if (!live) return;
+        setState(ok ? "online" : "offline");
+        if (!ok) timer = window.setTimeout(check, RETRY_MS);
+      });
+    void check();
     return () => {
       live = false;
+      window.clearTimeout(timer);
     };
   }, []);
   return state;
@@ -47,16 +67,17 @@ export type Streamed = RunEvent | { type: "result"; copy_trade: CopyTrade } | { 
 
 /**
  * Sends a message to the agent, with the thread so far and any attachment, and hands each event to `onEvent` as it
- * streams back (server-sent events).
+ * streams back (server-sent events). `contextId` names the thread's latest result (an answer's `run_id`, or
+ * "demo:<saved run id>"), so a follow-up is answered from the data already pulled.
  */
 export function streamAgent(
   message: string,
   onEvent: (e: Streamed) => void,
-  opts: { history?: Turn[]; attachment?: Attachment; signal?: AbortSignal } = {},
+  opts: { history?: Turn[]; attachment?: Attachment; contextId?: string; signal?: AbortSignal } = {},
 ) {
-  const { history = [], attachment, signal } = opts;
+  const { history = [], attachment, contextId, signal } = opts;
   const media = attachment ? { [attachment.kind]: attachment.dataUrl } : {};
-  return stream("/api/agent", { message, history, ...media }, onEvent, signal);
+  return stream("/api/agent", { message, history, ...media, ...(contextId ? { context_id: contextId } : {}) }, onEvent, signal);
 }
 
 /** Runs a copy-trade backtest without the agent: progress events, then `{type: "result", copy_trade}`. No Meta call. */

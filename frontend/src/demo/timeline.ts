@@ -9,7 +9,7 @@ import type { AnswerEvent, ProgressEvent, Run, StepEvent } from "./runs";
 type Kind = ProgressEvent["step"];
 
 /** Time each kind of progress gets on screen, shared by its events. */
-const KIND_MS: Record<Kind, number> = { token: 1700, wallets: 3400, busy: 900, funders: 1700, snipes: 1800, wallet: 1600, positions: 2800 };
+const KIND_MS: Record<Kind, number> = { token: 1700, wallets: 3400, busy: 900, funders: 1700, snipes: 1800, wallet: 1600, positions: 2800, reused: 400 };
 const SECURITY_MS = 1000;
 const TYPE_MS = 24;
 const WORD_MS = 20;
@@ -86,6 +86,8 @@ export type Counters = {
   walletTx?: number;
   found?: number;
   positions?: [number, number];
+  /** Positions reused from a run on the same wallet in the last 30 minutes. */
+  reused?: number;
 };
 
 export type Frame = {
@@ -125,6 +127,7 @@ function countersOf(events: ProgressEvent[]) {
       counters.found = ev.positions;
     }
     if (ev.step === "positions") counters.positions = [ev.done ?? 0, ev.of ?? 0];
+    if (ev.step === "reused") counters.reused = ev.positions ?? 0;
   }
   return counters;
 }

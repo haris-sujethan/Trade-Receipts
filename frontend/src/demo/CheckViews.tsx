@@ -157,8 +157,9 @@ export function RunSteps({ frame, words, answer }: { frame: Frame; words: string
               <div>
                 <p className="steps__title">{s.state === "running" ? (STEP_RUNNING[s.tool] ?? s.tool) : (STEP_TITLE[s.tool] ?? s.tool)}</p>
                 {s.state !== "running" && s.done?.summary && <p className="steps__sum">{s.done.summary.replace(MINT, shortAddr).replace(" · ", ", ")}</p>}
-                {s.tool === "copy_trade" && (c.walletTx != null || c.positions) && (
+                {s.tool === "copy_trade" && (c.walletTx != null || c.positions || c.reused != null) && (
                   <ul className="steps__live">
+                    {c.reused != null && <li>Reused the data already pulled for this wallet, {c.reused} positions</li>}
                     {c.walletTx != null && (
                       <li>
                         {whole(c.walletTx)} of the wallet’s latest transactions read

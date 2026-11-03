@@ -35,8 +35,9 @@ export type StepEvent = {
 export type ProgressEvent = {
   type: "progress";
   tool: string;
-  /** A rug check's: token, wallets, busy, funders, snipes. A copy-trade backtest's: wallet, positions. */
-  step: "token" | "wallets" | "busy" | "funders" | "snipes" | "wallet" | "positions";
+  /** A rug check's: token, wallets, busy, funders, snipes. A copy-trade backtest's: wallet, positions, or reused (the
+   * wallet's data was pulled by a run in the last 30 minutes). */
+  step: "token" | "wallets" | "busy" | "funders" | "snipes" | "wallet" | "positions" | "reused";
   transactions?: number;
   scanned?: number;
   checked?: number;
@@ -165,6 +166,8 @@ export type CopyTrade = {
   positions_wanted?: number;
   /** What the run is based on: the wallet's transactions read, from when to when, and whether that's all of them. */
   history?: { transactions: number; from_ts: number | null; to_ts: number | null; complete: boolean; hours: number | null };
+  /** True when the wallet's positions and prices came from a run in the last 30 minutes: no new reads. */
+  reused_data?: boolean;
   skipped: { still_open: number; bought_before_history: number; not_sol_priced: number; no_prices: number };
   wallet_total: Totals;
   you_total: Totals;
@@ -197,6 +200,8 @@ export type AnswerEvent = {
   copy_trade?: CopyTrade | null;
   /** The model that wrote the text, or null when Meta is off and the text is the check's own findings. */
   explained_by?: string | null;
+  /** This answer's id: sent back as `context_id` with a follow-up, so it's answered from these results. */
+  run_id?: string;
 };
 
 /** Something the backend wants the person to know while it works (a slow source, a limit close by). */

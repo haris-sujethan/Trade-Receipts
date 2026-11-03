@@ -173,10 +173,12 @@ Controls 8px, cards 10px, windows and popovers 12 to 14px, the desktop frame 18p
 - Signals: the 12 cards.
 
 ### Copy trade view (`ide/CopyTab.tsx`, `PositionChart.tsx`, `copy.css`)
-- Form on top: the wallet (a pump.fun profile link or an address), SOL per position, and two delay rows ("Buy after
-  its buys", "Sell after its sells"). Each row is native radios drawn as one segmented control: 2 s, 10 s, 30 s,
-  1 min, 5 min, 10 min, Custom (seconds or minutes). Without the backend the fieldset is disabled and the reason sits
-  beside Run backtest. Each live run opens in its own tab, named for the wallet and the timing.
+- Form on top: the wallet (a pump.fun profile link or an address, editable after a run), SOL per position, and three
+  segmented rows of native radios: Positions (25, 50, 100), "Buy after its buys" and "Sell after its sells" (2 s,
+  10 s, 30 s, 1 min, 5 min, 10 min, Custom in seconds or minutes). Nothing runs until Run backtest is pressed; the
+  values it will use are stated beside the button. Without the backend the fieldset is disabled and the reason is
+  shown. Each run opens in its own tab, named for the wallet and the timing. A run that reused the data already pulled
+  for the wallet says so in its header.
 - Totals: three wells. The wallet and you each have a serif P&L in SOL, the percentage on what was spent, and how many
   positions made money. The third has the median price move in the delay after its buys and after its sells. Then
   the backtest's notes and "Not financial advice". Timings tried on the same wallet are listed for comparison.
@@ -187,6 +189,13 @@ Controls 8px, cards 10px, windows and popovers 12 to 14px, the desktop frame 18p
   seconds and your minutes both have room. Its buys and sells are ink triangles and yours are blue (up for a buy, down
   for a sell). Dashed blue lines join its first buy to yours and its last sell to yours: the move while you wait.
   The marks have hover tips, and the fills are also listed as text.
+
+### Threads
+- A thread keeps every result in it; earlier ones are a scroll up, and thread history reopens old threads intact.
+- A message naming another token or wallet opens a new thread; a question about what's there is a follow-up, sent with
+  the latest answer's `run_id` (or "demo:<saved id>") as `context_id` and answered from the data already pulled. A
+  question in an example thread continues it in a thread of your own. Offline, follow-ups reply that they need the
+  live agent.
 
 ### Named Rules
 - Numbers, never a verdict on the wallet: no "good", "bad", "profitable trader" or "scam" labels. P&L is ink with

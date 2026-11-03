@@ -7,11 +7,13 @@ import {
   COPY_HERO_KEY,
   copySoon,
   exampleThreadTitle,
+  FOLLOW_UP_SOON,
   HERO_KEY,
   isCopyRun,
   LIVE_SOON,
   savedCopyMatch,
   savedMatch,
+  threadSubjects,
   threadTitle,
   useIde,
   type Attachment,
@@ -19,6 +21,9 @@ import {
   type WorkTab,
 } from "./state";
 import "../demo/demo.css";
+
+/** A Solana address in a message: a token's mint or a wallet. */
+const ADDRESS = /[1-9A-HJ-NP-Za-km-z]{32,44}/g;
 
 // What the backend accepts (receipts/server.py): mp4 clips up to 25 MB, images up to 8 MB.
 const LIMITS = { video: 25 * 2 ** 20, image: 8 * 2 ** 20 };
@@ -57,16 +62,29 @@ export function Thread() {
   const hero = state.checks[HERO_KEY];
   const copyHero = state.checks[COPY_HERO_KEY];
 
-  // Follow the conversation as it grows.
+  // Follow the conversation as it grows, unless the visitor has scrolled up to read an earlier result.
+  const stick = useRef(true);
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const follow = () => el.scrollTo({ top: el.scrollHeight });
+    stick.current = true;
+    const follow = () => stick.current && el.scrollTo({ top: el.scrollHeight });
+    const onScroll = () => {
+      stick.current = el.scrollTop + el.clientHeight >= el.scrollHeight - 80;
+    };
     follow();
+    el.addEventListener("scroll", onScroll, { passive: true });
     const ro = new ResizeObserver(follow);
     for (const child of Array.from(el.children)) ro.observe(child);
-    return () => ro.disconnect();
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      ro.disconnect();
+    };
   }, [items.length, state.thread, hero?.status, copyHero?.status]);
+
+  // What the thread's results are about: a message naming anything else gets a thread of its own.
+  const subjects = threadSubjects(state);
+  const hasResult = subjects.size > 0;
 
   async function attach(kind: Attachment["kind"], file: File | undefined) {
     setAttachError(null);
@@ -81,25 +99,30 @@ export function Thread() {
     e?.preventDefault();
     const text = state.draft.trim();
     if ((!text && !attachment) || sending) return;
+    // A clip or screenshot is a token to check, so with a result here already it starts a thread of its own.
     if (attachment && backend === "online") {
-      dispatch({ type: "send", reply: { kind: "live", attachment } });
+      dispatch({ type: "send", reply: { kind: "live", attachment }, fresh: hasResult });
       setAttachment(null);
       return;
     }
-    // A saved wallet or token replays; anything else goes live, or waits for the backend.
     const match = savedCopyMatch(text, state.savedCopies) ?? savedMatch(text, state.saved);
-    if (match) {
+    const matchSubject = match && ("wallet" in match ? match.wallet : match.mint);
+    const named = [...(text.match(ADDRESS) ?? []), ...(matchSubject ? [matchSubject] : [])];
+    const fresh = hasResult && named.some((n) => !subjects.has(n));
+    // A saved wallet or token not already here replays; a question about what's here is a follow-up.
+    if (match && matchSubject && !subjects.has(matchSubject)) {
       setSending(true);
       try {
         const run = await loadRun(match.id);
-        dispatch({ type: "send", reply: { kind: "replay", run } });
+        dispatch({ type: "send", reply: { kind: "replay", run }, fresh });
       } finally {
         setSending(false);
       }
       return;
     }
-    const soon = state.workTab === "Copy trade" ? copySoon(state.savedCopies) : LIVE_SOON;
-    dispatch({ type: "send", reply: backend === "online" ? { kind: "live" } : { kind: "text", text: soon } });
+    if (backend === "online") return dispatch({ type: "send", reply: { kind: "live" }, fresh });
+    const soon = hasResult && !fresh ? FOLLOW_UP_SOON : state.workTab === "Copy trade" ? copySoon(state.savedCopies) : LIVE_SOON;
+    dispatch({ type: "send", reply: { kind: "text", text: soon }, fresh });
   }
 
   function onKey(e: KeyboardEvent<HTMLTextAreaElement>) {
@@ -180,7 +203,7 @@ export function Thread() {
           value={state.draft}
           onChange={(e) => dispatch({ type: "draft", text: e.target.value })}
           onKeyDown={onKey}
-          placeholder={placeholders[state.workTab]}
+          placeholder={hasResult ? "Ask about this result, or paste another token or wallet…" : placeholders[state.workTab]}
         />
         {attachment && (
           <span className="clip-chip">
@@ -231,7 +254,11 @@ export function Thread() {
       <p className="thread__note">
         {backend === "checking"
           ? "Looking for the backend…"
-          : state.workTab === "Copy trade"
+          : hasResult
+            ? backend === "online"
+              ? "Ask about this result; the agent answers from the data already pulled. Another token or wallet opens a new thread."
+              : "Questions about a result need the live agent, coming soon. Another token or wallet opens a new thread."
+            : state.workTab === "Copy trade"
             ? backend === "online"
               ? "Live: any pump.fun wallet is backtested from the chain now. The saved one replays."
               : "Live backtests are coming soon. The saved one replays."

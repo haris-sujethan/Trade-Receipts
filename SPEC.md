@@ -203,6 +203,10 @@ It stays clear of the hackathon's anti-project list (the kickoff slides add "Str
   - 10 seconds late: −8%.
   - 5 minutes after its buys and 10 after its sells: −4% (2 of 25 profitable).
   - After its sells the price fell 40–60%.
+- **Positions (Nov 3):** 25, 50 (the default) or 100 of the wallet's latest closed positions. Its history is read back, up to 5,000 transactions, until that many have closed. Each result says what it's based on, for example "its latest 50 closed positions, one per token, from its last 600 transactions, about 17 hours".
+- **Confirm before running:** in the chat, the agent asks to confirm the three values (buy after, sell after, positions) unless the user gave all three. The form runs only on Run.
+- **Data reuse:** a wallet's positions and price paths are kept for 30 minutes. Another timing (no longer than one already pulled) or fewer positions reuses them: about 0 seconds and 0 credits.
+- **Follow-up questions:** every answer carries a `run_id`, and its tool results are kept (`data/runs/`). A follow-up sends `context_id`, and the model answers from those results without pulling the data again; saved demo runs work the same way (`demo:<id>`). Follow-ups have their own limit, 30 an hour per visitor.
 - **Strategy backtesting** (Pine and Python, below) stays in the repo, unplugged, like the stock research.
 
 ## 5b. Strategy backtest (unplugged Nov 3)

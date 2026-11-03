@@ -40,11 +40,23 @@ _all_checks: collections.deque = collections.deque()
 _checks_lock = threading.Lock()
 
 
-def allow_check(request: Request) -> None:
-    """Refuse a live check past the visitor's hourly limit or the site's daily one."""
+FOLLOW_UPS_PER_HOUR = int(os.environ.get("FOLLOW_UPS_PER_HOUR", 30))
+
+
+def allow_check(request: Request, follow_up: bool = False) -> None:
+    """Refuse a live check past the visitor's hourly limit or the site's daily one. Follow-up questions
+    about a result (answered from data already pulled) have their own, looser hourly limit."""
     who = (request.headers.get("x-forwarded-for") or (request.client.host if request.client else "?")).split(",")[0].strip()
     now = time.time()
     with _checks_lock:
+        if follow_up:
+            mine = _checks[f"{who} follow-ups"]
+            while mine and mine[0] < now - 3600:
+                mine.popleft()
+            if len(mine) >= FOLLOW_UPS_PER_HOUR:
+                raise HTTPException(429, f"That's {FOLLOW_UPS_PER_HOUR} questions this hour. Try again later.")
+            mine.append(now)
+            return
         mine = _checks[who]
         while mine and mine[0] < now - 3600:
             mine.popleft()
@@ -80,6 +92,7 @@ class Turn(BaseModel):
 class AgentRequest(BaseModel):
     message: str = ""
     history: list[Turn] = []  # the conversation so far, for follow-ups
+    context_id: str | None = None  # the thread's latest answer's run_id (or "demo:<id>"): its results are reused
     image: str | None = None  # a data URL
     video: str | None = None  # an mp4 data URL
     as_of: int | None = None  # check tokens as they stood then (the demo's past tokens)
@@ -190,7 +203,7 @@ def agent(req: AgentRequest, request: Request) -> StreamingResponse:
         if len(video) > MAX_VIDEO_BYTES:
             raise HTTPException(413, "clip is over 25 MB")
 
-    allow_check(request)
+    allow_check(request, follow_up=bool(req.context_id))
     history = [t.model_dump() for t in req.history]
     return stream(lambda emit: loop.run(req.message, image=image, image_type=image_type, emit=emit, as_of=req.as_of,
-                                        video=video, history=history))
+                                        video=video, history=history, context_id=req.context_id))

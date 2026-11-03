@@ -45,9 +45,10 @@ export type CheckRun = {
   /** A copy-trade backtest run from its form: what was asked, and the result once it's in. */
   request?: CopyRequest;
   copy?: CopyTrade;
-  /** Live checks: the thread before this message, and what was attached. */
+  /** Live checks: the thread before this message, what was attached, and the result a follow-up is about. */
   history?: Turn[];
   attachment?: Attachment;
+  contextId?: string;
   /** performance.now() when a replay started; -Infinity shows it finished. */
   startedAt: number;
   status: "waiting" | "running" | "done" | "error";
@@ -112,12 +113,16 @@ type Action =
   | { type: "closeTour" }
   | { type: "restartTour" }
   | { type: "draft"; text: string }
-  | { type: "send"; reply: Reply }
+  /** `fresh`: the message is about another token or wallet than the thread's results, so it gets a thread of its own. */
+  | { type: "send"; reply: Reply; fresh?: boolean }
   | { type: "newThread" }
   | { type: "selectThread"; thread: ThreadRef };
 
 /** What the IDE does with a sent message, decided before it reaches the reducer (see `replyFor`). */
 export type Reply = { kind: "replay"; run: Run } | { kind: "live"; attachment?: Attachment } | { kind: "text"; text: string };
+
+export const FOLLOW_UP_SOON =
+  "Questions about a result need the live agent, which is coming soon. To check another token or wallet, paste it here: it opens in a new thread.";
 
 export const LIVE_SOON =
   "Live checks are coming soon. This preview replays six saved checks: paste one of their pump.fun links, tickers or addresses, or open one from the checks folder.";
@@ -242,7 +247,10 @@ function reducer(s: State, a: Action): State {
         a.hero && !s.checks[COPY_HERO_KEY]
           ? { ...s.checks, [COPY_HERO_KEY]: { key: COPY_HERO_KEY, run: a.hero, mode: "replay" as const, startedAt: Number.NEGATIVE_INFINITY, status: "waiting" as const } }
           : s.checks;
-      return { ...s, savedCopies: a.copies, checks };
+      const next = { ...s, savedCopies: a.copies, checks };
+      // Copy trade opened before the saved backtest arrived: play it now.
+      const waiting = s.workTab === "Copy trade" && !s.openTabs.some((t) => t.startsWith("copy:"));
+      return waiting ? startReplay(next, COPY_HERO_KEY) : next;
     }
     case "openSavedCopy": {
       const checks = s.checks[a.key] ? s.checks : { ...s.checks, [a.key]: savedCheck(a.run, a.key) };
@@ -320,10 +328,15 @@ function reducer(s: State, a: Action): State {
       if (!text) return s;
       let threads = s.threads;
       let thread = s.thread;
-      // The example threads are replays, so a new message starts a thread of your own.
-      if (typeof thread !== "number") {
+      const current = typeof thread === "number" ? threads.find((t) => t.id === thread) : undefined;
+      // Another token or wallet gets a thread of its own, so the results already here stay as they are. A question
+      // in an example thread continues it in a thread of your own, the example's result included.
+      if (typeof thread !== "number" || (a.fresh && current?.items.length)) {
+        const example = typeof thread !== "number" ? s.checks[thread === "copy" ? COPY_HERO_KEY : HERO_KEY] : undefined;
+        const seeded: ThreadItem[] =
+          !a.fresh && example && example.status !== "waiting" ? [{ kind: "user", text: example.run.message }, { kind: "check", key: example.key }] : [];
         thread = threads.length + 1;
-        threads = [...threads, { id: thread, title: "", items: [] }];
+        threads = [...threads, { id: thread, title: seeded.length ? titleFrom(example!.run.message) : "", items: seeded }];
       }
       const seq = s.seq + 1;
       let checks = s.checks;
@@ -344,7 +357,12 @@ function reducer(s: State, a: Action): State {
           const said = checks[m.key] && answerOf(checks[m.key].run)?.text;
           return said ? [{ role: "assistant", text: said }] : [];
         });
-        checks = { ...checks, [key]: { key, run, mode: a.reply.kind, via: "agent", startedAt: performance.now(), status: "running", history, attachment } };
+        // A follow-up names the thread's latest result, so the agent answers from what it already pulled.
+        const contextId = a.reply.kind === "live" && !a.fresh ? latestContext(prior, checks) : undefined;
+        checks = {
+          ...checks,
+          [key]: { key, run, mode: a.reply.kind, via: "agent", startedAt: performance.now(), status: "running", history, attachment, contextId },
+        };
         added = { kind: "check", key };
         if (a.reply.kind === "replay") open = tabOf(checks[key]);
       }
@@ -364,6 +382,37 @@ function reducer(s: State, a: Action): State {
       // The copy-trade example plays the first time it's picked.
       return a.thread === "copy" ? startReplay({ ...s, thread: a.thread }, COPY_HERO_KEY) : { ...s, thread: a.thread };
   }
+}
+
+/** The result a follow-up is about: the latest answer in the thread, by its run id ("demo:<id>" for a saved run). */
+function latestContext(items: ThreadItem[], checks: Record<string, CheckRun>): string | undefined {
+  for (const m of [...items].reverse()) {
+    const c = m.kind === "check" ? checks[m.key] : undefined;
+    const answer = c && answerOf(c.run);
+    if (!c || !answer) continue;
+    if (answer.run_id) return answer.run_id;
+    if (c.mode === "replay") return `demo:${c.run.id}`;
+  }
+  return undefined;
+}
+
+/** The tokens and wallets a thread's results are about: what a new message is compared with. */
+export function threadSubjects(state: State): Set<string> {
+  const items: ThreadItem[] =
+    typeof state.thread === "number"
+      ? (state.threads.find((t) => t.id === state.thread)?.items ?? [])
+      : [{ kind: "check", key: state.thread === "copy" ? COPY_HERO_KEY : HERO_KEY }];
+  const out = new Set<string>();
+  for (const m of items) {
+    const c = m.kind === "check" ? state.checks[m.key] : undefined;
+    if (!c) continue;
+    const answer = answerOf(c.run);
+    if (answer?.check?.mint) out.add(answer.check.mint);
+    if (c.run.mint) out.add(c.run.mint);
+    const wallet = copyRequestOf(c)?.wallet ?? c.run.wallet;
+    if (wallet) out.add(wallet);
+  }
+  return out;
 }
 
 function omit<T>(o: Record<string, T>, key: string) {
@@ -503,6 +552,7 @@ export function checkOutput(c: CheckRun | undefined): string[] {
         snipes: `${e.lookups} early buyers checked, ${e.sniper_bots} sniper bots`,
         wallet: `${e.transactions} of the wallet's transactions read${e.positions != null ? `, ${e.positions} closed positions found` : ""}`,
         positions: `${e.done} of ${e.of} positions priced`,
+        reused: `reused the data already pulled for this wallet, ${e.positions} positions`,
       }[e.step];
       last = { ...last, [e.step]: line };
       // One line per kind of progress: keep the latest count.
@@ -599,7 +649,9 @@ export function IdeProvider({ children }: { children: ReactNode }) {
       started.current.add(c.key);
       const onEvent = (event: Streamed) => dispatch({ type: "liveEvent", key: c.key, event });
       const streamed =
-        c.via === "copytrade" && c.request ? streamCopyTrade(c.request, onEvent) : streamAgent(c.run.message, onEvent, { history: c.history, attachment: c.attachment });
+        c.via === "copytrade" && c.request
+          ? streamCopyTrade(c.request, onEvent)
+          : streamAgent(c.run.message, onEvent, { history: c.history, attachment: c.attachment, contextId: c.contextId });
       streamed.then(
         () => dispatch({ type: "liveEnd", key: c.key }),
         (err: Error) => dispatch({ type: "liveEvent", key: c.key, event: { type: "error", message: `Couldn't reach the backend: ${err.message}` } }),

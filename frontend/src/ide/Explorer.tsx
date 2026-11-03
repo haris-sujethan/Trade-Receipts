@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight, FileCode2, FileText, FileVideo, Lock, ScanSearch, Timer } from "lucide-react";
 import { projectFiles, type ProjectFile } from "../data/examples";
-import { duration, loadRun, shortAddr } from "../demo/runs";
+import { answerOf, duration, loadRun, shortAddr } from "../demo/runs";
 import { copyTitle, isCopyRun, tabOf, useIde } from "./state";
 
 /** Strategies and clips (ProjectFile folders) are unplugged with the strategy backtests; the code still reads them. */
@@ -18,7 +18,12 @@ export function Explorer() {
   const { state, dispatch } = useIde();
   const [closed, setClosed] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState<string | null>(null);
-  const session = Object.values(state.checks).filter((c) => c.key.startsWith("live:") || /^replay:\d/.test(c.key));
+  // Checks and backtests started here; a follow-up question's answer lives in its thread, not in the files.
+  const session = Object.values(state.checks).filter(
+    (c) =>
+      (c.key.startsWith("live:") || /^replay:\d/.test(c.key)) &&
+      (isCopyRun(c) || c.run.events.some((e) => e.type === "step" && e.tool === "check_token") || !!answerOf(c.run)?.check),
+  );
   const folders: Folder[] = ["checks", "copy trades", ...(session.length ? (["this session"] as Folder[]) : [])];
 
   function openSaved(id: string) {

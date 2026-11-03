@@ -33,7 +33,7 @@ export function CopyTab({ run }: { run: CheckRun }) {
 
   return (
     <div className="copy">
-      <CopyForm runKey={run.key} request={copyRequestOf(run)} saved={saved} />
+      <CopyForm runKey={run.key} request={copyRequestOf(run)} />
       <div className="copy__body">
         {run.status === "error" && (
           <div className="check__state check__state--error" role="alert">
@@ -58,9 +58,18 @@ export function CopyTab({ run }: { run: CheckRun }) {
             <LoaderCircle size={18} className="spin" aria-hidden />
             <div>
               <p className="check__state-title">
-                {backtested ? "The agent is writing it up" : c.positions ? "Pricing each position" : c.walletTx != null ? "Reading the wallet’s trades" : "Starting the backtest"}
+                {backtested
+                  ? "The agent is writing it up"
+                  : c.reused != null
+                    ? "Reusing the data already pulled for this wallet"
+                    : c.positions
+                      ? "Pricing each position"
+                      : c.walletTx != null
+                        ? "Reading the wallet’s trades"
+                        : "Starting the backtest"}
               </p>
               <ul className="copy__progress">
+                {c.reused != null && <li>{c.reused} positions and their prices, from a run in the last 30 minutes</li>}
                 {c.walletTx != null && <li>{whole(c.walletTx)} of the wallet’s latest transactions read</li>}
                 {c.positions && (
                   <li>
@@ -80,7 +89,7 @@ export function CopyTab({ run }: { run: CheckRun }) {
 
 /* ---------- The form ---------- */
 
-function CopyForm({ runKey, request, saved }: { runKey: string; request?: CopyRequest; saved: boolean }) {
+function CopyForm({ runKey, request }: { runKey: string; request?: CopyRequest }) {
   const { dispatch } = useIde();
   const backend = useBackend();
   const [wallet, setWallet] = useState(request?.wallet ?? "");
@@ -112,10 +121,13 @@ function CopyForm({ runKey, request, saved }: { runKey: string; request?: CopyRe
     backend === "checking"
       ? "Looking for the backend…"
       : !live
-        ? "Live backtests are coming soon. This preview replays the saved one, so the timing is fixed."
-        : saved
-          ? "A saved backtest. Change the timing to run it live."
-          : `A run of ${positions} positions takes ${eta(positions)} and opens in its own tab.`;
+        ? "Live backtests are coming soon. This preview replays the saved one, so the values are fixed."
+        : `Nothing runs until you press Run backtest. ${positions} positions take ${eta(positions)}, in a new tab.`;
+  // The values a run will use, stated beside the button so they're confirmed before it starts.
+  const confirm =
+    buy != null && sell != null
+      ? `Buy ${duration(buy)} after its buys, sell ${duration(sell)} after its sells, ${positions} positions, ${sizeSol > 0 ? sizeSol : "?"} SOL each`
+      : "Set both delays";
 
   return (
     <form className="copyf" onSubmit={submit} aria-label="What to copy" noValidate>
@@ -162,7 +174,10 @@ function CopyForm({ runKey, request, saved }: { runKey: string; request?: CopyRe
             note
           )}
         </p>
-        <button className="run-btn" type="submit" disabled={!live} aria-describedby={`copy-why-${runKey}`}>
+        <p className="copyf__confirm" id={`copy-values-${runKey}`}>
+          {confirm}
+        </p>
+        <button className="run-btn" type="submit" disabled={!live} aria-describedby={`copy-values-${runKey} copy-why-${runKey}`}>
           <Play size={13} aria-hidden fill="currentColor" />
           Run backtest
         </button>
@@ -463,7 +478,8 @@ function basedOn(r: CopyTrade) {
   const h = r.history;
   if (!h) return `Based on its latest ${n}, newest first.`;
   const from = `${h.complete ? "its whole history, " : "its last "}${whole(h.transactions)} transactions${h.hours != null ? `, ${span(h.hours)} of trading` : ""}`;
-  return r.positions_wanted != null && r.positions < r.positions_wanted ? `Only ${n} in ${from}.` : `Based on its latest ${n}, from ${from}.`;
+  const based = r.positions_wanted != null && r.positions < r.positions_wanted ? `Only ${n} in ${from}.` : `Based on its latest ${n}, from ${from}.`;
+  return r.reused_data ? `${based} Reused the data already pulled for this wallet.` : based;
 }
 
 function Total({ who, t, n, mark }: { who: string; t: Totals; n: number; mark: "wallet" | "you" }) {

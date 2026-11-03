@@ -104,3 +104,21 @@ def test_follow_ups_send_the_conversation_so_far(tmp_path, monkeypatch):
     loop.run("the first one", emit=lambda e: None, client=client(tmp_path, script), history=history)
     sent = script.bodies[0]["input"]
     assert [i["role"] for i in sent] == ["user", "assistant", "user"] and sent[1]["content"] == "I found 3 tokens named MOON."
+
+
+def test_a_follow_up_is_answered_from_the_earlier_results(tmp_path, monkeypatch):
+    monkeypatch.setattr(loop, "RUNS", tmp_path / "runs")
+    monkeypatch.setattr(loop.audit, "LOG", tmp_path / "audit.jsonl")
+    first = Script(
+        [{"type": "function_call", "call_id": "c1", "name": "check_token", "arguments": json.dumps({"mint": MINT})}],
+        message("Likely rug · 91% rug chance."),
+    )
+    monkeypatch.setattr(loop.Run, "check_token", fake_check)
+    answer = loop.run(f"Is {MINT} a rug?", emit=lambda e: None, client=client(tmp_path, first))
+    follow = Script(message("The team holds 8.1% now and 14.5% at peak."))
+    second = loop.run("how much does the team hold?", emit=lambda e: None, client=client(tmp_path, follow),
+                      history=[{"role": "user", "text": f"Is {MINT} a rug?"}, {"role": "assistant", "text": answer["text"]}],
+                      context_id=answer["run_id"])
+    sent = follow.bodies[0]["input"]
+    assert "Results already gathered" in sent[0]["content"] and "8.1%" in sent[0]["content"]
+    assert second["audit"]["passed"]  # numbers from the earlier result count as verified

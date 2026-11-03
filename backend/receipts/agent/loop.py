@@ -31,6 +31,11 @@ MODEL = "muse-spark-1.3"
 UPLOADS = settings.data_dir / "uploads"  # clips sent to the agent (gitignored with data/)
 MAX_ROUNDS = 6
 HISTORY_TURNS = 8  # earlier messages sent with a follow-up
+RUNS = settings.data_dir / "runs"  # each answer's tool results, by run id (gitignored with data/)
+CONTEXT_CHARS = 60_000  # earlier results given with a follow-up, at most
+CONTEXT_NOTE = ("Results already gathered earlier in this thread, as tool calls and their outputs. Answer from these when "
+                "they cover the question:\n")
+RUN_ID = re.compile(r"^(demo:)?[A-Za-z0-9_]{1,80}$")
 HISTORY_CHARS = 4000
 MINT_IN_TEXT = re.compile(r"(?<![1-9A-HJ-NP-Za-km-z])[1-9A-HJ-NP-Za-km-z]{32,44}(?![1-9A-HJ-NP-Za-km-z])")
 TICKER_IN_TEXT = re.compile(r"\$([A-Za-z0-9]{2,12})\b")
@@ -38,12 +43,16 @@ LEFT_OUT = {"still_open": "positions still open", "bought_before_history": "posi
             "not_sol_priced": "tokens priced in something other than SOL", "no_prices": "tokens with no trades to price"}
 PROFILE_IN_TEXT = re.compile(r"pump\.fun/profile/")
 DELAY_IN_TEXT = re.compile(r"(\d+(?:\.\d+)?)\s*(seconds?|secs?|s|minutes?|mins?|m|hours?|hrs?|h)\b", re.I)
+POSITIONS_IN_TEXT = re.compile(r"(\d+)\s*positions?\b", re.I)
 SECONDS_IN = {u: 1 for u in ("s", "sec", "secs", "second", "seconds")} | {u: 60 for u in ("m", "min", "mins", "minute", "minutes")} \
     | {u: 3600 for u in ("h", "hr", "hrs", "hour", "hours")}
 MAX_OUTPUT = 1500
 NOT_ADVICE = "Not financial advice."
 # Constants the product states, which the explanation may cite (audit `allowed`).
 CONSTANTS = (24, 10, 50, 1, 99, 4)
+# The copy-trade's own choices (25, 50 or 100 positions, the 30-second default), allowed only when the
+# conversation is about copying a wallet, so they can't pass an invented number elsewhere.
+COPY_CONSTANTS = (25, 50, 100, 30)
 # Past rugs need other tokens' outcomes, which a live check doesn't fetch (live.py): shown as n/a.
 NOT_CHECKED_LIVE = ("creator_rugs_24h", "group_rugs_24h", "group_launches_24h", "team_recycled_wallets",
                     "recycled_wallets", "recycled_supply_share")
@@ -53,7 +62,9 @@ SYSTEM = f"""You are the agent in Trade Receipts. You check new pump.fun tokens 
 How to work:
 - Get the token's mint. If the user sent a screenshot or clip, call read_address on it. If they gave only a name or ticker, call find_token, list the tokens it finds with their age, market cap and holders, and ask which one they mean. Never pick one for them.
 - Call check_token with the mint. Call token_security as a cross-check.
-- If the user gives a pump.fun profile link (pump.fun/profile/...) or asks about copying a wallet, call copy_trade with the wallet and how many seconds after its buys and sells they'd copy (convert their minutes to seconds). If they don't say, ask how long after they'd buy and sell. Report the wallet's result and theirs, and what the price did right after the wallet bought and sold. Don't judge the wallet or say why it makes money; give the numbers.
+- If the user gives a pump.fun profile link (pump.fun/profile/...) or asks about copying a wallet, you need three values: how long after its buys they'd buy, how long after its sells they'd sell, and how many of its latest closed positions to copy (25, 50 or 100). If they gave all three, call copy_trade (convert minutes to seconds). If any is missing, don't call it yet: reply with the values you'd use (theirs, otherwise 30 seconds, 30 seconds and 50 positions) and ask them to confirm or change them. Call copy_trade once they confirm.
+- Report the wallet's result and theirs, what it's based on, and what the price did right after the wallet bought and sold. Don't judge the wallet or say why it makes money; give the numbers.
+- Follow-up questions: when earlier results are given, answer from them. Call a tool again only for a different token or wallet, a different timing or number of positions, or if the user asks for fresh data.
 - Then explain in plain, short sentences what the evidence shows: the verdict and rug chance first, then the 2 to 4 signals that matter most, with their numbers. If check_token has a second opinion from Muse Glimmer, give its rug chance and say whether it agrees.
 
 Rules:
@@ -109,6 +120,21 @@ ADDRESS_SCHEMA = {
 }
 
 
+def load_context(context_id: str | None) -> list[dict]:
+    """The tool results behind an earlier answer: a live run's (RUNS) or a saved demo run's step results."""
+    if not context_id or not RUN_ID.match(context_id):
+        return []
+    if context_id.startswith("demo:"):
+        path = settings.data_dir / "demo" / f"{context_id[5:]}.json"
+        if not path.exists():
+            return []
+        events = json.loads(path.read_text())["events"]
+        return [{"tool": e["tool"], "args": e.get("args") or {}, "result": e["result"]}
+                for e in events if e.get("type") == "step" and e.get("status") == "done" and "result" in e]
+    path = RUNS / f"{context_id}.json"
+    return json.loads(path.read_text())["tool_log"] if path.exists() else []
+
+
 def valid_mint(mint: str) -> bool:
     try:
         return len(base58.b58decode(mint)) == 32
@@ -129,6 +155,8 @@ class Run:
         self.check: dict | None = None
         self.copy: dict | None = None  # the copy-trade backtest, when the run made one
         self.id = uuid.uuid4().hex[:12]
+        self.tool_log: list[dict] = []  # this run's tool calls, kept so follow-ups can reuse them (RUNS)
+        self.context: list[dict] = []  # earlier results in the thread, given with a follow-up
 
     # Tools
 
@@ -198,7 +226,7 @@ class Run:
             "positions_latest_first": [
                 f"{x['symbol'] or x['mint'][:6]}: held {prompt._secs(x['held_s'])}; wallet {pct(x['wallet']['pnl_pct'])}, you {pct(x['you']['pnl_pct'])}; "
                 f"price {pct(x['after_buy']['change'])} in the {prompt._secs(buy_after_seconds)} after its buy, {pct(x['after_sell']['change'])} in the {prompt._secs(sell_after_seconds)} after its sell"
-                for x in r["rows"][:12]],
+                for x in r["rows"]],
             "left_out": [f"{v} {LEFT_OUT[k]}" for k, v in r["skipped"].items() if v],
             "notes": r["notes"],
         }
@@ -274,6 +302,7 @@ class Run:
         except Exception as e:  # a tool failure is reported to the model, which can explain it
             result, status = {"error": f"{type(e).__name__}: {e}"[:300]}, "error"
         self.outputs.append(result)
+        self.tool_log.append({"tool": name, "args": args, "result": result})
         self.emit({"type": "step", "tool": name, "status": status, "summary": summary(name, result),
                    "ms": int(1000 * (time.time() - started)), "result": result})
         return result
@@ -285,11 +314,15 @@ class Run:
                                   "max_output_tokens": MAX_OUTPUT, "store": False, "reasoning": {"effort": "low"},
                                   "parallel_tool_calls": True}, purpose=purpose)
 
-    def run(self, message: str, history: list[dict] | None = None) -> dict:
+    def run(self, message: str, history: list[dict] | None = None, context_id: str | None = None) -> dict:
         """`history` is the conversation so far, [{"role": "user" | "assistant", "text"}], so a follow-up
-        (which of these tokens?) has its context. With the Meta API off, out of budget or past the
-        credit window, the check still runs and its own findings are shown (`without_model`)."""
+        (which of these tokens?) has its context. `context_id` names the thread's latest result (an
+        answer's `run_id`, or "demo:<id>" for a saved demo run): its tool results are given to the model
+        so a follow-up is answered from data already pulled. With the Meta API off, out of budget or
+        past the credit window, the check still runs and its own findings are shown (`without_model`)."""
         self.history = [h for h in history or [] if h.get("role") in ("user", "assistant") and h.get("text")][-HISTORY_TURNS:]
+        self.context = load_context(context_id)
+        self.outputs += [c["result"] for c in self.context]
         try:
             return self.with_model(message)
         except (meta.MetaDisabled, meta.BudgetExceeded) as e:
@@ -301,7 +334,11 @@ class Run:
         if self.image is not None or self.video is not None:
             kind = "clip" if self.video is not None else "screenshot"
             content.append({"type": "input_text", "text": f"(The user attached a {kind}; call read_address to read it.)"})
-        items: list = [{"role": h["role"], "content": h["text"][:HISTORY_CHARS]} for h in self.history]
+        items: list = []
+        if self.context:
+            items.append({"role": "user", "content": CONTEXT_NOTE + json.dumps(
+                [{"tool": c["tool"], "args": c["args"], "result": c["result"]} for c in self.context])[:CONTEXT_CHARS]})
+        items += [{"role": h["role"], "content": h["text"][:HISTORY_CHARS]} for h in self.history]
         items.append({"role": "user", "content": content})
         text = ""
         for _ in range(MAX_ROUNDS):
@@ -320,15 +357,23 @@ class Run:
             text = "The check took too many steps to finish. Try again with the token's mint address."
         return self.answer(items, text, message)
 
+    def copy_conversation(self, message: str) -> bool:
+        said = " ".join([message or ""] + [h["text"] for h in self.history])
+        return bool(PROFILE_IN_TEXT.search(said)) or any(c["tool"] == "copy_trade" for c in self.context + self.tool_log)
+
     def without_model(self, message: str, reason: str) -> dict:
         """The check with no Meta call: find the mint in the message, run the tools, and show their
         findings as written, so every number comes straight from a tool."""
         mints = [m for m in MINT_IN_TEXT.findall(message or "") if valid_mint(m)]
         lines: list[str] = []
         delays = [int(float(n) * SECONDS_IN[u.lower()]) for n, u in DELAY_IN_TEXT.findall(message or "")]
-        if PROFILE_IN_TEXT.search(message or "") and mints:
-            buy_after, sell_after = (delays + [30, 30])[:2] if delays else (30, 30)
-            out = self.call("copy_trade", {"wallet": mints[0], "buy_after_seconds": buy_after, "sell_after_seconds": sell_after})
+        positions = POSITIONS_IN_TEXT.search(message or "")
+        if PROFILE_IN_TEXT.search(message or "") and mints and (len(delays) < 2 or not positions):
+            lines.append("Say how long after its buys you'd buy, how long after its sells you'd sell, and how many of its "
+                         "latest closed positions to copy (25, 50 or 100), for example: 5 min after, 5 min after, 50 positions.")
+        elif PROFILE_IN_TEXT.search(message or "") and mints:
+            out = self.call("copy_trade", {"wallet": mints[0], "buy_after_seconds": delays[0], "sell_after_seconds": delays[1],
+                                           "positions": int(positions.group(1))})
             if "error" in out:
                 lines.append(out["error"])
             else:
@@ -378,15 +423,22 @@ class Run:
         audit.log(self.id, "rug check" if model else "rug check without the model", first, final)
         if NOT_ADVICE not in text:
             text = f"{text.rstrip()}\n\n{NOT_ADVICE}"
+        RUNS.mkdir(parents=True, exist_ok=True)
+        # The results this answer rests on, earlier ones included, so a follow-up can send `context_id`
+        # and be answered from them without pulling the data again.
+        (RUNS / f"{self.id}.json").write_text(json.dumps({"at": int(time.time()), "tool_log": self.context + self.tool_log,
+                                                           "answer": text}, default=str))
         event = {"type": "answer", "text": audit.mark(text, final) if not final.passed else text,
                  "audit": {"numbers": len(final.numbers), "passed": final.passed, "first_try_passed": first.passed,
                            "unverified": [n.text for n in final.unverified]},
-                 "check": self.check, "copy_trade": self.copy, "explained_by": MODEL if model else None}
+                 "check": self.check, "copy_trade": self.copy, "explained_by": MODEL if model else None, "run_id": self.id}
         self.emit(event)
         return event
 
     def answer(self, items: list, text: str, message: str) -> dict:
         allowed = CONSTANTS + tuple(audit.values(message or "")) + tuple(audit.values([h["text"] for h in self.history]))
+        if self.copy_conversation(message):
+            allowed += COPY_CONSTANTS
         first = audit.audit(text, self.outputs, allowed)
         final = first
         if not first.passed:
@@ -423,5 +475,6 @@ def summary(name: str, result: dict) -> str:
 
 
 def run(message: str, image: bytes | None = None, image_type: str = "image/png", emit=print, client: meta.Meta | None = None,
-        as_of: int | None = None, video: bytes | None = None, history: list[dict] | None = None) -> dict:
-    return Run(client=client, emit=emit, image=image, image_type=image_type, as_of=as_of, video=video).run(message, history)
+        as_of: int | None = None, video: bytes | None = None, history: list[dict] | None = None,
+        context_id: str | None = None) -> dict:
+    return Run(client=client, emit=emit, image=image, image_type=image_type, as_of=as_of, video=video).run(message, history, context_id)

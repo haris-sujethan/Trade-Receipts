@@ -24,6 +24,7 @@ wallet's first buy, and in the `sell_delay` after its last sell.
 
 import math
 import re
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
@@ -35,6 +36,11 @@ PRICE_PAGES = 10  # up to 1,000 of a token's transactions around each position
 POSITIONS = 50  # the latest closed positions copied, by default
 MAX_POSITIONS = 100
 WORKERS = 8  # tokens priced at once; the Helius client spaces the requests
+# A wallet's positions and price paths are kept this long, so trying another timing or fewer positions
+# reuses what was read instead of reading it again (unless the new timing reaches past it).
+REUSE_SECONDS = 1800
+_pulled: dict[str, dict] = {}
+_pulled_lock = threading.Lock()
 CLOSED_LEFT = 0.05
 SIZE_SOL = 1.0  # what the copier puts into each position
 PROFILE = re.compile(r"(?:pump\.fun/(?:profile|coin)/)?([1-9A-HJ-NP-Za-km-z]{32,44})")
@@ -177,6 +183,7 @@ class CopyTrade:
         self.buy_delay, self.sell_delay, self.size_sol = int(buy_delay), int(sell_delay), size_sol
         self.wanted = max(1, min(MAX_POSITIONS, int(positions)))
         self.history = {"transactions": 0, "from_ts": None, "to_ts": None, "complete": False}
+        self.reused = False  # True when the wallet's data came from an earlier run (REUSE_SECONDS)
         self.progress = progress or (lambda **kv: None)
         self.credits_start = self.h.spent_this_month()
         self.skipped = {"still_open": 0, "bought_before_history": 0, "not_sol_priced": 0, "no_prices": 0}
@@ -244,19 +251,32 @@ class CopyTrade:
             pass
 
     def run(self) -> dict:
-        ps = self.positions()
         extra = max(self.buy_delay, self.sell_delay)
+        with _pulled_lock:
+            kept = _pulled.get(self.wallet)
+        if kept and time.time() - kept["at"] < REUSE_SECONDS and kept["wanted"] >= self.wanted and kept["extra"] >= extra:
+            ps, priced = kept["positions"][:self.wanted], kept["prices"][:self.wanted]
+            self.history, self.skipped = dict(kept["history"]), dict(kept["skipped"])
+            self.reused = True
+            self.progress(step="reused", positions=len(ps))
+        else:
+            ps = self.positions()
 
-        def price(p):
-            self.name(p)
-            return self.prices(p, extra)
+            def price(p):
+                self.name(p)
+                return self.prices(p, extra)
 
+            priced = []
+            with ThreadPoolExecutor(WORKERS) as pool:
+                for i, prices in enumerate(pool.map(price, ps)):
+                    priced.append(prices)
+                    self.progress(step="positions", done=i + 1, of=len(ps))
+            with _pulled_lock:
+                _pulled[self.wallet] = {"at": time.time(), "wanted": self.wanted, "extra": extra, "positions": ps,
+                                        "prices": priced, "history": dict(self.history), "skipped": dict(self.skipped)}
         rows = []
-        with ThreadPoolExecutor(WORKERS) as pool:
-            priced = pool.map(price, ps)
-            for i, (p, prices) in enumerate(zip(ps, priced)):
-                rows += self.row(p, prices)
-                self.progress(step="positions", done=i + 1, of=len(ps))
+        for p, prices in zip(ps, priced):
+            rows += self.row(p, prices)
         return self.summary(rows)
 
     def row(self, p: Position, prices: Prices) -> list[dict]:
@@ -289,7 +309,7 @@ class CopyTrade:
         y_pnl = sum(r["you"]["pnl_sol"] for r in rows)
         return {
             "wallet": self.wallet, "buy_after_s": self.buy_delay, "sell_after_s": self.sell_delay, "size_sol": self.size_sol,
-            "positions": len(rows), "positions_wanted": self.wanted, "skipped": self.skipped,
+            "positions": len(rows), "positions_wanted": self.wanted, "skipped": self.skipped, "reused_data": self.reused,
             # what the run is based on: how far back the wallet's history was read
             "history": self.history | {"hours": round((self.history["to_ts"] - self.history["from_ts"]) / 3600, 1)
                                        if self.history["from_ts"] else None},
