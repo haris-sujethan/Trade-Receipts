@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { AnswerEvent, RunEvent } from "../demo/runs";
+import type { AnswerEvent, CopyRequest, CopyTrade, RunEvent } from "../demo/runs";
 import { frameAt, frameFromEvents, plan as makePlan, type Frame, type Plan } from "../demo/timeline";
 import type { Attachment, CheckRun, Turn } from "./state";
 
@@ -42,28 +42,39 @@ export function useBackend(): Backend {
   return state;
 }
 
-type Streamed = RunEvent | { type: "error"; message: string };
+/** What the backend streams: the agent's events, a copy-trade backtest's result, or an error. */
+export type Streamed = RunEvent | { type: "result"; copy_trade: CopyTrade } | { type: "error"; message: string };
 
 /**
  * Sends a message to the agent, with the thread so far and any attachment, and hands each event to `onEvent` as it
  * streams back (server-sent events).
  */
-export async function streamAgent(
+export function streamAgent(
   message: string,
   onEvent: (e: Streamed) => void,
   opts: { history?: Turn[]; attachment?: Attachment; signal?: AbortSignal } = {},
 ) {
   const { history = [], attachment, signal } = opts;
   const media = attachment ? { [attachment.kind]: attachment.dataUrl } : {};
-  const res = await fetch(`${API}/api/agent`, {
+  return stream("/api/agent", { message, history, ...media }, onEvent, signal);
+}
+
+/** Runs a copy-trade backtest without the agent: progress events, then `{type: "result", copy_trade}`. No Meta call. */
+export function streamCopyTrade(request: CopyRequest, onEvent: (e: Streamed) => void, signal?: AbortSignal) {
+  return stream("/api/copytrade", request, onEvent, signal);
+}
+
+async function stream(path: string, body: unknown, onEvent: (e: Streamed) => void, signal?: AbortSignal) {
+  const res = await fetch(`${API}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, history, ...media }),
+    body: JSON.stringify(body),
     signal,
   });
   if (!res.ok || !res.body) {
+    // FastAPI says why in `detail`: a sentence for our own refusals, a list for a malformed request.
     const detail = await res.json().catch(() => null);
-    onEvent({ type: "error", message: detail?.detail ?? `The backend answered ${res.status}.` });
+    onEvent({ type: "error", message: typeof detail?.detail === "string" ? detail.detail : `The backend answered ${res.status}.` });
     return;
   }
   const reader = res.body.getReader();

@@ -1,28 +1,50 @@
 import { createContext, useContext, useEffect, useMemo, useReducer, useRef, type ReactNode } from "react";
 import { TOUR_DONE_KEY } from "../config";
 import { projectFiles, rsiOutput, rsiProblems, runs, type Problem, type ProjectFile } from "../data/examples";
-import { answerOf, loadRun, loadRuns, type Run, type RunEvent, type RunSummary } from "../demo/runs";
-import { streamAgent } from "./live";
+import {
+  answerOf,
+  duration,
+  loadCopyRuns,
+  loadRun,
+  loadRuns,
+  shortAddr,
+  type CopyRequest,
+  type CopySummary,
+  type CopyTrade,
+  type Run,
+  type RunEvent,
+  type RunSummary,
+} from "../demo/runs";
+import { streamAgent, streamCopyTrade, type Streamed } from "./live";
 
-export type WorkTab = "Backtest" | "Analyze";
+/** The rug check, and the copy-trade backtest. Strategy backtests (files, results) are unplugged for now. */
+export type WorkTab = "Analyze" | "Copy trade";
 
 /**
- * A tab is a file id ("rsi"), a backtest's results ("results:rsi"), or a rug check ("check:<key>").
- * Check keys: "saved:<runId>" opens a saved check finished; "replay:<n>" replays one in the thread; "live:<n>" is a
- * check the backend is running now.
+ * A tab is a rug check ("check:<key>") or a copy-trade backtest ("copy:<key>"). The unplugged strategy backtests used
+ * file ids ("rsi") and their results ("results:rsi").
+ * Run keys: "saved:<runId>" opens a saved run finished; "replay:<n>" replays one in the thread; "live:<n>" is a
+ * run the backend is doing now.
  */
 export type TabId = string;
 
-/** A rug check the IDE knows about: a saved run (replayed or finished), or a live one streaming in. */
 /** A screenshot or clip sent with a message, as a data URL. */
 export type Attachment = { kind: "image" | "video"; dataUrl: string; name: string };
 /** One earlier message in the thread, sent with a follow-up so the agent has the context. */
 export type Turn = { role: "user" | "assistant"; text: string };
 
+/**
+ * A run the IDE knows about: a rug check or a copy-trade backtest, saved (replayed or finished) or live. Live runs go
+ * through the agent, or straight to the copy-trade backtest from its form.
+ */
 export type CheckRun = {
   key: string;
   run: Run;
   mode: "replay" | "live";
+  via?: "agent" | "copytrade";
+  /** A copy-trade backtest run from its form: what was asked, and the result once it's in. */
+  request?: CopyRequest;
+  copy?: CopyTrade;
   /** Live checks: the thread before this message, and what was attached. */
   history?: Turn[];
   attachment?: Attachment;
@@ -34,11 +56,12 @@ export type CheckRun = {
 
 export type ThreadItem = { kind: "user"; text: string; attached?: string } | { kind: "agent"; text: string } | { kind: "check"; key: string };
 export type UserThread = { id: number; title: string; items: ThreadItem[] };
-/** The two example threads (the replayed rug check and the finished backtest), then threads started in this session. */
-export type ThreadRef = "rug" | "backtest" | number;
+/** The two example threads (the replayed rug check and copy-trade backtest), then threads started in this session. */
+export type ThreadRef = "rug" | "copy" | number;
 
-/** The example thread's check. */
+/** The example threads' runs. */
 export const HERO_KEY = "replay:hero";
+export const COPY_HERO_KEY = "replay:copyhero";
 
 type State = {
   workTab: WorkTab;
@@ -51,6 +74,8 @@ type State = {
   running: string | null;
   /** The saved checks, lead first. */
   saved: RunSummary[];
+  /** The saved copy-trade backtests. */
+  savedCopies: CopySummary[];
   checks: Record<string, CheckRun>;
   /** A view picked by hand in a check's tab; otherwise the tab follows the check. */
   checkViews: Record<string, "overview" | "chart" | "holders" | "signals">;
@@ -75,11 +100,14 @@ type Action =
   | { type: "runStart"; runId: string }
   | { type: "runDone"; runId: string }
   | { type: "saved"; saved: RunSummary[]; hero: Run | null }
+  | { type: "savedCopies"; copies: CopySummary[]; hero: Run | null }
+  | { type: "openSavedCopy"; key: string; run: Run }
+  | { type: "copyStart"; request: CopyRequest }
   | { type: "startHero" }
   | { type: "finishCheck"; key: string }
   | { type: "openSaved"; key: string; run: Run }
   | { type: "checkView"; key: string; view: State["checkViews"][string] }
-  | { type: "liveEvent"; key: string; event: RunEvent | { type: "error"; message: string } }
+  | { type: "liveEvent"; key: string; event: Streamed }
   | { type: "liveEnd"; key: string }
   | { type: "closeTour" }
   | { type: "restartTour" }
@@ -91,11 +119,15 @@ type Action =
 /** What the IDE does with a sent message, decided before it reaches the reducer (see `replyFor`). */
 export type Reply = { kind: "replay"; run: Run } | { kind: "live"; attachment?: Attachment } | { kind: "text"; text: string };
 
-export const BACKTEST_SOON =
-  "Running new strategies is coming soon. Open a file in strategies to see a finished example, with its results.";
-
 export const LIVE_SOON =
   "Live checks are coming soon. This preview replays six saved checks: paste one of their pump.fun links, tickers or addresses, or open one from the checks folder.";
+
+export function copySoon(saved: CopySummary[]) {
+  const one = saved[0];
+  return one
+    ? `Live copy-trade backtests are coming soon. This preview replays a saved one: paste its wallet, ${one.wallet}, or open it from the copy trades folder.`
+    : "Live copy-trade backtests are coming soon.";
+}
 
 function readDone(): boolean {
   try {
@@ -115,6 +147,7 @@ function demoState(): State {
     ranRuns: [],
     running: null,
     saved: [],
+    savedCopies: [],
     checks: {},
     checkViews: {},
     tourOpen: true,
@@ -131,12 +164,11 @@ function initialState(): State {
   return { ...demoState(), tourOpen: !readDone() };
 }
 
-/** The mode that matches what a tab shows; clips fit either. */
+/** The mode that matches what a tab shows. */
 function modeOf(id: TabId): WorkTab | null {
   if (id.startsWith("check:")) return "Analyze";
-  const file = fileById(fileOf(id));
-  if (!file || file.kind === "clip") return null;
-  return file.kind === "token" || file.kind === "markdown" ? "Analyze" : "Backtest";
+  if (id.startsWith("copy:")) return "Copy trade";
+  return null;
 }
 
 function withTab(s: State, id: TabId): State {
@@ -150,6 +182,17 @@ function titleFrom(text: string) {
 
 const savedCheck = (run: Run, key: string): CheckRun => ({ key, run, mode: "replay", startedAt: Number.NEGATIVE_INFINITY, status: "done" });
 
+/** The tab a run opens in. */
+export const tabOf = (c: CheckRun) => `${isCopyRun(c) ? "copy" : "check"}:${c.key}`;
+
+/** Starts an example replay that hasn't played yet, and opens it. */
+function startReplay(s: State, key: string): State {
+  const c = s.checks[key];
+  if (!c || c.status !== "waiting") return s;
+  const checks = { ...s.checks, [key]: { ...c, startedAt: performance.now(), status: "running" as const } };
+  return { ...withTab({ ...s, checks }, tabOf(c)), openSeq: s.openSeq + 1 };
+}
+
 function reducer(s: State, a: Action): State {
   switch (a.type) {
     case "open":
@@ -162,13 +205,14 @@ function reducer(s: State, a: Action): State {
     case "workTab": {
       if (a.tab === s.workTab) return s;
       // The example threads follow the mode; threads of your own stay put.
-      s = typeof s.thread === "number" ? s : { ...s, thread: a.tab === "Backtest" ? "backtest" : "rug" };
+      s = typeof s.thread === "number" ? s : { ...s, thread: a.tab === "Copy trade" ? "copy" : "rug" };
       const fits = (id: TabId) => modeOf(id) === a.tab;
       if (s.active && fits(s.active)) return { ...s, workTab: a.tab };
-      // Show the most recent tab of that kind, or the matching example.
+      // Show the most recent tab of that kind, or the matching example (the copy-trade one plays the first time).
       const recent = [...s.openTabs].reverse().find(fits);
-      const fallback = a.tab === "Analyze" ? (s.checks[HERO_KEY] ? `check:${HERO_KEY}` : null) : s.ranRuns.includes("rsi") ? "results:rsi" : "rsi";
-      const target = recent ?? fallback;
+      if (!recent && a.tab === "Copy trade" && s.checks[COPY_HERO_KEY]?.status === "waiting") return startReplay({ ...s, workTab: a.tab }, COPY_HERO_KEY);
+      const example = a.tab === "Analyze" ? HERO_KEY : COPY_HERO_KEY;
+      const target = recent ?? (s.checks[example] ? tabOf(s.checks[example]) : null);
       return target ? { ...withTab(s, target), openSeq: s.openSeq + 1 } : { ...s, workTab: a.tab };
     }
     case "split":
@@ -192,6 +236,25 @@ function reducer(s: State, a: Action): State {
       const next = { ...s, saved: a.saved, checks };
       return a.hero && !s.tourOpen && !s.active ? withTab(next, `check:${HERO_KEY}`) : next;
     }
+    case "savedCopies": {
+      // The copy-trade example waits until the mode is first opened, then plays.
+      const checks =
+        a.hero && !s.checks[COPY_HERO_KEY]
+          ? { ...s.checks, [COPY_HERO_KEY]: { key: COPY_HERO_KEY, run: a.hero, mode: "replay" as const, startedAt: Number.NEGATIVE_INFINITY, status: "waiting" as const } }
+          : s.checks;
+      return { ...s, savedCopies: a.copies, checks };
+    }
+    case "openSavedCopy": {
+      const checks = s.checks[a.key] ? s.checks : { ...s.checks, [a.key]: savedCheck(a.run, a.key) };
+      return { ...withTab({ ...s, checks }, `copy:${a.key}`), openSeq: s.openSeq + 1 };
+    }
+    case "copyStart": {
+      const seq = s.seq + 1;
+      const key = `live:${seq}`;
+      const run: Run = { id: key, mint: "", age_s: 0, about: "", message: "", clip: null, events: [], kind: "copy_trade", wallet: a.request.wallet };
+      const c: CheckRun = { key, run, mode: "live", via: "copytrade", request: a.request, startedAt: performance.now(), status: "running" };
+      return { ...withTab({ ...s, seq, checks: { ...s.checks, [key]: c } }, `copy:${key}`), openSeq: s.openSeq + 1 };
+    }
     case "startHero": {
       const hero = s.checks[HERO_KEY];
       if (!hero || hero.status === "running") return s;
@@ -212,12 +275,17 @@ function reducer(s: State, a: Action): State {
     case "liveEvent": {
       const c = s.checks[a.key];
       if (!c) return s;
-      if (a.event.type === "error") return { ...s, checks: { ...s.checks, [a.key]: { ...c, status: "error", error: a.event.message } } };
-      const run = { ...c.run, events: [...c.run.events, a.event as RunEvent] };
+      const e = a.event;
+      if (e.type === "error") return { ...s, checks: { ...s.checks, [a.key]: { ...c, status: "error", error: e.message } } };
+      if (e.type === "result") return { ...s, checks: { ...s.checks, [a.key]: { ...c, copy: e.copy_trade } } };
+      // The backtest's own progress events don't name their tool; the agent's do.
+      const event: RunEvent = e.type === "progress" && !e.tool ? { ...e, tool: "copy_trade" } : e;
+      const run = { ...c.run, events: [...c.run.events, event] };
       const next = { ...s, checks: { ...s.checks, [a.key]: { ...c, run } } };
-      // The check's tab opens as soon as the agent starts on the token.
-      const tab = `check:${a.key}`;
-      return a.event.type === "step" && a.event.tool === "check_token" && !s.openTabs.includes(tab) ? { ...withTab(next, tab), openSeq: s.openSeq + 1 } : next;
+      // The run's tab opens as soon as the agent starts on the token, or on the wallet.
+      const kind = event.type === "step" && event.status === "running" ? ({ check_token: "check", copy_trade: "copy" } as Record<string, string>)[event.tool] : undefined;
+      const tab = kind && `${kind}:${a.key}`;
+      return tab && !s.openTabs.includes(tab) ? { ...withTab(next, tab), openSeq: s.openSeq + 1 } : next;
     }
     case "liveEnd": {
       const c = s.checks[a.key];
@@ -264,8 +332,11 @@ function reducer(s: State, a: Action): State {
       if (a.reply.kind === "text") added = { kind: "agent", text: a.reply.text };
       else {
         const key = a.reply.kind === "replay" ? `replay:${seq}` : `live:${seq}`;
+        // A replayed copy-trade backtest keeps its own message: its timing is the one it was saved with.
         const run: Run =
-          a.reply.kind === "replay" ? { ...a.reply.run, message: text } : { id: key, mint: "", age_s: 0, about: "", message: text, clip: null, events: [] };
+          a.reply.kind === "replay"
+            ? { ...a.reply.run, message: a.reply.run.kind === "copy_trade" ? a.reply.run.message : text }
+            : { id: key, mint: "", age_s: 0, about: "", message: text, clip: null, events: [] };
         const prior = threads.find((t) => t.id === thread)?.items ?? [];
         const history: Turn[] = prior.flatMap((m): Turn[] => {
           if (m.kind === "user") return [{ role: "user", text: m.text }];
@@ -273,9 +344,9 @@ function reducer(s: State, a: Action): State {
           const said = checks[m.key] && answerOf(checks[m.key].run)?.text;
           return said ? [{ role: "assistant", text: said }] : [];
         });
-        checks = { ...checks, [key]: { key, run, mode: a.reply.kind, startedAt: performance.now(), status: "running", history, attachment } };
+        checks = { ...checks, [key]: { key, run, mode: a.reply.kind, via: "agent", startedAt: performance.now(), status: "running", history, attachment } };
         added = { kind: "check", key };
-        if (a.reply.kind === "replay") open = `check:${key}`;
+        if (a.reply.kind === "replay") open = tabOf(checks[key]);
       }
       threads = threads.map((t) =>
         t.id === thread ? { ...t, title: t.title || titleFrom(text), items: [...t.items, { kind: "user", text, attached: attachment?.name }, added] } : t,
@@ -290,7 +361,8 @@ function reducer(s: State, a: Action): State {
       return { ...s, threads: [...s.threads, { id, title: "", items: [] }], thread: id };
     }
     case "selectThread":
-      return { ...s, thread: a.thread };
+      // The copy-trade example plays the first time it's picked.
+      return a.thread === "copy" ? startReplay({ ...s, thread: a.thread }, COPY_HERO_KEY) : { ...s, thread: a.thread };
   }
 }
 
@@ -317,6 +389,43 @@ export function checkOf(state: State, id: TabId | null): CheckRun | undefined {
   const key = id.slice(6);
   if (state.checks[key]) return state.checks[key];
   return undefined;
+}
+
+/** The copy-trade backtest a "copy:<key>" tab shows. */
+export function copyRunOf(state: State, id: TabId | null): CheckRun | undefined {
+  return id?.startsWith("copy:") ? state.checks[id.slice(5)] : undefined;
+}
+
+/** Whether a run is a copy-trade backtest: saved as one, run from its form, or the agent called the backtest. */
+export function isCopyRun(c: CheckRun): boolean {
+  return c.via === "copytrade" || c.run.kind === "copy_trade" || c.run.events.some((e) => e.type === "step" && e.tool === "copy_trade");
+}
+
+/** A copy-trade backtest's result, once it's in (a replay carries it from the start). */
+export function copyResultOf(c: CheckRun): CopyTrade | undefined {
+  return c.copy ?? answerOf(c.run)?.copy_trade ?? undefined;
+}
+
+/** The result of a backtest that has finished: a replay only once it has played to the end. */
+export function finishedCopyOf(c: CheckRun): CopyTrade | undefined {
+  return c.copy ?? (c.status === "done" ? copyResultOf(c) : undefined);
+}
+
+/** What a copy-trade backtest was asked: from its form, the agent's call, or the result. */
+export function copyRequestOf(c: CheckRun): CopyRequest | undefined {
+  if (c.request) return c.request;
+  const r = copyResultOf(c);
+  if (r) return { wallet: r.wallet, buy_after_s: r.buy_after_s, sell_after_s: r.sell_after_s, size_sol: r.size_sol };
+  const step = c.run.events.find((e) => e.type === "step" && e.tool === "copy_trade" && e.status === "running");
+  const args = step?.type === "step" ? step.args : undefined;
+  if (!args) return undefined;
+  return { wallet: String(args.wallet ?? ""), buy_after_s: Number(args.buy_after_seconds ?? 0), sell_after_s: Number(args.sell_after_seconds ?? 0), size_sol: 1 };
+}
+
+/** A short name for a copy-trade backtest: the wallet and the timing, "GeUn…UX1W, 5 min / 10 min". */
+export function copyTitle(c: CheckRun): string {
+  const q = copyRequestOf(c);
+  return q?.wallet ? `${shortAddr(q.wallet)}, ${duration(q.buy_after_s)} / ${duration(q.sell_after_s)}` : "New backtest";
 }
 
 /** The check the panels describe: the one in the active tab, or the last one opened. */
@@ -349,6 +458,23 @@ export function checkProblems(c: CheckRun | undefined): Problem[] {
   return [...verdict, ...lines.map((message) => ({ severity: "warning" as const, file: label, message }))];
 }
 
+/** A copy-trade backtest's caveats: what it left out and what it doesn't model. Facts, not flags. */
+export function copyProblems(c: CheckRun | undefined): Problem[] {
+  const r = c && finishedCopyOf(c);
+  if (!c || !r) return [];
+  const file = shortAddr(r.wallet);
+  const left: [number, string][] = [
+    [r.skipped.not_sol_priced, "priced in something other than SOL"],
+    [r.skipped.still_open, "still open"],
+    [r.skipped.bought_before_history, "opened before the history read"],
+    [r.skipped.no_prices, "with no trades to price them"],
+  ];
+  return [
+    ...left.filter(([n]) => n > 0).map(([n, why]) => ({ severity: "info" as const, file, message: `Left out: ${n} ${n === 1 ? "token" : "tokens"} ${why}` })),
+    ...r.notes.map((message) => ({ severity: "info" as const, file, message })),
+  ];
+}
+
 /** A check's tool log, from its events. */
 export function checkOutput(c: CheckRun | undefined): string[] {
   if (!c) return [];
@@ -357,16 +483,15 @@ export function checkOutput(c: CheckRun | undefined): string[] {
   for (const e of c.run.events) {
     if (e.type === "step") out.push(`${e.status === "running" ? "start" : e.status}  ${e.tool}${e.summary ? `  ${e.summary}` : ""}${e.ms != null ? `  ${e.ms} ms` : ""}`);
     if (e.type === "progress") {
-      const line =
-        e.step === "token"
-          ? `${e.transactions} transactions read`
-          : e.step === "wallets"
-            ? `${e.scanned} of ${e.of} wallets traced`
-            : e.step === "busy"
-              ? `${e.checked} of ${e.of} busy wallets checked`
-              : e.step === "funders"
-                ? `${e.scanned} of ${e.of} funders traced`
-                : `${e.lookups} early buyers checked, ${e.sniper_bots} sniper bots`;
+      const line = {
+        token: `${e.transactions} transactions read`,
+        wallets: `${e.scanned} of ${e.of} wallets traced`,
+        busy: `${e.checked} of ${e.of} busy wallets checked`,
+        funders: `${e.scanned} of ${e.of} funders traced`,
+        snipes: `${e.lookups} early buyers checked, ${e.sniper_bots} sniper bots`,
+        wallet: `${e.transactions} of the wallet's transactions read`,
+        positions: `${e.done} of ${e.of} positions priced`,
+      }[e.step];
       last = { ...last, [e.step]: line };
       // One line per kind of progress: keep the latest count.
       const at = out.findIndex((l) => l.startsWith(`  ${e.step}`));
@@ -376,32 +501,35 @@ export function checkOutput(c: CheckRun | undefined): string[] {
     }
     if (e.type === "answer") out.push(`answer  ${e.audit.numbers} numbers checked against the data${e.audit.passed ? "" : " (some failed)"}`);
   }
+  if (c.copy) out.push(`result  ${c.copy.positions} closed positions copied`);
   if (c.status === "error" && c.error) out.push(`error  ${c.error}`);
   return out;
 }
 
-/** The panels describe what's in front: the open check, or else the backtests that ran (or the last check). */
+/** The panels describe what's in front: the open check or backtest, or else the last check. */
 export function problemsFor(state: State): Problem[] {
   const active = checkOf(state, state.active);
   if (active) return checkProblems(active);
+  const copy = copyRunOf(state, state.active);
+  if (copy) return copyProblems(copy);
   const runs = state.ranRuns.flatMap((id) => (id === "rsi" ? rsiProblems : []));
-  return runs.length || state.workTab === "Backtest" ? runs : checkProblems(focusCheck(state));
+  return runs.length ? runs : checkProblems(focusCheck(state));
 }
 
 export function outputFor(state: State): string[] {
-  const active = checkOf(state, state.active);
+  const active = checkOf(state, state.active) ?? copyRunOf(state, state.active);
   if (active) return checkOutput(active);
   const runs = state.ranRuns.flatMap((id) => (id === "rsi" ? rsiOutput : []));
-  return runs.length || state.workTab === "Backtest" ? runs : checkOutput(focusCheck(state));
+  return runs.length ? runs : checkOutput(focusCheck(state));
 }
 
 export function hasRun(fileId: string): boolean {
   return fileId in runs;
 }
 
-export const exampleThreadTitle: Record<"rug" | "backtest", string> = {
+export const exampleThreadTitle: Record<"rug" | "copy", string> = {
   rug: "Is this a rug?",
-  backtest: "Code the strategy in this clip",
+  copy: "What if I copied this wallet?",
 };
 
 export function threadTitle(state: State): string {
@@ -416,6 +544,11 @@ export function savedMatch(text: string, saved: RunSummary[]): RunSummary | unde
     saved.find((r) => r.mint && text.includes(r.mint)) ??
     saved.find((r) => r.symbol && new RegExp(`(^|[^a-z0-9$])\\$?${r.symbol.toLowerCase()}([^a-z0-9]|$)`).test(lower))
   );
+}
+
+/** Finds a saved copy-trade backtest whose wallet a message names (its pump.fun profile link or address). */
+export function savedCopyMatch(text: string, saved: CopySummary[]): CopySummary | undefined {
+  return saved.find((r) => r.wallet && text.includes(r.wallet));
 }
 
 /* ---------- Context ---------- */
@@ -435,6 +568,12 @@ export function IdeProvider({ children }: { children: ReactNode }) {
         if (live) dispatch({ type: "saved", saved, hero });
       })
       .catch(() => live && dispatch({ type: "saved", saved: [], hero: null }));
+    loadCopyRuns()
+      .then(async (copies) => {
+        const hero = copies[0] ? await loadRun(copies[0].id) : null;
+        if (live) dispatch({ type: "savedCopies", copies, hero });
+      })
+      .catch(() => live && dispatch({ type: "savedCopies", copies: [], hero: null }));
     return () => {
       live = false;
     };
@@ -446,7 +585,10 @@ export function IdeProvider({ children }: { children: ReactNode }) {
     for (const c of Object.values(state.checks)) {
       if (c.mode !== "live" || c.status !== "running" || started.current.has(c.key)) continue;
       started.current.add(c.key);
-      streamAgent(c.run.message, (event) => dispatch({ type: "liveEvent", key: c.key, event }), { history: c.history, attachment: c.attachment }).then(
+      const onEvent = (event: Streamed) => dispatch({ type: "liveEvent", key: c.key, event });
+      const streamed =
+        c.via === "copytrade" && c.request ? streamCopyTrade(c.request, onEvent) : streamAgent(c.run.message, onEvent, { history: c.history, attachment: c.attachment });
+      streamed.then(
         () => dispatch({ type: "liveEnd", key: c.key }),
         (err: Error) => dispatch({ type: "liveEvent", key: c.key, event: { type: "error", message: `Couldn't reach the backend: ${err.message}` } }),
       );

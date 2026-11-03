@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { ChevronDown, ChevronRight, FileCode2, FileText, FileVideo, Lock, ScanSearch } from "lucide-react";
+import { ChevronDown, ChevronRight, FileCode2, FileText, FileVideo, Lock, ScanSearch, Timer } from "lucide-react";
 import { projectFiles, type ProjectFile } from "../data/examples";
-import { loadRun } from "../demo/runs";
-import { useIde } from "./state";
+import { duration, loadRun, shortAddr } from "../demo/runs";
+import { copyTitle, isCopyRun, tabOf, useIde } from "./state";
 
-type Folder = "checks" | "this session" | ProjectFile["folder"];
+/** Strategies and clips (ProjectFile folders) are unplugged with the strategy backtests; the code still reads them. */
+type Folder = "checks" | "copy trades" | "this session" | ProjectFile["folder"];
 
 function FileIcon({ kind }: { kind: ProjectFile["kind"] }) {
   if (kind === "clip") return <FileVideo size={15} aria-hidden />;
@@ -12,13 +13,13 @@ function FileIcon({ kind }: { kind: ProjectFile["kind"] }) {
   return <FileCode2 size={15} aria-hidden />;
 }
 
-/** The demo project: the saved rug checks, checks started in this session, and the example strategies. */
+/** The demo project: the saved rug checks, the saved copy-trade backtests, and runs started in this session. */
 export function Explorer() {
   const { state, dispatch } = useIde();
   const [closed, setClosed] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState<string | null>(null);
   const session = Object.values(state.checks).filter((c) => c.key.startsWith("live:") || /^replay:\d/.test(c.key));
-  const folders: Folder[] = ["checks", ...(session.length ? (["this session"] as Folder[]) : []), "strategies", "clips"];
+  const folders: Folder[] = ["checks", "copy trades", ...(session.length ? (["this session"] as Folder[]) : [])];
 
   function openSaved(id: string) {
     const key = `saved:${id}`;
@@ -26,6 +27,15 @@ export function Explorer() {
     setLoading(id);
     loadRun(id)
       .then((run) => dispatch({ type: "openSaved", key, run }))
+      .finally(() => setLoading(null));
+  }
+
+  function openCopy(id: string) {
+    const key = `saved:${id}`;
+    if (state.checks[key]) return dispatch({ type: "open", id: `copy:${key}` });
+    setLoading(id);
+    loadRun(id)
+      .then((run) => dispatch({ type: "openSavedCopy", key, run }))
       .finally(() => setLoading(null));
   }
 
@@ -45,17 +55,35 @@ export function Explorer() {
         );
       });
     }
+    if (folder === "copy trades") {
+      if (!state.savedCopies.length) return <li className="tree__empty">No saved backtests</li>;
+      return state.savedCopies.map((r) => {
+        const tab = `copy:saved:${r.id}`;
+        return (
+          <li key={r.id}>
+            <button className={`tree__file ${state.active === tab ? "is-active" : ""}`} aria-current={state.active === tab ? "true" : undefined} onClick={() => openCopy(r.id)}>
+              <Timer size={15} aria-hidden />
+              <span className="tree__name mono">{shortAddr(r.wallet)}</span>
+              <span className="tree__meta">
+                {loading === r.id ? "Opening" : r.buy_after_s != null && r.sell_after_s != null ? `${duration(r.buy_after_s)} / ${duration(r.sell_after_s)}` : ""}
+              </span>
+            </button>
+          </li>
+        );
+      });
+    }
     if (folder === "this session") {
       return session.map((c) => {
-        const tab = `check:${c.key}`;
+        const tab = tabOf(c);
+        const copy = isCopyRun(c);
         const answer = c.run.events.find((e) => e.type === "answer");
-        const name = answer && answer.type === "answer" && answer.check ? answer.check.symbol : c.run.message.slice(0, 24);
+        const name = copy ? copyTitle(c) : answer && answer.type === "answer" && answer.check ? answer.check.symbol : c.run.message.slice(0, 24);
         return (
           <li key={c.key}>
             <button className={`tree__file ${state.active === tab ? "is-active" : ""}`} aria-current={state.active === tab ? "true" : undefined} onClick={() => dispatch({ type: "open", id: tab })}>
-              <ScanSearch size={15} aria-hidden />
+              {copy ? <Timer size={15} aria-hidden /> : <ScanSearch size={15} aria-hidden />}
               <span className="tree__name">{name}</span>
-              <span className="tree__meta">{c.status === "running" ? "Checking" : c.status === "error" ? "Failed" : c.mode === "live" ? "Live" : "Replay"}</span>
+              <span className="tree__meta">{c.status === "running" ? (copy ? "Running" : "Checking") : c.status === "error" ? "Failed" : c.mode === "live" ? "Live" : "Replay"}</span>
             </button>
           </li>
         );
@@ -77,7 +105,7 @@ export function Explorer() {
     <aside className="explorer" aria-label="Project files" data-tour="explorer">
       <div className="pane-head">
         <span className="pane-head__title">Demo project</span>
-        <span className="pane-head__note" title="Saved checks and example files can be read, copied and downloaded">
+        <span className="pane-head__note" title="Saved checks and backtests can be opened and read, not changed">
           <Lock size={11} aria-hidden />
           Read-only
         </span>

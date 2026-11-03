@@ -2,7 +2,7 @@ import { AlertTriangle, Info, XCircle } from "lucide-react";
 import { projectFiles } from "../data/examples";
 import { answerOf } from "../demo/runs";
 import { onTablistKeyDown } from "../lib/tabs";
-import { focusCheck, outputFor, problemsFor, useIde } from "./state";
+import { copyRunOf, focusCheck, outputFor, problemsFor, useIde } from "./state";
 
 const icons = {
   error: <XCircle size={14} aria-hidden className="sev sev--error" />,
@@ -15,8 +15,11 @@ export function BottomPanel() {
   const problems = problemsFor(state);
   const output = outputFor(state);
   const check = focusCheck(state);
+  const copy = copyRunOf(state, state.active);
 
   function jump(file: string) {
+    // A backtest's notes stay on the backtest.
+    if (copy) return dispatch({ type: "open", id: `copy:${copy.key}` });
     // A check's flags open its overview.
     if (check && file === answerOf(check.run)?.check?.symbol) {
       dispatch({ type: "open", id: `check:${check.key}` });
@@ -55,7 +58,7 @@ export function BottomPanel() {
       <div id="bottom-panel" className="bottom__body" role="tabpanel" aria-labelledby={`bottom-tab-${state.bottomTab}`} tabIndex={0}>
         {state.bottomTab === "problems" &&
           (problems.length === 0 ? (
-            <p className="bottom__empty">No problems yet. A check’s flags and a backtest’s honesty issues show up here.</p>
+            <p className="bottom__empty">No problems yet. A check’s flags and a backtest’s notes show up here.</p>
           ) : (
             <ul className="problems">
               {problems.map((p, i) => (

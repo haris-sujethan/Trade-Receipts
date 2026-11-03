@@ -59,7 +59,7 @@ export function Home() {
 
         <section className="hn-close" aria-labelledby="close-title">
           <h2 id="close-title">See who’s selling before you buy.</h2>
-          <p>The same IDE backtests crypto strategies, with trading costs, against simply holding.</p>
+          <p>The same IDE backtests copying a pump.fun wallet: what you’d have made buying and selling a little after it.</p>
           <Link to="/signup" className="hn-btn hn-btn--primary">
             Launch IDE
           </Link>

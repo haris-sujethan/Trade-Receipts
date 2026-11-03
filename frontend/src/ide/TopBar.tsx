@@ -5,7 +5,7 @@ import { APP_NAME } from "../config";
 import { useBackend } from "./live";
 import { clearTourDone, useIde, type WorkTab } from "./state";
 
-const workTabs: WorkTab[] = ["Backtest", "Analyze"];
+const workTabs: WorkTab[] = ["Analyze", "Copy trade"];
 
 export function TopBar() {
   const { state, dispatch } = useIde();
@@ -91,23 +91,25 @@ function PreviewNote() {
         onClick={() => setOpen((v) => !v)}
       >
         {backend === "online" ? "Live" : "Preview"}
-        <span className="preview__more">{backend === "online" ? ", backend connected" : ", saved checks"}</span>
+        <span className="preview__more">{backend === "online" ? ", backend connected" : ", saved runs"}</span>
       </button>
       {open && (
         <div id="preview-note" className="preview__note" role="region" aria-label="About this preview">
-          <p className="preview__title">{backend === "online" ? "Connected to the backend" : "This preview replays saved checks"}</p>
+          <p className="preview__title">{backend === "online" ? "Connected to the backend" : "This preview replays saved runs"}</p>
           <p className="preview__head">Works now</p>
           <ul>
             <li>Six saved rug checks of real pump.fun tokens, each 15 minutes after launch, replayed step by step</li>
             <li>Their chart, holders and every signal, with the rug chance and a second opinion</li>
-            <li>An example backtest, with its code and results (example values)</li>
+            <li>A saved copy-trade backtest of a wallet from pump.fun’s leaderboard, copied 5 minutes after its buys and 10 after its sells</li>
             {backend === "online" && <li>Live checks: ask about any pump.fun token in the thread</li>}
+            {backend === "online" && <li>Live copy-trade backtests of any pump.fun wallet, with your own timing</li>}
+            {backend === "online" && <li>Attaching clips and screenshots to a check</li>}
           </ul>
           <p className="preview__head">Coming next</p>
           <ul>
             {backend !== "online" && <li>Live checks on any pump.fun token</li>}
-            <li>Running your own strategies on real prices</li>
-            <li>Attaching clips and screenshots</li>
+            {backend !== "online" && <li>Copy-trade backtests of any wallet, with your own timing</li>}
+            {backend !== "online" && <li>Attaching clips and screenshots</li>}
             <li>Saving your own projects</li>
           </ul>
         </div>

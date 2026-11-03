@@ -39,8 +39,8 @@ export function DemoWindow({ run, plan, frame, view, onView }: Props) {
         </span>
         <span className="win__title">Trade Receipts</span>
         <span className="win__mode" aria-hidden>
-          <span>Backtest</span>
           <span className="is-on">Analyze</span>
+          <span>Copy trade</span>
         </span>
       </div>
 

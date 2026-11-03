@@ -1,6 +1,6 @@
 ---
 name: Trade Receipts
-description: Check a pump.fun token before you buy it. An agent-native IDE for crypto rug checks, with backtesting second.
+description: Check a pump.fun token before you buy it. An agent-native IDE for crypto rug checks, with copy-trade backtests second.
 colors:
   paper: "oklch(99.2% 0 0)"
   paper-2: "oklch(97.2% 0.002 250)"
@@ -80,7 +80,8 @@ decoration stays out of the way.
   Mac-style desktop (wallpaper, token pills, app window, no menu bar); "Everything we check, on every token" as
   12 cards; a closing line; the footer with credits and "Not financial advice".
 - **IDE** (`frontend/src/pages/Ide.tsx`, `ide/`): the demo's app window at full size. Files on the left, the
-  editor area in the middle, the agent's thread on the right, problems and output below.
+  editor area in the middle, the agent's thread on the right, problems and output below. Two modes: Analyze (rug
+  checks) and Copy trade (copy-trade backtests). Strategy backtests are unplugged; their code stays.
 - **Sign-up** (`SignUp.tsx`): the home nav and one card.
 
 Tokens live in `frontend/src/styles/tokens.css` (`:root`); `base.css` maps the IDE's older names
@@ -109,7 +110,7 @@ chroma floor by design (it marks "nothing to worry about"). Snipers, fresh and g
 chart carries a legend.
 
 ### Named Rules
-- One accent. Blue is the action and the team; nothing else is blue.
+- One accent. Blue is the action and the team (in a copy-trade backtest, you); nothing else is blue.
 - Candles in the market-cap chart are ink, hollow when up and solid when down, so color stays free for groups.
   Only the model card's rug illustration uses green and red candles.
 
@@ -158,7 +159,7 @@ Controls 8px, cards 10px, windows and popovers 12 to 14px, the desktop frame 18p
   subtitle and label/value rows on hairlines. The model card's picture is a labelled illustration.
 
 ### The demo window and the IDE
-- Title bar with three window lights, a Backtest/Analyze switch, workspace tabs with a 2px blue underline, the
+- Title bar with three window lights, an Analyze / Copy trade switch, workspace tabs with a 2px blue underline, the
   thread on a slightly darker side panel, and a rounded message box.
 - Agent steps: a spinner, then a check; live counts under "Checking the token"; the answer streams in; "N
   numbers checked against the data" closes it.
@@ -170,6 +171,26 @@ Controls 8px, cards 10px, windows and popovers 12 to 14px, the desktop frame 18p
 - Chart: market cap in 15-second candles with volume by group and team sells marked.
 - Holders: the bubble map (funders as dark hub dots with spokes; the team in blue) and the top holders.
 - Signals: the 12 cards.
+
+### Copy trade view (`ide/CopyTab.tsx`, `PositionChart.tsx`, `copy.css`)
+- Form on top: the wallet (a pump.fun profile link or an address), SOL per position, and two delay rows ("Buy after
+  its buys", "Sell after its sells"). Each row is native radios drawn as one segmented control: 2 s, 10 s, 30 s,
+  1 min, 5 min, 10 min, Custom (seconds or minutes). Without the backend the fieldset is disabled and the reason sits
+  beside Run backtest. Each live run opens in its own tab, named for the wallet and the timing.
+- Totals: three wells. The wallet and you each have a serif P&L in SOL, the percentage on what was spent, and how many
+  positions made money. The third has the median price move in the delay after its buys and after its sells. Then
+  the backtest's notes and "Not financial advice". Timings tried on the same wallet are listed for comparison.
+- Positions table: newest first, with grouped heads (Result: wallet and you; Price move: after its buy and after its
+  sell). Each row has a two-dot drawing of the wallet's result (ink) against yours (blue) on one scale with zero
+  marked. A row opens into its chart and every fill. A narrow editor area drops the buy time, then the drawing.
+- Position chart: market cap in SOL as a step line, and time since its first buy on a log scale (labelled), so its
+  seconds and your minutes both have room. Its buys and sells are ink triangles and yours are blue (up for a buy, down
+  for a sell). Dashed blue lines join its first buy to yours and its last sell to yours: the move while you wait.
+  The marks have hover tips, and the fills are also listed as text.
+
+### Named Rules
+- Numbers, never a verdict on the wallet: no "good", "bad", "profitable trader" or "scam" labels. P&L is ink with
+  its sign; green and red stay out of it.
 
 ## Do's and Don'ts
 

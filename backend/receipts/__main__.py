@@ -167,6 +167,18 @@ def save_demo(args) -> None:
     from receipts.agent import demo
 
     demo.save()
+    print(demo.save_copy())
+
+
+def copy_trade(args) -> None:
+    from receipts.crypto import copytrade
+
+    wallet = copytrade.wallet_from(args.wallet)
+    r = copytrade.copy_trade(wallet, args.buy_after, args.sell_after, args.size)
+    print(json.dumps({k: v for k, v in r.items() if k != "rows"}, indent=2))
+    for row in r["rows"]:
+        print(f'{(row["symbol"] or row["mint"][:6]):>12}  held {row["held_s"]:>6}s  wallet {row["wallet"]["pnl_pct"]:+.0%}  '
+              f'you {row["you"]["pnl_pct"]:+.0%}  after its buy {row["after_buy"]["change"]}  after its sell {row["after_sell"]["change"]}')
 
 
 def meta_report(args) -> None:
@@ -215,6 +227,12 @@ def main() -> None:
     p.add_argument("--as-of", type=int, help="check tokens as they stood at this unix time")
     p.set_defaults(run=agent)
     sub.add_parser("save-demo", help="run the agent on the demo tokens and save the runs (Meta API, guarded)").set_defaults(run=save_demo)
+    p = sub.add_parser("copy-trade", help="what copying a pump.fun wallet a little late would have made (Helius, no Meta)")
+    p.add_argument("wallet", help="a pump.fun profile link or wallet address")
+    p.add_argument("--buy-after", type=int, default=300, help="seconds after each of its buys")
+    p.add_argument("--sell-after", type=int, default=600, help="seconds after each of its sells")
+    p.add_argument("--size", type=float, default=1.0, help="SOL per position")
+    p.set_defaults(run=copy_trade)
     sub.add_parser("meta-report", help="Meta Model API spend so far against the guard's limit").set_defaults(run=meta_report)
     p = sub.add_parser("goplus", help="GoPlus token security for a mint")
     p.add_argument("mint")

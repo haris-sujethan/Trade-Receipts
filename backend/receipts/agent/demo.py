@@ -71,7 +71,7 @@ def after(mint: str, age: int, until: int = 3600, candle_s: int = 60) -> dict:
 def save(age: int = AGE) -> list[dict]:
     ROOT.mkdir(parents=True, exist_ok=True)
     saved = []
-    for old in ROOT.glob("*.json"):  # the set is exactly TOKENS
+    for old in ROOT.glob("*_900.json"):  # the token set is exactly TOKENS
         old.unlink()
     for mint, about, message in TOKENS:
         events: list = []
@@ -88,7 +88,7 @@ def runs() -> list[dict]:
     """The saved runs in TOKENS order (the hero first), without their events (for the demo list)."""
     out = []
     order = {mint: i for i, (mint, _, _) in enumerate(TOKENS)}
-    for path in sorted(ROOT.glob("*.json"), key=lambda p: order.get(p.stem.rsplit("_", 1)[0], len(order))):
+    for path in sorted(ROOT.glob("*_900.json"), key=lambda p: order.get(p.stem.rsplit("_", 1)[0], len(order))):
         d = json.loads(path.read_text())
         answer = next((e for e in d["events"] if e["type"] == "answer"), {})
         check = answer.get("check") or {}
@@ -101,3 +101,26 @@ def runs() -> list[dict]:
 def run(run_id: str) -> dict | None:
     path = ROOT / f"{run_id}.json"
     return json.loads(path.read_text()) if path.parent == ROOT and path.exists() else None
+
+
+# A copy-trade backtest for the demo: a wallet from pump.fun's leaderboard, copied 5 minutes after its
+# buys and 10 minutes after its sells. Its history moves on, so the run is a snapshot of when it was saved.
+COPY_RUNS = [
+    ("GeUnv1jmtviRbR7Gu1JnXSGkUMUgFVBHuEVQVpTaUX1W",
+     "https://pump.fun/profile/GeUnv1jmtviRbR7Gu1JnXSGkUMUgFVBHuEVQVpTaUX1W if I bought 5 mins after this person and sold 10 mins after, what would my P and L be?"),
+]
+
+
+def save_copy() -> list[dict]:
+    import time
+
+    ROOT.mkdir(parents=True, exist_ok=True)
+    saved = []
+    for wallet, message in COPY_RUNS:
+        events: list = []
+        answer = loop.run(message, emit=events.append)
+        path = ROOT / f"copy_{wallet}.json"
+        path.write_text(json.dumps({"kind": "copy_trade", "wallet": wallet, "message": message, "saved_at": int(time.time()),
+                                    "events": events}, default=str))
+        saved.append({"wallet": wallet, "audit": answer["audit"], "path": str(path)})
+    return saved

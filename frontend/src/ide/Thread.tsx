@@ -1,10 +1,23 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
-import { AlertTriangle, ArrowUp, Check, ImagePlus, Paperclip, Plus, History, X } from "lucide-react";
-import { projectFiles, rsiThread, type ThreadStep } from "../data/examples";
+import { AlertTriangle, ArrowUp, ImagePlus, Paperclip, Plus, History, X } from "lucide-react";
 import { RunSteps } from "../demo/CheckViews";
 import { loadRun } from "../demo/runs";
 import { useBackend, useCheckFrame } from "./live";
-import { BACKTEST_SOON, exampleThreadTitle, HERO_KEY, LIVE_SOON, savedMatch, threadTitle, useIde, type Attachment, type ThreadRef, type WorkTab } from "./state";
+import {
+  COPY_HERO_KEY,
+  copySoon,
+  exampleThreadTitle,
+  HERO_KEY,
+  isCopyRun,
+  LIVE_SOON,
+  savedCopyMatch,
+  savedMatch,
+  threadTitle,
+  useIde,
+  type Attachment,
+  type ThreadRef,
+  type WorkTab,
+} from "./state";
 import "../demo/demo.css";
 
 // What the backend accepts (receipts/server.py): mp4 clips up to 25 MB, images up to 8 MB.
@@ -20,8 +33,13 @@ function readAsDataUrl(file: File): Promise<string> {
 }
 
 const placeholders: Record<WorkTab, string> = {
-  Backtest: "Describe a crypto strategy to test…",
   Analyze: "Paste a pump.fun link, a ticker or a token’s address…",
+  "Copy trade": "Paste a pump.fun profile, and when you’d buy and sell after it…",
+};
+
+const starts: Record<WorkTab, { hello: string; sub: string }> = {
+  Analyze: { hello: "Which token should I check?", sub: "Paste a pump.fun link, a ticker or a token’s address." },
+  "Copy trade": { hello: "Which wallet should I copy?", sub: "Paste a pump.fun profile link and say how long after its buys and sells you’d copy." },
 };
 
 export function Thread() {
@@ -37,6 +55,7 @@ export function Thread() {
   const user = typeof state.thread === "number" ? state.threads.find((t) => t.id === state.thread) : undefined;
   const items = user?.items ?? [];
   const hero = state.checks[HERO_KEY];
+  const copyHero = state.checks[COPY_HERO_KEY];
 
   // Follow the conversation as it grows.
   useEffect(() => {
@@ -47,7 +66,7 @@ export function Thread() {
     const ro = new ResizeObserver(follow);
     for (const child of Array.from(el.children)) ro.observe(child);
     return () => ro.disconnect();
-  }, [items.length, state.thread, hero?.status]);
+  }, [items.length, state.thread, hero?.status, copyHero?.status]);
 
   async function attach(kind: Attachment["kind"], file: File | undefined) {
     setAttachError(null);
@@ -62,13 +81,13 @@ export function Thread() {
     e?.preventDefault();
     const text = state.draft.trim();
     if ((!text && !attachment) || sending) return;
-    if (state.workTab === "Backtest") return dispatch({ type: "send", reply: { kind: "text", text: BACKTEST_SOON } });
     if (attachment && backend === "online") {
       dispatch({ type: "send", reply: { kind: "live", attachment } });
       setAttachment(null);
       return;
     }
-    const match = savedMatch(text, state.saved);
+    // A saved wallet or token replays; anything else goes live, or waits for the backend.
+    const match = savedCopyMatch(text, state.savedCopies) ?? savedMatch(text, state.saved);
     if (match) {
       setSending(true);
       try {
@@ -79,7 +98,8 @@ export function Thread() {
       }
       return;
     }
-    dispatch({ type: "send", reply: backend === "online" ? { kind: "live" } : { kind: "text", text: LIVE_SOON } });
+    const soon = state.workTab === "Copy trade" ? copySoon(state.savedCopies) : LIVE_SOON;
+    dispatch({ type: "send", reply: backend === "online" ? { kind: "live" } : { kind: "text", text: soon } });
   }
 
   function onKey(e: KeyboardEvent<HTMLTextAreaElement>) {
@@ -89,9 +109,16 @@ export function Thread() {
     }
   }
 
+  const copyWallet = state.savedCopies[0];
   const suggestions: Record<WorkTab, string[]> = {
     Analyze: state.saved.slice(0, 3).map((r, i) => (i === 0 ? `is this a rug? pump.fun/coin/${r.mint}` : `Check $${r.symbol}`)),
-    Backtest: ["Buy BTC when RSI closes below 30, sell above 70", "Compare this strategy with holding ETH since 2021"],
+    // Offline only the saved backtest can answer, so only its own question is offered.
+    "Copy trade": copyWallet
+      ? [
+          copyWallet.message,
+          ...(backend === "online" ? [`If I copied pump.fun/profile/${copyWallet.wallet} 10 seconds after its buys and sells, what would I make?`] : []),
+        ]
+      : [],
   };
 
   return (
@@ -109,14 +136,12 @@ export function Thread() {
       </div>
 
       <div className="thread__scroll" ref={scrollRef} role="log" aria-label="Messages">
-        {state.thread === "rug" && hero && <RugExample />}
-        {state.thread === "backtest" && <BacktestExample />}
+        {state.thread === "rug" && hero && <Example checkKey={HERO_KEY} tour />}
+        {state.thread === "copy" && copyHero && <Example checkKey={COPY_HERO_KEY} />}
         {user && items.length === 0 && (
           <div className="thread__start">
-            <p className="thread__hello">{state.workTab === "Backtest" ? "What do you want to test?" : "Which token should I check?"}</p>
-            <p className="thread__sub">
-              {state.workTab === "Backtest" ? "Describe a crypto strategy in plain words." : "Paste a pump.fun link, a ticker or a token’s address."}
-            </p>
+            <p className="thread__hello">{starts[state.workTab].hello}</p>
+            <p className="thread__sub">{starts[state.workTab].sub}</p>
             <ul className="suggest">
               {suggestions[state.workTab].map((s) => (
                 <li key={s}>
@@ -203,15 +228,17 @@ export function Thread() {
           </button>
         </div>
       </form>
-      {state.workTab === "Analyze" && (
-        <p className="thread__note">
-          {backend === "checking"
-            ? "Looking for the backend…"
+      <p className="thread__note">
+        {backend === "checking"
+          ? "Looking for the backend…"
+          : state.workTab === "Copy trade"
+            ? backend === "online"
+              ? "Live: any pump.fun wallet is backtested from the chain now. The saved one replays."
+              : "Live backtests are coming soon. The saved one replays."
             : backend === "online"
               ? "Live: any pump.fun token is checked from the chain now. Saved checks replay."
               : "Live checks are coming soon. Saved checks replay."}
-        </p>
-      )}
+      </p>
     </aside>
   );
 }
@@ -223,10 +250,11 @@ function ThreadCheck({ checkKey }: { checkKey: string }) {
   const cf = useCheckFrame(check, () => dispatch({ type: "finishCheck", key: checkKey }));
   if (!check || !cf) return null;
   const hasCheck = !!cf.answer?.check;
+  const copy = isCopyRun(check);
   const notices = check.run.events.filter((e) => e.type === "notice").map((e) => (e.type === "notice" ? e.message : ""));
   return (
     <div className="thread__run">
-      {check.mode === "replay" && <p className="thread__tag">Saved check, replayed</p>}
+      {check.mode === "replay" && <p className="thread__tag">{copy ? "Saved backtest, replayed" : "Saved check, replayed"}</p>}
       {notices.map((n, i) => (
         <p key={i} className="thread__tag">
           {n}
@@ -248,121 +276,26 @@ function ThreadCheck({ checkKey }: { checkKey: string }) {
           Open the check
         </button>
       )}
+      {cf.finished && cf.answer?.copy_trade && (
+        <button className="tool-btn" onClick={() => dispatch({ type: "open", id: `copy:${checkKey}` })}>
+          Open the backtest
+        </button>
+      )}
     </div>
   );
 }
 
-/** The example rug check: the lead saved check, replayed during the tour. */
-function RugExample() {
+/** An example thread: the lead saved check, replayed during the tour, or the saved copy-trade backtest. */
+function Example({ checkKey, tour }: { checkKey: string; tour?: boolean }) {
   const { state } = useIde();
-  const hero = state.checks[HERO_KEY];
+  const run = state.checks[checkKey];
   return (
     <>
-      <div className="msg msg--user" data-tour="ask">
-        <p>{hero.run.message}</p>
+      <div className="msg msg--user" data-tour={tour ? "ask" : undefined}>
+        <p>{run.run.message}</p>
       </div>
-      {hero.status !== "waiting" && <ThreadCheck checkKey={HERO_KEY} />}
+      {run.status !== "waiting" && <ThreadCheck checkKey={checkKey} />}
     </>
-  );
-}
-
-/** The example backtest: a strategy from a clip, coded and tested. It's already finished. */
-function BacktestExample() {
-  const { dispatch } = useIde();
-  const steps = rsiThread.flatMap((m) => (m.kind === "steps" ? m.steps : []));
-  const user = rsiThread.find((m) => m.kind === "user");
-  const agent = rsiThread.find((m) => m.kind === "agent");
-  return (
-    <>
-      {user && user.kind === "user" && (
-        <div className="msg msg--user">
-          {user.clip && (
-            <button className="clip-chip" onClick={() => dispatch({ type: "open", id: "clip" })}>
-              <Paperclip size={13} aria-hidden />
-              <span className="mono">
-                {user.clip.name}, {user.clip.length}
-              </span>
-            </button>
-          )}
-          <p>{user.text}</p>
-        </div>
-      )}
-      <ol className="steps-ex" aria-label="Agent steps">
-        {steps.map((s) => (
-          <Step key={s.id} step={s} />
-        ))}
-      </ol>
-      {agent && agent.kind === "agent" && (
-        <div className="msg msg--agent">
-          <p>{agent.text}</p>
-          {agent.audited && (
-            <p className="msg__audit">
-              <Check size={13} aria-hidden /> Numbers checked against the run
-            </p>
-          )}
-          <button className="tool-btn" onClick={() => dispatch({ type: "open", id: "results:rsi" })}>
-            Open the results
-          </button>
-        </div>
-      )}
-    </>
-  );
-}
-
-/** One step of the example backtest. */
-function Step({ step }: { step: ThreadStep }) {
-  const { dispatch } = useIde();
-  const wrote = step.text.startsWith("Wrote");
-  const writtenName = wrote ? step.text.split("/").pop()! : "";
-  const written = projectFiles.find((f) => f.name === writtenName);
-  const lines = written ? written.content.split("\n").length : 0;
-
-  return (
-    <li className="step">
-      <Check size={14} strokeWidth={3} className="step__tick" aria-hidden />
-      <div className="step__body">
-        <p className="step__text">
-          {step.text}
-          {step.meta && <span className="step__meta">{step.meta}</span>}
-        </p>
-        {step.detail && <p className="step__detail">{step.detail}</p>}
-        {step.rules && (
-          <ul className="step__rules">
-            {step.rules.map((r) => (
-              <li key={r.text}>
-                <span>{r.text}</span>
-                <button className="at" title="Open the clip at this moment" aria-label={`Open the clip at ${r.at}`} onClick={() => dispatch({ type: "open", id: "clip" })}>
-                  {r.at}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        {step.diff && (
-          <pre className="diff" aria-label="Changes">
-            {step.diff.minus.map((l) => (
-              <span key={`-${l}`} className="diff__minus">
-                - {l}
-                {"\n"}
-              </span>
-            ))}
-            {step.diff.plus.map((l) => (
-              <span key={`+${l}`} className="diff__plus">
-                + {l}
-                {"\n"}
-              </span>
-            ))}
-          </pre>
-        )}
-        {wrote && (
-          <div className="edit-card">
-            <span className="mono">{writtenName}</span>
-            <span className="edit-card__count">+{lines} lines</span>
-            <span className="edit-card__state">Accepted</span>
-          </div>
-        )}
-      </div>
-    </li>
   );
 }
 
@@ -373,7 +306,7 @@ function ThreadHistory() {
   const button = useRef<HTMLButtonElement>(null);
 
   const items: { ref: ThreadRef; title: string; note: string }[] = [
-    { ref: "backtest" as ThreadRef, title: exampleThreadTitle.backtest, note: "Example" },
+    ...(state.checks[COPY_HERO_KEY] ? [{ ref: "copy" as ThreadRef, title: exampleThreadTitle.copy, note: "Example" }] : []),
     { ref: "rug" as ThreadRef, title: exampleThreadTitle.rug, note: "Example" },
     ...state.threads
       .filter((t) => t.items.length > 0 || t.id === state.thread)

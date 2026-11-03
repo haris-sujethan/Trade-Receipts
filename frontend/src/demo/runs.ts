@@ -1,6 +1,7 @@
 /**
- * Saved rug checks, replayed on the home page. The backend saves each run as the agent streamed it
- * (`data/demo/<mint>_900.json`); `scripts/copy-demo.mjs` copies them into `public/demo/` for the static site.
+ * Saved runs, replayed on the home page and in the IDE. The backend saves each run as the agent streamed it: rug
+ * checks as `data/demo/<mint>_900.json`, copy-trade backtests as `data/demo/copy_<wallet>.json`.
+ * `scripts/copy-demo.mjs` copies them into `public/demo/` for the static site.
  */
 
 export type RunSummary = {
@@ -34,11 +35,13 @@ export type StepEvent = {
 export type ProgressEvent = {
   type: "progress";
   tool: string;
-  step: "token" | "wallets" | "busy" | "funders" | "snipes";
+  /** A rug check's: token, wallets, busy, funders, snipes. A copy-trade backtest's: wallet, positions. */
+  step: "token" | "wallets" | "busy" | "funders" | "snipes" | "wallet" | "positions";
   transactions?: number;
   scanned?: number;
   checked?: number;
   of?: number;
+  done?: number;
   lookups?: number;
   sniper_bots?: number;
 };
@@ -119,11 +122,72 @@ export type Check = {
   same_size_buys?: { sol: number; count: number; wallets: number }[];
 };
 
+/* ---------- Copy-trade backtests (backend/receipts/crypto/copytrade.py) ---------- */
+
+/** What someone spent and got back, in SOL. `pnl_pct` is null when nothing was spent. */
+export type Result = { spent_sol: number; got_sol: number; pnl_sol: number; pnl_pct: number | null };
+
+/** One fill: the wallet's own, or the copier's a delay later. Prices are market caps in SOL. */
+export type Fill = { t: number; side: "buy" | "sell"; mcap_sol: number; sol: number; rest?: boolean };
+
+/** How far the price moved in the copier's delay after the wallet's first buy, or after its last sell. */
+export type AfterEffect = { mcap_after: number | null; change: number | null };
+
+export type Position = {
+  mint: string;
+  name: string | null;
+  symbol: string | null;
+  first_buy_ts: number;
+  last_sell_ts: number;
+  held_s: number;
+  buys: number;
+  sells: number;
+  wallet: Result;
+  you: Result & { fee_rate: number; trades: Fill[] };
+  after_buy: AfterEffect & { mcap_at_buy: number };
+  after_sell: AfterEffect & { mcap_at_sell: number };
+  /** The token's trades over the position and the delays, thinned to about 120 points. */
+  price_path: { t: number; mcap_sol: number }[];
+  wallet_fills: Fill[];
+};
+
+export type Totals = { spent_sol: number; pnl_sol: number; pnl_pct: number | null; won: number };
+
+export type CopyTrade = {
+  wallet: string;
+  buy_after_s: number;
+  sell_after_s: number;
+  size_sol: number;
+  positions: number;
+  skipped: { still_open: number; bought_before_history: number; not_sol_priced: number; no_prices: number };
+  wallet_total: Totals;
+  you_total: Totals;
+  /** The latest closed positions, newest first. */
+  rows: Position[];
+  notes: string[];
+};
+
+/** What a copy-trade backtest is asked: the wallet (an address or a pump.fun profile link) and the timing. */
+export type CopyRequest = { wallet: string; buy_after_s: number; sell_after_s: number; size_sol: number };
+
+export type CopySummary = {
+  id: string;
+  wallet: string;
+  message: string;
+  saved_at: number;
+  buy_after_s: number | null;
+  sell_after_s: number | null;
+  size_sol: number | null;
+  positions: number | null;
+};
+
 export type AnswerEvent = {
   type: "answer";
   text: string;
   audit: { numbers: number; passed: boolean; first_try_passed: boolean; unverified: string[] };
-  check: Check;
+  /** The rug check behind the answer, or null when the agent ran something else (a copy-trade backtest). */
+  check: Check | null;
+  copy_trade?: CopyTrade | null;
   /** The model that wrote the text, or null when Meta is off and the text is the check's own findings. */
   explained_by?: string | null;
 };
@@ -135,6 +199,10 @@ export type RunEvent = StepEvent | ProgressEvent | AnswerEvent | NoticeEvent;
 
 export type Run = {
   id: string;
+  /** Saved copy-trade backtests say so; rug checks don't. */
+  kind?: "copy_trade";
+  /** A copy-trade backtest's wallet. */
+  wallet?: string;
   mint: string;
   age_s: number;
   about: string;
@@ -153,6 +221,13 @@ export async function loadRuns(): Promise<RunSummary[]> {
   return res.json();
 }
 
+/** The saved copy-trade backtests. A build without any has no copy-index.json. */
+export async function loadCopyRuns(): Promise<CopySummary[]> {
+  const res = await fetch(`${BASE}copy-index.json`);
+  if (!res.ok || !res.headers.get("content-type")?.includes("json")) return [];
+  return res.json();
+}
+
 const cache = new Map<string, Promise<Run>>();
 
 export function loadRun(id: string): Promise<Run> {
@@ -160,7 +235,8 @@ export function loadRun(id: string): Promise<Run> {
   if (!p) {
     p = fetch(`${BASE}${id}.json`).then((res) => {
       if (!res.ok) throw new Error(`Couldn't load the run (${res.status})`);
-      return res.json().then((run: Omit<Run, "id">) => ({ ...run, id }));
+      // A saved copy-trade backtest has no token: give it a rug check's empty fields.
+      return res.json().then((run: Partial<Run>) => ({ mint: "", age_s: 0, about: "", clip: null, message: "", events: [], ...run, id }));
     });
     p.catch(() => cache.delete(id));
     cache.set(id, p);
@@ -181,6 +257,22 @@ export const whole = (v: number) => Math.round(v).toLocaleString("en-US");
 export const sol = (v: number) => `${v >= 100 ? whole(v) : v.toFixed(1)} SOL`;
 export const clipTime = (s: number) => `0:${String(Math.floor(s)).padStart(2, "0")}`;
 export const shortAddr = (a: string) => `${a.slice(0, 4)}…${a.slice(-4)}`;
+
+/** A signed change: "+1.9%", "−57.9%". */
+export const signedPct = (v: number, digits = 1) => `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v * 100).toFixed(digits)}%`;
+export const signedSol = (v: number, digits = 2) => `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v).toFixed(digits)} SOL`;
+
+/** A delay or a holding time: "8 s", "5 min", "1 min 30 s", "2 h". */
+export function duration(seconds: number) {
+  if (seconds < 60) return `${seconds} s`;
+  if (seconds < 3600) {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return s ? `${m} min ${s} s` : `${m} min`;
+  }
+  const h = seconds / 3600;
+  return `${Number.isInteger(h) ? h : h.toFixed(1)} h`;
+}
 
 export function hoursAfter(seconds: number) {
   return seconds < 3600 ? `${Math.round(seconds / 60)} min` : `${(seconds / 3600).toFixed(1)} h`;

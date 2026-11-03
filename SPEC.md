@@ -180,7 +180,32 @@ It stays clear of the hackathon's anti-project list (the kickoff slides add "Str
 
 ---
 
-## 5. Backtest: code any strategy
+## 5. Copy-trade backtest: pump.fun wallets (second feature, Nov 3)
+
+**Replaces strategy backtesting on the site** (user, Nov 3). People copy wallets they see on pump.fun's leaderboard. The question that matters to them: if I'd bought a while after this wallet bought, and sold a while after it sold, what would I have made? Trade Receipts answers with numbers, not a judgment of the wallet.
+
+- **Input:** a pump.fun profile link (or the wallet's address), how long after the wallet's buys and sells to copy, and how much SOL per position. In the chat, for example: "if I bought 5 mins after this person and sold 10 mins after".
+- **Built:** `backend/receipts/crypto/copytrade.py`, `POST /api/copytrade`, and the agent's `copy_trade` tool.
+  1. The wallet's latest 1,000 transactions from Helius, curve and PumpSwap.
+  2. Its closed positions: tokens it bought and sold down to under 5%, with the first buy in that history. Its latest 25 are used.
+  3. The copy:
+     - The same SOL per position, spread over its buys as it spread them, each buy the chosen time later.
+     - The same share of holdings sold at each of its sells, the chosen time later.
+     - With no delay, the copy fills at the wallet's own prices.
+  4. Prices are the token's own trades around each position: the last fill before each moment. Fees are what that token's trades paid.
+- **Per position:** the wallet's result and yours, how long it held, and the after-effect: how far the price moved in your delay after its buy, and after its sell.
+- **Left out, and counted:** positions still open, opened before the history read, or in tokens priced in something other than SOL.
+- **Not modeled:** your own price impact.
+- **Cost:** about 1,000–1,500 Helius credits and 15–25 seconds per wallet. No Meta call, except the agent's explanation.
+- **First result (Nov 3):** the wallet GeUnv1jm… from the leaderboard, over its latest 25 closed positions. It made +40 SOL on 71 SOL (+56%, 22 of 25 profitable), holding 2–10 seconds.
+  - Copying it with no delay: +51%.
+  - 2 seconds late: −0.5%.
+  - 10 seconds late: −8%.
+  - 5 minutes after its buys and 10 after its sells: −4% (2 of 25 profitable).
+  - After its sells the price fell 40–60%.
+- **Strategy backtesting** (Pine and Python, below) stays in the repo, unplugged, like the stock research.
+
+## 5b. Strategy backtest (unplugged Nov 3)
 
 ### 5.1 Inputs
 

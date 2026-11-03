@@ -56,7 +56,7 @@ const steps: Step[] = [
   {
     target: "results",
     title: "The verdict, with a second opinion",
-    body: "The rug chance comes from a model trained on thousands of past pump.fun tokens, with Muse Glimmer’s second opinion and how similar launches ended. Switch to Backtest at the top to test a strategy.",
+    body: "The rug chance comes from a model trained on thousands of past pump.fun tokens, with Muse Glimmer’s second opinion and how similar launches ended. Switch to Copy trade at the top to see what copying a wallet a little late would have made.",
     enter: (dispatch, state) => {
       finishHero(dispatch, state);
       dispatch({ type: "open", id: `check:${HERO_KEY}` });

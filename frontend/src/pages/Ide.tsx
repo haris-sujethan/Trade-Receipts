@@ -23,11 +23,6 @@ export function Ide() {
 function WideIde() {
   const { state } = useIde();
 
-  // Start loading the editor while the tour plays, so the first file opens without a wait.
-  useEffect(() => {
-    void import("../ide/CodeEditor");
-  }, []);
-
   return (
     <div className="theme-glass ide">
       {/* Everything behind the tour is inert while it's open. */}

@@ -1,0 +1,757 @@
+/* Hallmark · v2.0.0 · part of the IDE build stamped in ide/ide.css, whose tokens it uses */
+/* The copy-trade backtest: its form, the wallet's result beside yours, and each position with its chart. */
+
+.copy {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  container-type: inline-size;
+}
+
+/* The form: what to copy, and how late */
+
+.copyf {
+  display: grid;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--desk-line);
+  background: var(--desk-0);
+}
+
+.copyf__set {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.copyf__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+.copyf__field {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--desk-text-3);
+}
+
+.copyf__field--wallet {
+  flex: 1 1 340px;
+  min-width: 0;
+}
+
+.copyf__field--size {
+  flex: 0 0 128px;
+}
+
+.copyf input,
+.copyf select {
+  height: 30px;
+  min-width: 0;
+  padding: 0 12px;
+  border: 1px solid var(--desk-line-2);
+  border-radius: 7px;
+  background: var(--desk-0);
+  font: 400 12.5px var(--font-sans);
+  color: var(--desk-text);
+  transition: border-color 140ms var(--ease-out);
+}
+
+.copyf input.mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.copyf input:hover:not(:disabled),
+.copyf select:hover:not(:disabled) {
+  border-color: var(--desk-text-3);
+}
+
+.copyf input:disabled,
+.copyf select:disabled {
+  background: var(--desk-1);
+  color: var(--desk-text-2);
+}
+
+.copyf input[aria-invalid="true"] {
+  border-color: var(--color-likely-ink);
+}
+
+/* One delay: its label, the presets as one segmented control, and a custom time */
+.delay {
+  display: flow-root;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.delay legend {
+  float: left;
+  width: 132px;
+  padding: 0;
+  font-size: 12px;
+  line-height: 30px;
+  color: var(--desk-text-3);
+}
+
+.seg {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--desk-2);
+  vertical-align: middle;
+}
+
+.seg__opt {
+  position: relative;
+}
+
+.seg__opt input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.seg__opt input:disabled {
+  cursor: not-allowed;
+}
+
+.seg__opt span {
+  display: block;
+  height: 26px;
+  padding: 0 12px;
+  border-radius: 6px;
+  font: 500 12.5px/26px var(--font-sans);
+  color: var(--desk-text-2);
+  white-space: nowrap;
+  transition: color 140ms var(--ease-out), background-color 140ms var(--ease-out), box-shadow 140ms var(--ease-out);
+}
+
+.seg__opt:hover input:not(:disabled) + span {
+  color: var(--desk-text);
+}
+
+.seg__opt input:checked + span {
+  background: var(--desk-0);
+  color: var(--desk-text);
+  box-shadow: 0 0 0 1px var(--desk-line-2), 0 1px 2px var(--color-shadow-soft);
+}
+
+.seg__opt input:active:not(:disabled) + span {
+  background: var(--desk-3);
+}
+
+.seg__opt input:focus-visible + span {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 0;
+}
+
+.seg__opt input:disabled + span {
+  color: var(--color-faint);
+}
+
+.seg__opt input:disabled:checked + span {
+  color: var(--desk-text-2);
+}
+
+.delay__custom {
+  display: inline-flex;
+  gap: 8px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+.delay__custom input {
+  width: 76px;
+}
+
+.copyf__foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.copyf__note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--desk-text-2);
+}
+
+.copyf__error {
+  color: var(--color-likely-ink);
+}
+
+/* The body under the form */
+
+.copy__body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 20px 24px 32px;
+}
+
+.copy__body > * {
+  max-width: 1080px;
+}
+
+.copy__progress {
+  margin: 8px 0;
+  padding: 0;
+  list-style: none;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The result */
+
+.copyr {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.copyr__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.copyr__title {
+  margin: 0;
+  font: 400 26px/1.15 var(--font-display);
+  color: var(--desk-text);
+  overflow-wrap: break-word;
+  min-width: 0;
+}
+
+.copyr__title .mono {
+  font-size: 0.78em;
+}
+
+.copyr__sub {
+  margin: 4px 0 0;
+  font-size: 13.5px;
+  color: var(--desk-text-2);
+}
+
+.copyr__link {
+  flex: none;
+  font-size: 12.5px;
+  color: var(--color-accent-ink);
+}
+
+.copyr__link:hover {
+  color: var(--color-accent-deep);
+}
+
+.copyr__totals {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.total {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  padding: 16px;
+  border-radius: 10px;
+  background: var(--desk-1);
+}
+
+.total__who {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--desk-text-2);
+}
+
+.total__pnl {
+  margin: 0;
+  font: 400 36px/1.05 var(--font-display);
+  letter-spacing: -0.02em;
+  color: var(--desk-text);
+}
+
+.total__pct {
+  margin: 4px 0 0;
+  font-size: 13.5px;
+  color: var(--desk-text);
+}
+
+.total__won {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--desk-text-2);
+}
+
+.total__moves {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.total__moves div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--desk-line);
+}
+
+.total__moves div:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.total__moves dt {
+  font-size: 12.5px;
+  color: var(--desk-text-2);
+}
+
+.total__moves dd {
+  margin: 0;
+  font: 400 22px/1 var(--font-display);
+  color: var(--desk-text);
+}
+
+.copyr__notes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: -8px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12.5px;
+  color: var(--desk-text-2);
+}
+
+.copyr__h {
+  margin: 0 0 8px;
+  font: 600 13px var(--font-sans);
+  color: var(--desk-text);
+  text-align: left;
+}
+
+.copyr__empty {
+  margin: 0;
+  color: var(--desk-text-2);
+}
+
+/* Other timings tried on the same wallet */
+.copyr__runs ul {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.copyr__runs button {
+  display: grid;
+  grid-template-columns: minmax(120px, 180px) 96px 72px 1fr;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  font: 400 13px var(--font-sans);
+  color: var(--desk-text);
+  text-align: left;
+  transition: background-color 140ms var(--ease-out);
+}
+
+.copyr__runs button:hover {
+  background: var(--desk-2);
+}
+
+.copyr__runs button.is-on {
+  background: var(--color-accent-wash);
+}
+
+.copyr__runs .num {
+  text-align: right;
+}
+
+.copyr__runs-won {
+  color: var(--desk-text-2);
+}
+
+/* Each position. The table scrolls inside its own box if the editor area is too narrow for it. */
+
+.pos__wrap {
+  overflow-x: auto;
+}
+
+.pos {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.pos caption {
+  caption-side: top;
+}
+
+.pos th,
+.pos td {
+  padding: 8px;
+  border-bottom: 1px solid var(--desk-line);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.pos thead th {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--desk-text-3);
+  vertical-align: bottom;
+}
+
+.pos .num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.pos thead .num {
+  white-space: normal;
+}
+
+.pos thead .pos__group {
+  padding-bottom: 4px;
+  font-weight: 600;
+  color: var(--desk-text-2);
+  text-align: right;
+}
+
+.pos thead tr:first-child th:not(.pos__group) {
+  border-bottom-color: transparent;
+}
+
+.pos tbody tr {
+  cursor: pointer;
+}
+
+.pos tbody tr:hover > *,
+.pos tbody tr.is-open > * {
+  background: var(--desk-1);
+}
+
+.pos tbody tr.is-open > * {
+  border-bottom-color: transparent;
+}
+
+.pos tbody th {
+  font-weight: 400;
+}
+
+.pos__token {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  max-width: 210px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--desk-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.pos__token svg {
+  flex: none;
+  align-self: center;
+  color: var(--desk-text-3);
+}
+
+.pos__sym {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pos__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--desk-text-3);
+}
+
+.pos__when {
+  white-space: nowrap;
+  color: var(--desk-text-2);
+}
+
+.pos__bar {
+  width: 130px;
+}
+
+.pos tbody tr.pos__detail {
+  cursor: default;
+}
+
+.pos tbody tr.pos__detail:hover > *,
+.pos__detail td {
+  padding: 4px 12px 20px;
+  background: var(--desk-1);
+}
+
+.posd {
+  display: grid;
+  gap: 12px;
+}
+
+.posd__moves {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--desk-text-2);
+}
+
+.posd__moves strong {
+  font-weight: 600;
+  color: var(--desk-text);
+}
+
+.posd__cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px 20px;
+}
+
+.posd__h {
+  margin: 0 0 4px;
+  font: 600 12.5px var(--font-sans);
+  color: var(--desk-text);
+}
+
+.posd__sum {
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  color: var(--desk-text);
+}
+
+.posd__fills {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding-left: 20px;
+  font-size: 12px;
+  color: var(--desk-text-2);
+}
+
+.posd__mint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--desk-text-3);
+  overflow-wrap: anywhere;
+}
+
+/* The position's chart */
+
+.pchart {
+  position: relative;
+  padding: 8px 4px 0;
+  border-radius: 8px;
+  background: var(--desk-0);
+  box-shadow: 0 0 0 1px var(--desk-line);
+}
+
+.pchart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.pchart__grid {
+  stroke: var(--desk-line);
+  stroke-width: 1;
+}
+
+.pchart__tick {
+  font: 400 11px var(--font-sans);
+  fill: var(--desk-text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.pchart__price {
+  fill: none;
+  stroke: var(--color-ink-2);
+  stroke-width: 1.75;
+  stroke-linejoin: round;
+}
+
+.pchart__wait {
+  stroke: var(--color-accent-ink);
+  stroke-width: 1.25;
+  stroke-dasharray: 3 3;
+}
+
+.pchart__mark {
+  stroke: var(--desk-0);
+  stroke-width: 1.5;
+  paint-order: stroke;
+}
+
+.pchart__mark--wallet {
+  fill: var(--color-ink);
+}
+
+.pchart__mark--you {
+  fill: var(--color-accent);
+}
+
+.pchart__mark.is-on {
+  stroke-width: 3;
+}
+
+.pchart__hit {
+  fill: transparent;
+  pointer-events: all;
+}
+
+.pchart__tip {
+  position: absolute;
+  transform: translate(-50%, calc(-100% - 12px));
+  display: grid;
+  gap: 1px;
+  padding: 8px;
+  border-radius: 7px;
+  background: var(--color-ink);
+  color: var(--color-paper);
+  font-size: 11.5px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Near the right edge the tip opens to the left, so it stays inside the chart. */
+.pchart__tip--left {
+  transform: translate(calc(-100% + 14px), calc(-100% - 12px));
+}
+
+.pchart__legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 16px;
+  margin: -4px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  color: var(--desk-text-2);
+}
+
+.pchart__legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pchart__legend-wait {
+  width: 18px;
+  border-top: 1.25px dashed var(--color-accent-ink);
+}
+
+.pchart__legend-note {
+  color: var(--desk-text-3);
+}
+
+.mark-key {
+  flex: none;
+}
+
+/* Each row's result, drawn */
+.rbar {
+  display: block;
+}
+
+.rbar__zero {
+  stroke: var(--desk-line-2);
+  stroke-width: 1;
+}
+
+.rbar__gap {
+  stroke: var(--desk-line-2);
+  stroke-width: 1.5;
+}
+
+.rbar__dot {
+  stroke: var(--desk-0);
+  stroke-width: 1.5;
+  paint-order: stroke;
+}
+
+.rbar__dot--wallet {
+  fill: var(--color-ink);
+}
+
+.rbar__dot--you {
+  fill: var(--color-accent);
+}
+
+/* A narrow editor area keeps the numbers and drops the extras: the buy time (it's in each position's detail), then
+   the drawing. */
+@container (max-width: 960px) {
+  .pos__when {
+    display: none;
+  }
+}
+
+@container (max-width: 720px) {
+  .pos__bar {
+    display: none;
+  }
+}
+
+@container (max-width: 560px) {
+  .pos__name {
+    display: none;
+  }
+
+  .delay legend {
+    float: none;
+    width: auto;
+    line-height: 1.4;
+    margin-bottom: 4px;
+  }
+
+  .copy__body {
+    padding: 16px;
+  }
+
+  .copyr__head {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .copyr__runs button {
+    grid-template-columns: 1fr auto auto;
+  }
+
+  .copyr__runs-won {
+    display: none;
+  }
+}

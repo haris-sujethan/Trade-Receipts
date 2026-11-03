@@ -1,6 +1,7 @@
 """The backend's HTTP API (SPEC.md 10), streamed as server-sent events (SPEC.md 8.3).
 
     POST /api/check   {"mint": ..., "as_of": null}            a live rug check, no Meta API
+    POST /api/copytrade {"wallet", "buy_after_s", "sell_after_s", "size_sol"}  copying a wallet late, backtested
     POST /api/agent   {"message", "history", "image", "video"}  the agent: tools plus an audited explanation
     GET  /api/demo    the saved demo runs; GET /api/demo/<id> replays one
     GET  /api/meta    Meta API spend against the guard's limit
@@ -23,7 +24,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from receipts.agent import demo, loop, meta
-from receipts.crypto import live
+from receipts.crypto import copytrade, live
 
 app = FastAPI(title="Trade Receipts")
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
@@ -61,6 +62,13 @@ MAX_VIDEO_BYTES = 25 * 2**20
 class CheckRequest(BaseModel):
     mint: str
     as_of: int | None = None
+
+
+class CopyTradeRequest(BaseModel):
+    wallet: str  # an address or a pump.fun profile link
+    buy_after_s: int = 300
+    sell_after_s: int = 600
+    size_sol: float = 1.0
 
 
 class Turn(BaseModel):
@@ -139,6 +147,23 @@ def check(req: CheckRequest, request: Request) -> StreamingResponse:
             emit({"type": "error", "message": "No pump.fun launch was found for this mint."})
             return
         emit({"type": "result", "check": result})
+
+    return stream(work)
+
+
+@app.post("/api/copytrade")
+def copy_trade(req: CopyTradeRequest, request: Request) -> StreamingResponse:
+    wallet = copytrade.wallet_from(req.wallet)
+    if not wallet or not loop.valid_mint(wallet):
+        raise HTTPException(400, "Not a wallet address or pump.fun profile link")
+    if not (0 <= req.buy_after_s <= 86400 and 0 <= req.sell_after_s <= 86400 and 0 < req.size_sol <= 1000):
+        raise HTTPException(400, "Delays must be 0 to 86,400 seconds and the size 0 to 1,000 SOL")
+    allow_check(request)
+
+    def work(emit):
+        result = copytrade.copy_trade(wallet, req.buy_after_s, req.sell_after_s, req.size_sol,
+                                      progress=lambda **kv: emit({"type": "progress", **kv}))
+        emit({"type": "result", "copy_trade": result})
 
     return stream(work)
 

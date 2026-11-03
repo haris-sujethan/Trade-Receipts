@@ -1,6 +1,6 @@
 # Trade Receipts
 
-An agent-native IDE for financial research and automated backtesting. The main feature is the **rug check**: it scores new pump.fun tokens with Muse Glimmer, which we train ourselves, and shows the evidence. Crypto backtesting comes second. It's built solo for the Meta Global AI Developer Hackathon (Indie track), due Nov 4, 2026, 9 PM ET.
+An agent-native IDE for financial research and automated backtesting. The main feature is the **rug check**: it scores new pump.fun tokens with Muse Glimmer, which we train ourselves, and shows the evidence. The **copy-trade backtest** comes second: what copying a pump.fun wallet a little late would have made (`SPEC.md` section 5). Strategy backtesting and stock research stay in the repo, unplugged. It's built solo for the Meta Global AI Developer Hackathon (Indie track), due Nov 4, 2026, 9 PM ET.
 
 ## Where things live
 

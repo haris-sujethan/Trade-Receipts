@@ -9,7 +9,7 @@ import type { AnswerEvent, ProgressEvent, Run, StepEvent } from "./runs";
 type Kind = ProgressEvent["step"];
 
 /** Time each kind of progress gets on screen, shared by its events. */
-const KIND_MS: Record<Kind, number> = { token: 1700, wallets: 3400, busy: 900, funders: 1700, snipes: 1800 };
+const KIND_MS: Record<Kind, number> = { token: 1700, wallets: 3400, busy: 900, funders: 1700, snipes: 1800, wallet: 1600, positions: 2800 };
 const SECURITY_MS = 1000;
 const TYPE_MS = 24;
 const WORD_MS = 20;
@@ -82,6 +82,9 @@ export type Counters = {
   busy?: number;
   funders?: [number, number];
   snipes?: [number, number];
+  /** A copy-trade backtest's: the wallet's transactions read, and its positions priced of all of them. */
+  walletTx?: number;
+  positions?: [number, number];
 };
 
 export type Frame = {
@@ -116,6 +119,8 @@ function countersOf(events: ProgressEvent[]) {
     }
     if (ev.step === "funders") counters.funders = [ev.scanned ?? 0, ev.of ?? 0];
     if (ev.step === "snipes") counters.snipes = [ev.lookups ?? 0, ev.sniper_bots ?? 0];
+    if (ev.step === "wallet") counters.walletTx = ev.transactions;
+    if (ev.step === "positions") counters.positions = [ev.done ?? 0, ev.of ?? 0];
   }
   return counters;
 }

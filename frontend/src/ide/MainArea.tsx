@@ -1,12 +1,13 @@
 import { lazy, Suspense, useState } from "react";
-import { Check, Columns2, Copy, Download, FileCode2, FileText, FileVideo, Play, ScanSearch, X } from "lucide-react";
+import { Check, Columns2, Copy, Download, FileCode2, FileText, FileVideo, Play, ScanSearch, Timer, X } from "lucide-react";
 import { runs, type ProjectFile } from "../data/examples";
 import { answerOf } from "../demo/runs";
 import { onTablistKeyDown } from "../lib/tabs";
-import { checkOf, fileById, fileOf, hasRun, useIde, type TabId } from "./state";
+import { checkOf, copyRunOf, copyTitle, fileById, fileOf, hasRun, useIde, type TabId } from "./state";
 import { CodeView } from "./CodeView";
 import { ResultsView } from "./ResultsView";
 import { CheckTab } from "./CheckTab";
+import { CopyTab } from "./CopyTab";
 import { ClipView } from "./ClipView";
 import { useNarrow } from "./useNarrow";
 
@@ -19,6 +20,8 @@ function tabLabel(id: TabId, state: ReturnType<typeof useIde>["state"]): string 
     const symbol = answerOf(check.run)?.check?.symbol;
     return symbol ? `${symbol} check` : "New check";
   }
+  const copy = copyRunOf(state, id);
+  if (copy) return copyTitle(copy);
   if (id.startsWith("results:")) {
     const f = fileById(id.slice(8));
     return `Results · ${f?.name.replace(/\.\w+$/, "") ?? id}`;
@@ -32,6 +35,7 @@ function tabDomId(id: TabId) {
 
 function TabIcon({ id }: { id: TabId }) {
   if (id.startsWith("check:")) return <ScanSearch size={14} aria-hidden />;
+  if (id.startsWith("copy:")) return <Timer size={14} aria-hidden />;
   if (id.startsWith("results:")) return <Check size={14} aria-hidden />;
   const kind = fileById(id)?.kind;
   if (kind === "clip") return <FileVideo size={14} aria-hidden />;
@@ -115,7 +119,9 @@ function TabContent({ id, split, narrow }: { id: TabId; split: boolean; narrow: 
   const { state } = useIde();
   const check = checkOf(state, id);
   if (check) return <CheckTab check={check} />;
-  if (id.startsWith("check:")) return <EmptyState />;
+  const copy = copyRunOf(state, id);
+  if (copy) return <CopyTab key={copy.key} run={copy} />;
+  if (id.startsWith("check:") || id.startsWith("copy:")) return <EmptyState />;
   const fileId = fileOf(id)!;
   const file = fileById(fileId);
 
@@ -245,9 +251,10 @@ function ExportButtons({ file }: { file: ProjectFile }) {
 function EmptyState() {
   return (
     <div className="empty">
-      <p className="empty__title">Open a check or a file to see it here.</p>
+      <p className="empty__title">Open a check or a backtest to see it here.</p>
       <p className="empty__body">
-        Saved checks open with their chart, holders and signals. Strategies open as code with their results next to them.
+        Saved checks open with their chart, holders and signals. Copy-trade backtests open with each position: the wallet’s trades, yours a
+        little later, and what the price did.
       </p>
     </div>
   );

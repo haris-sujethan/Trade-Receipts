@@ -19,12 +19,14 @@ const STEP_TITLE: Record<string, string> = {
   token_security: "Checked token authorities",
   find_token: "Looked up the name",
   read_address: "Read the address",
+  copy_trade: "Backtested the copy",
 };
 const STEP_RUNNING: Record<string, string> = {
   check_token: "Checking the token",
   token_security: "Checking token authorities",
   find_token: "Looking up the name",
   read_address: "Reading the address",
+  copy_trade: "Backtesting the copy",
 };
 
 export function ChartView({ check, frame, width = 720, height = 330 }: { check: Check; frame: Frame; width?: number; height?: number }) {
@@ -155,6 +157,16 @@ export function RunSteps({ frame, words, answer }: { frame: Frame; words: string
               <div>
                 <p className="steps__title">{s.state === "running" ? (STEP_RUNNING[s.tool] ?? s.tool) : (STEP_TITLE[s.tool] ?? s.tool)}</p>
                 {s.state !== "running" && s.done?.summary && <p className="steps__sum">{s.done.summary.replace(MINT, shortAddr).replace(" · ", ", ")}</p>}
+                {s.tool === "copy_trade" && (c.walletTx != null || c.positions) && (
+                  <ul className="steps__live">
+                    {c.walletTx != null && <li>{whole(c.walletTx)} of the wallet’s latest transactions read</li>}
+                    {c.positions && (
+                      <li>
+                        {c.positions[0]} of {c.positions[1]} closed positions priced
+                      </li>
+                    )}
+                  </ul>
+                )}
                 {s.tool === "check_token" && (
                   <ul className="steps__live">
                     {c.transactions != null && <li>{whole(c.transactions)} transactions read</li>}
