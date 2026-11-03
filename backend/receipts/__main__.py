@@ -174,7 +174,7 @@ def copy_trade(args) -> None:
     from receipts.crypto import copytrade
 
     wallet = copytrade.wallet_from(args.wallet)
-    r = copytrade.copy_trade(wallet, args.buy_after, args.sell_after, args.size)
+    r = copytrade.copy_trade(wallet, args.buy_after, args.sell_after, args.size, positions=args.positions)
     print(json.dumps({k: v for k, v in r.items() if k != "rows"}, indent=2))
     for row in r["rows"]:
         print(f'{(row["symbol"] or row["mint"][:6]):>12}  held {row["held_s"]:>6}s  wallet {row["wallet"]["pnl_pct"]:+.0%}  '
@@ -232,6 +232,7 @@ def main() -> None:
     p.add_argument("--buy-after", type=int, default=300, help="seconds after each of its buys")
     p.add_argument("--sell-after", type=int, default=600, help="seconds after each of its sells")
     p.add_argument("--size", type=float, default=1.0, help="SOL per position")
+    p.add_argument("--positions", type=int, default=50, help="its latest closed positions to copy (up to 100)")
     p.set_defaults(run=copy_trade)
     sub.add_parser("meta-report", help="Meta Model API spend so far against the guard's limit").set_defaults(run=meta_report)
     p = sub.add_parser("goplus", help="GoPlus token security for a mint")

@@ -1,7 +1,7 @@
 """The backend's HTTP API (SPEC.md 10), streamed as server-sent events (SPEC.md 8.3).
 
     POST /api/check   {"mint": ..., "as_of": null}            a live rug check, no Meta API
-    POST /api/copytrade {"wallet", "buy_after_s", "sell_after_s", "size_sol"}  copying a wallet late, backtested
+    POST /api/copytrade {"wallet", "buy_after_s", "sell_after_s", "size_sol", "positions"}  copying a wallet late, backtested
     POST /api/agent   {"message", "history", "image", "video"}  the agent: tools plus an audited explanation
     GET  /api/demo    the saved demo runs; GET /api/demo/<id> replays one
     GET  /api/meta    Meta API spend against the guard's limit
@@ -69,6 +69,7 @@ class CopyTradeRequest(BaseModel):
     buy_after_s: int = 300
     sell_after_s: int = 600
     size_sol: float = 1.0
+    positions: int = 50  # the wallet's latest closed positions to copy, up to 100
 
 
 class Turn(BaseModel):
@@ -156,13 +157,14 @@ def copy_trade(req: CopyTradeRequest, request: Request) -> StreamingResponse:
     wallet = copytrade.wallet_from(req.wallet)
     if not wallet or not loop.valid_mint(wallet):
         raise HTTPException(400, "Not a wallet address or pump.fun profile link")
-    if not (0 <= req.buy_after_s <= 86400 and 0 <= req.sell_after_s <= 86400 and 0 < req.size_sol <= 1000):
-        raise HTTPException(400, "Delays must be 0 to 86,400 seconds and the size 0 to 1,000 SOL")
+    if not (0 <= req.buy_after_s <= 86400 and 0 <= req.sell_after_s <= 86400 and 0 < req.size_sol <= 1000
+            and 1 <= req.positions <= copytrade.MAX_POSITIONS):
+        raise HTTPException(400, f"Delays must be 0 to 86,400 seconds, the size 0 to 1,000 SOL, and positions 1 to {copytrade.MAX_POSITIONS}")
     allow_check(request)
 
     def work(emit):
         result = copytrade.copy_trade(wallet, req.buy_after_s, req.sell_after_s, req.size_sol,
-                                      progress=lambda **kv: emit({"type": "progress", **kv}))
+                                      progress=lambda **kv: emit({"type": "progress", **kv}), positions=req.positions)
         emit({"type": "result", "copy_trade": result})
 
     return stream(work)

@@ -3,7 +3,7 @@ import { AlertTriangle, ChevronDown, ChevronRight, LoaderCircle, Play } from "lu
 import { duration, pct, shortAddr, signedPct, signedSol, whole, type CopyRequest, type CopyTrade, type Fill, type Position, type Result, type Totals } from "../demo/runs";
 import { useBackend, useCheckFrame } from "./live";
 import { MarkKey, mcap, PositionChart, ResultBar } from "./PositionChart";
-import { copyRequestOf, copyResultOf, finishedCopyOf, isCopyRun, tabOf, useIde, type CheckRun } from "./state";
+import { COPY_POSITIONS, copyRequestOf, copyResultOf, finishedCopyOf, isCopyRun, tabOf, useIde, type CheckRun } from "./state";
 import "./copy.css";
 
 /**
@@ -12,6 +12,9 @@ import "./copy.css";
  */
 
 const PRESETS = [2, 10, 30, 60, 300, 600];
+const POSITION_PRESETS = [25, 50, 100];
+/** How long a live run takes, by how many positions it copies. */
+const eta = (n: number) => (n > 50 ? "about 50 seconds" : "about 15 seconds");
 const MAX_DELAY = 86_400;
 /** What the backend reads as a wallet (receipts/crypto/copytrade.py): a pump.fun profile link or an address. */
 const WALLET = /(?:pump\.fun\/(?:profile|coin)\/)?([1-9A-HJ-NP-Za-km-z]{32,44})/;
@@ -65,7 +68,7 @@ export function CopyTab({ run }: { run: CheckRun }) {
                   </li>
                 )}
               </ul>
-              <p>{saved ? "Replaying the saved backtest." : "A backtest takes 15 to 25 seconds."}</p>
+              <p>{saved ? "Replaying the saved backtest." : `A backtest of ${copyRequestOf(run)?.positions ?? COPY_POSITIONS} positions takes ${eta(copyRequestOf(run)?.positions ?? COPY_POSITIONS)}.`}</p>
             </div>
           </div>
         )}
@@ -84,6 +87,8 @@ function CopyForm({ runKey, request, saved }: { runKey: string; request?: CopyRe
   const [buy, setBuy] = useState<number | null>(request?.buy_after_s ?? 300);
   const [sell, setSell] = useState<number | null>(request?.sell_after_s ?? 600);
   const [size, setSize] = useState(String(request?.size_sol ?? 1));
+  const [positions, setPositions] = useState(request?.positions ?? COPY_POSITIONS);
+  const positionOptions = [...new Set([...POSITION_PRESETS, positions])].sort((a, b) => a - b);
   const [tried, setTried] = useState(false);
   const live = backend === "online";
   const address = WALLET.exec(wallet.trim())?.[1];
@@ -100,7 +105,7 @@ function CopyForm({ runKey, request, saved }: { runKey: string; request?: CopyRe
     e.preventDefault();
     setTried(true);
     if (problem || !live || !address || buy == null || sell == null) return;
-    dispatch({ type: "copyStart", request: { wallet: address, buy_after_s: buy, sell_after_s: sell, size_sol: sizeSol } });
+    dispatch({ type: "copyStart", request: { wallet: address, buy_after_s: buy, sell_after_s: sell, size_sol: sizeSol, positions } });
   }
 
   const note =
@@ -110,7 +115,7 @@ function CopyForm({ runKey, request, saved }: { runKey: string; request?: CopyRe
         ? "Live backtests are coming soon. This preview replays the saved one, so the timing is fixed."
         : saved
           ? "A saved backtest. Change the timing to run it live."
-          : "Each run takes 15 to 25 seconds and opens in its own tab.";
+          : `A run of ${positions} positions takes ${eta(positions)} and opens in its own tab.`;
 
   return (
     <form className="copyf" onSubmit={submit} aria-label="What to copy" noValidate>
@@ -133,6 +138,17 @@ function CopyForm({ runKey, request, saved }: { runKey: string; request?: CopyRe
             <input type="number" inputMode="decimal" min={0} max={1000} step="any" value={size} onChange={(e) => setSize(e.target.value)} />
           </label>
         </div>
+        <fieldset className="delay">
+          <legend>Positions</legend>
+          <div className="seg">
+            {positionOptions.map((n) => (
+              <label key={n} className="seg__opt">
+                <input type="radio" name={`positions-${runKey}`} checked={positions === n} onChange={() => setPositions(n)} />
+                <span>{n}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
         <DelayField legend="Buy after its buys" name={`buy-${runKey}`} value={buy} onChange={setBuy} />
         <DelayField legend="Sell after its sells" name={`sell-${runKey}`} value={sell} onChange={setSell} />
       </fieldset>
@@ -269,9 +285,9 @@ function CopyResult({ r, runKey }: { r: CopyTrade; runKey: string }) {
             Copying <span className="mono">{shortAddr(r.wallet)}</span>
           </h2>
           <p className="copyr__sub">
-            {duration(r.buy_after_s)} after its buys, {duration(r.sell_after_s)} after its sells, {r.size_sol} SOL a position. Its latest {r.positions} closed{" "}
-            {r.positions === 1 ? "position" : "positions"}, newest first.
+            {duration(r.buy_after_s)} after its buys, {duration(r.sell_after_s)} after its sells, {r.size_sol} SOL a position.
           </p>
+          <p className="copyr__sub">{basedOn(r)}</p>
         </div>
         <a className="copyr__link" href={`https://pump.fun/profile/${r.wallet}`} target="_blank" rel="noreferrer">
           Its pump.fun profile
@@ -434,6 +450,22 @@ function CopyResult({ r, runKey }: { r: CopyTrade; runKey: string }) {
 const when = (ts: number) =>
   new Date(ts * 1000).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 
+/** A stretch of trading, roughly: "about 40 minutes", "about 17 hours", "about 3 days". */
+function span(hours: number) {
+  if (hours < 1) return `about ${Math.max(1, Math.round(hours * 60))} minutes`;
+  if (hours < 48) return `about ${Math.round(hours)} ${Math.round(hours) === 1 ? "hour" : "hours"}`;
+  return `about ${Math.round(hours / 24)} days`;
+}
+
+/** What a run is based on: its positions, one per token, and how much of the wallet's history they came from. */
+function basedOn(r: CopyTrade) {
+  const n = `${r.positions} closed ${r.positions === 1 ? "position" : "positions"} (one per token)`;
+  const h = r.history;
+  if (!h) return `Based on its latest ${n}, newest first.`;
+  const from = `${h.complete ? "its whole history, " : "its last "}${whole(h.transactions)} transactions${h.hours != null ? `, ${span(h.hours)} of trading` : ""}`;
+  return r.positions_wanted != null && r.positions < r.positions_wanted ? `Only ${n} in ${from}.` : `Based on its latest ${n}, from ${from}.`;
+}
+
 function Total({ who, t, n, mark }: { who: string; t: Totals; n: number; mark: "wallet" | "you" }) {
   return (
     <section className="total" aria-label={who}>
@@ -441,8 +473,8 @@ function Total({ who, t, n, mark }: { who: string; t: Totals; n: number; mark: "
         <MarkKey who={mark} />
         {who}
       </p>
-      <p className="total__pnl">{signedSol(t.pnl_sol)}</p>
-      <p className="total__pct">{t.pnl_pct != null ? `${signedPct(t.pnl_pct)} on ${t.spent_sol.toFixed(2)} SOL spent` : "Nothing spent"}</p>
+      <p className="total__pnl">{t.pnl_pct != null ? signedPct(t.pnl_pct) : signedSol(t.pnl_sol)}</p>
+      <p className="total__pct">{t.pnl_pct != null ? `${signedSol(t.pnl_sol)} on ${t.spent_sol.toFixed(2)} SOL spent` : "Nothing spent"}</p>
       <p className="total__won">
         {t.won} of {n} {n === 1 ? "position" : "positions"} made money
       </p>

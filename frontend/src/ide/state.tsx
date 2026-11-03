@@ -415,17 +415,29 @@ export function finishedCopyOf(c: CheckRun): CopyTrade | undefined {
 export function copyRequestOf(c: CheckRun): CopyRequest | undefined {
   if (c.request) return c.request;
   const r = copyResultOf(c);
-  if (r) return { wallet: r.wallet, buy_after_s: r.buy_after_s, sell_after_s: r.sell_after_s, size_sol: r.size_sol };
+  if (r) return { wallet: r.wallet, buy_after_s: r.buy_after_s, sell_after_s: r.sell_after_s, size_sol: r.size_sol, positions: r.positions_wanted ?? r.positions };
   const step = c.run.events.find((e) => e.type === "step" && e.tool === "copy_trade" && e.status === "running");
   const args = step?.type === "step" ? step.args : undefined;
   if (!args) return undefined;
-  return { wallet: String(args.wallet ?? ""), buy_after_s: Number(args.buy_after_seconds ?? 0), sell_after_s: Number(args.sell_after_seconds ?? 0), size_sol: 1 };
+  return {
+    wallet: String(args.wallet ?? ""),
+    buy_after_s: Number(args.buy_after_seconds ?? 0),
+    sell_after_s: Number(args.sell_after_seconds ?? 0),
+    size_sol: 1,
+    positions: Number(args.positions ?? COPY_POSITIONS),
+  };
 }
 
-/** A short name for a copy-trade backtest: the wallet and the timing, "GeUn…UX1W, 5 min / 10 min". */
+/** How many closed positions a backtest copies unless asked otherwise (receipts/crypto/copytrade.py, POSITIONS). */
+export const COPY_POSITIONS = 50;
+
+/** A short name for a copy-trade backtest: the wallet and the timing, "GeUn…UX1W, 5 min / 10 min", and the number of
+ * positions when it isn't the usual 50. */
 export function copyTitle(c: CheckRun): string {
   const q = copyRequestOf(c);
-  return q?.wallet ? `${shortAddr(q.wallet)}, ${duration(q.buy_after_s)} / ${duration(q.sell_after_s)}` : "New backtest";
+  if (!q?.wallet) return "New backtest";
+  const n = q.positions !== COPY_POSITIONS ? `, ${q.positions} positions` : "";
+  return `${shortAddr(q.wallet)}, ${duration(q.buy_after_s)} / ${duration(q.sell_after_s)}${n}`;
 }
 
 /** The check the panels describe: the one in the active tab, or the last one opened. */
@@ -489,7 +501,7 @@ export function checkOutput(c: CheckRun | undefined): string[] {
         busy: `${e.checked} of ${e.of} busy wallets checked`,
         funders: `${e.scanned} of ${e.of} funders traced`,
         snipes: `${e.lookups} early buyers checked, ${e.sniper_bots} sniper bots`,
-        wallet: `${e.transactions} of the wallet's transactions read`,
+        wallet: `${e.transactions} of the wallet's transactions read${e.positions != null ? `, ${e.positions} closed positions found` : ""}`,
         positions: `${e.done} of ${e.of} positions priced`,
       }[e.step];
       last = { ...last, [e.step]: line };

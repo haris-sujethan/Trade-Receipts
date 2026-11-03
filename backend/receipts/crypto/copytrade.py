@@ -6,9 +6,10 @@ I have made? It reports numbers, not a judgment.
 
 For a wallet (a pump.fun profile link or its address):
 1. Its recent pump.fun trades, newest first, from Helius: bonding curve and PumpSwap.
-2. Its closed positions: tokens it bought and then sold down to under CLOSED_LEFT of what it
-   bought, with the first buy inside the history read. Tokens priced in something other than SOL
-   are left out and counted.
+2. Its latest closed positions (50 by default, up to 100): tokens it bought and then sold down to
+   under CLOSED_LEFT of what it bought, with the first buy inside the history read. The history is
+   read back until that many have closed. Tokens priced in something other than SOL are left out
+   and counted.
 3. The copy: the same SOL per position, spread over its buys as it spread them, each buy
    `buy_delay` seconds after its buy; the same share of holdings sold at each of its sells,
    `sell_delay` seconds after. Anything still held after the last copied sell is sold then.
@@ -24,13 +25,16 @@ wallet's first buy, and in the `sell_delay` after its last sell.
 import math
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
 from receipts.crypto import copycats, events, helius, programs, transactions
 
-WALLET_PAGES = 10  # up to 1,000 of the wallet's latest transactions
+WALLET_PAGES = 50  # read back up to 5,000 of the wallet's latest transactions, until enough positions close
 PRICE_PAGES = 10  # up to 1,000 of a token's transactions around each position
-MAX_POSITIONS = 25  # the latest closed positions
+POSITIONS = 50  # the latest closed positions copied, by default
+MAX_POSITIONS = 100
+WORKERS = 8  # tokens priced at once; the Helius client spaces the requests
 CLOSED_LEFT = 0.05
 SIZE_SOL = 1.0  # what the copier puts into each position
 PROFILE = re.compile(r"(?:pump\.fun/(?:profile|coin)/)?([1-9A-HJ-NP-Za-km-z]{32,44})")
@@ -167,37 +171,56 @@ def wallet_result(p: Position) -> dict:
 
 class CopyTrade:
     def __init__(self, wallet: str, buy_delay: int, sell_delay: int, size_sol: float = SIZE_SOL,
-                 client: helius.Helius | None = None, progress=None):
+                 client: helius.Helius | None = None, progress=None, positions: int = POSITIONS):
         self.h = client or helius.Helius()
         self.wallet = wallet
         self.buy_delay, self.sell_delay, self.size_sol = int(buy_delay), int(sell_delay), size_sol
+        self.wanted = max(1, min(MAX_POSITIONS, int(positions)))
+        self.history = {"transactions": 0, "from_ts": None, "to_ts": None, "complete": False}
         self.progress = progress or (lambda **kv: None)
         self.credits_start = self.h.spent_this_month()
         self.skipped = {"still_open": 0, "bought_before_history": 0, "not_sol_priced": 0, "no_prices": 0}
 
     def positions(self) -> list[Position]:
+        """The latest `wanted` closed positions, reading the wallet's history back a page at a time
+        until that many have closed (or WALLET_PAGES run out)."""
         now = int(time.time())
-        txs: list[dict] = []
+        own: dict[str, list[Fill]] = {}
+        other: set[str] = set()  # tokens it traded priced in something other than SOL
         for page, done in self.h.history(self.wallet, gte=0, lte=now, order="desc", max_pages=WALLET_PAGES):
-            txs += page
-            self.progress(step="wallet", transactions=len(txs))
-        own = _fills(txs, wallet=self.wallet)
-        # trades in tokens priced in something else, to count what's left out
-        other = {r.mint for tx in txs for r in transactions.records(tx)
-                 if isinstance(r, events.Trade) and r.wallet == self.wallet and r.quote_mint not in SOL_QUOTES}
-        self.skipped["not_sol_priced"] = len(other - set(own))
+            for mint, fs in _fills(page, wallet=self.wallet).items():
+                own.setdefault(mint, []).extend(fs)
+            other |= {r.mint for tx in page for r in transactions.records(tx)
+                      if isinstance(r, events.Trade) and r.wallet == self.wallet and r.quote_mint not in SOL_QUOTES}
+            if page:
+                self.history["to_ts"] = self.history["to_ts"] or page[0]["blockTime"]
+                self.history["from_ts"] = page[-1]["blockTime"]
+                self.history["transactions"] += len(page)
+            self.history["complete"] = done
+            closed = self._closed(own)
+            self.progress(step="wallet", transactions=self.history["transactions"], positions=min(len(closed), self.wanted))
+            if len(closed) >= self.wanted:
+                break
+        self.skipped = {"still_open": 0, "bought_before_history": 0, "not_sol_priced": len(other - set(own)), "no_prices": 0}
+        out = self._closed(own, count=True)
+        out.sort(key=lambda p: p.fills[-1].t, reverse=True)
+        return out[:self.wanted]
+
+    def _closed(self, own: dict[str, list[Fill]], count: bool = False) -> list[Position]:
         out = []
         for mint, fills in own.items():
+            fills = sorted(fills, key=lambda f: (f.slot, f.index))
             bought = sum(f.tokens for f in fills if f.is_buy)
             sold = sum(f.tokens for f in fills if not f.is_buy)
             if not fills[0].is_buy:
-                self.skipped["bought_before_history"] += 1
+                if count:
+                    self.skipped["bought_before_history"] += 1
             elif sold < (1 - CLOSED_LEFT) * bought:
-                self.skipped["still_open"] += 1
+                if count:
+                    self.skipped["still_open"] += 1
             else:
                 out.append(Position(mint, fills))
-        out.sort(key=lambda p: p.fills[-1].t, reverse=True)
-        return out[:MAX_POSITIONS]
+        return out
 
     def prices(self, p: Position, extra: int) -> Prices:
         start = p.fills[0].t - 5
@@ -212,44 +235,52 @@ class CopyTrade:
             fills.sort(key=lambda f: (f.slot, f.index))
         return Prices(fills)
 
-    def names(self, ps: list[Position]) -> None:
-        for p in ps:
-            try:
-                asset = self.h.rpc("getAsset", [p.mint])
-                meta = ((asset or {}).get("content") or {}).get("metadata") or {}
-                p.name, p.symbol = copycats.clean_name(meta.get("name")), copycats.clean_name(meta.get("symbol"))
-            except helius.HeliusError:
-                pass
+    def name(self, p: Position) -> None:
+        try:
+            asset = self.h.rpc("getAsset", [p.mint])
+            meta = ((asset or {}).get("content") or {}).get("metadata") or {}
+            p.name, p.symbol = copycats.clean_name(meta.get("name")), copycats.clean_name(meta.get("symbol"))
+        except helius.HeliusError:
+            pass
 
     def run(self) -> dict:
         ps = self.positions()
-        self.names(ps)
+        extra = max(self.buy_delay, self.sell_delay)
+
+        def price(p):
+            self.name(p)
+            return self.prices(p, extra)
+
         rows = []
-        for i, p in enumerate(ps):
-            prices = self.prices(p, max(self.buy_delay, self.sell_delay))
-            self.progress(step="positions", done=i + 1, of=len(ps))
-            if not prices.fills:
-                self.skipped["no_prices"] += 1
-                continue
-            first_buy = next(f for f in p.fills if f.is_buy)
-            last_sell = [f for f in p.fills if not f.is_buy][-1]
-            at_buy, after_buy = first_buy.mcap, prices.at(first_buy.t + self.buy_delay)
-            at_sell, after_sell = last_sell.mcap, prices.at(last_sell.t + self.sell_delay)
-            rows.append({
-                "mint": p.mint, "name": p.name, "symbol": p.symbol,
-                "first_buy_ts": first_buy.t, "last_sell_ts": last_sell.t, "held_s": last_sell.t - first_buy.t,
-                "buys": sum(f.is_buy for f in p.fills), "sells": sum(not f.is_buy for f in p.fills),
-                "wallet": wallet_result(p),
-                "you": copy_result(p, prices, self.buy_delay, self.sell_delay, self.size_sol),
-                "after_buy": {"mcap_at_buy": round(at_buy, 3), "mcap_after": None if after_buy is None else round(after_buy, 3),
-                              "change": None if after_buy is None else round(after_buy / at_buy - 1, 4)},
-                "after_sell": {"mcap_at_sell": round(at_sell, 3), "mcap_after": None if after_sell is None else round(after_sell, 3),
-                               "change": None if after_sell is None else round(after_sell / at_sell - 1, 4)},
-                "price_path": [{"t": f.t, "mcap_sol": round(f.mcap, 3)} for f in prices.fills[:: max(1, len(prices.fills) // 120)]],
-                "wallet_fills": [{"t": f.t, "side": "buy" if f.is_buy else "sell", "mcap_sol": round(f.mcap, 3),
-                                  "sol": round((f.sol + (f.fee if f.is_buy else -f.fee)) / 1e9, 4)} for f in p.fills],
-            })
+        with ThreadPoolExecutor(WORKERS) as pool:
+            priced = pool.map(price, ps)
+            for i, (p, prices) in enumerate(zip(ps, priced)):
+                rows += self.row(p, prices)
+                self.progress(step="positions", done=i + 1, of=len(ps))
         return self.summary(rows)
+
+    def row(self, p: Position, prices: Prices) -> list[dict]:
+        if not prices.fills:
+            self.skipped["no_prices"] += 1
+            return []
+        first_buy = next(f for f in p.fills if f.is_buy)
+        last_sell = [f for f in p.fills if not f.is_buy][-1]
+        at_buy, after_buy = first_buy.mcap, prices.at(first_buy.t + self.buy_delay)
+        at_sell, after_sell = last_sell.mcap, prices.at(last_sell.t + self.sell_delay)
+        return [{
+            "mint": p.mint, "name": p.name, "symbol": p.symbol,
+            "first_buy_ts": first_buy.t, "last_sell_ts": last_sell.t, "held_s": last_sell.t - first_buy.t,
+            "buys": sum(f.is_buy for f in p.fills), "sells": sum(not f.is_buy for f in p.fills),
+            "wallet": wallet_result(p),
+            "you": copy_result(p, prices, self.buy_delay, self.sell_delay, self.size_sol),
+            "after_buy": {"mcap_at_buy": round(at_buy, 3), "mcap_after": None if after_buy is None else round(after_buy, 3),
+                          "change": None if after_buy is None else round(after_buy / at_buy - 1, 4)},
+            "after_sell": {"mcap_at_sell": round(at_sell, 3), "mcap_after": None if after_sell is None else round(after_sell, 3),
+                           "change": None if after_sell is None else round(after_sell / at_sell - 1, 4)},
+            "price_path": [{"t": f.t, "mcap_sol": round(f.mcap, 3)} for f in prices.fills[:: max(1, len(prices.fills) // 120)]],
+            "wallet_fills": [{"t": f.t, "side": "buy" if f.is_buy else "sell", "mcap_sol": round(f.mcap, 3),
+                              "sol": round((f.sol + (f.fee if f.is_buy else -f.fee)) / 1e9, 4)} for f in p.fills],
+        }]
 
     def summary(self, rows: list[dict]) -> dict:
         w_spent = sum(r["wallet"]["spent_sol"] for r in rows)
@@ -258,7 +289,10 @@ class CopyTrade:
         y_pnl = sum(r["you"]["pnl_sol"] for r in rows)
         return {
             "wallet": self.wallet, "buy_after_s": self.buy_delay, "sell_after_s": self.sell_delay, "size_sol": self.size_sol,
-            "positions": len(rows), "skipped": self.skipped,
+            "positions": len(rows), "positions_wanted": self.wanted, "skipped": self.skipped,
+            # what the run is based on: how far back the wallet's history was read
+            "history": self.history | {"hours": round((self.history["to_ts"] - self.history["from_ts"]) / 3600, 1)
+                                       if self.history["from_ts"] else None},
             "wallet_total": {"spent_sol": round(w_spent, 4), "pnl_sol": round(w_pnl, 4), "pnl_pct": round(w_pnl / w_spent, 4) if w_spent else None,
                              "won": sum(r["wallet"]["pnl_sol"] > 0 for r in rows)},
             "you_total": {"spent_sol": round(y_spent, 4), "pnl_sol": round(y_pnl, 4), "pnl_pct": round(y_pnl / y_spent, 4) if y_spent else None,
@@ -270,5 +304,6 @@ class CopyTrade:
         }
 
 
-def copy_trade(wallet: str, buy_delay: int, sell_delay: int, size_sol: float = SIZE_SOL, progress=None) -> dict:
-    return CopyTrade(wallet, buy_delay, sell_delay, size_sol, progress=progress).run()
+def copy_trade(wallet: str, buy_delay: int, sell_delay: int, size_sol: float = SIZE_SOL, progress=None,
+               positions: int = POSITIONS) -> dict:
+    return CopyTrade(wallet, buy_delay, sell_delay, size_sol, progress=progress, positions=positions).run()

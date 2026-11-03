@@ -42,6 +42,8 @@ export type ProgressEvent = {
   checked?: number;
   of?: number;
   done?: number;
+  /** A copy-trade backtest's wallet step: closed positions found so far. */
+  positions?: number;
   lookups?: number;
   sniper_bots?: number;
 };
@@ -158,7 +160,11 @@ export type CopyTrade = {
   buy_after_s: number;
   sell_after_s: number;
   size_sol: number;
+  /** Closed positions copied, one per token; fewer than `positions_wanted` when the history read had no more. */
   positions: number;
+  positions_wanted?: number;
+  /** What the run is based on: the wallet's transactions read, from when to when, and whether that's all of them. */
+  history?: { transactions: number; from_ts: number | null; to_ts: number | null; complete: boolean; hours: number | null };
   skipped: { still_open: number; bought_before_history: number; not_sol_priced: number; no_prices: number };
   wallet_total: Totals;
   you_total: Totals;
@@ -167,8 +173,9 @@ export type CopyTrade = {
   notes: string[];
 };
 
-/** What a copy-trade backtest is asked: the wallet (an address or a pump.fun profile link) and the timing. */
-export type CopyRequest = { wallet: string; buy_after_s: number; sell_after_s: number; size_sol: number };
+/** What a copy-trade backtest is asked: the wallet (an address or a pump.fun profile link), the timing, the size, and
+ * how many of its latest closed positions to copy (1 to 100). */
+export type CopyRequest = { wallet: string; buy_after_s: number; sell_after_s: number; size_sol: number; positions: number };
 
 export type CopySummary = {
   id: string;

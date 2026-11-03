@@ -159,7 +159,12 @@ export function RunSteps({ frame, words, answer }: { frame: Frame; words: string
                 {s.state !== "running" && s.done?.summary && <p className="steps__sum">{s.done.summary.replace(MINT, shortAddr).replace(" · ", ", ")}</p>}
                 {s.tool === "copy_trade" && (c.walletTx != null || c.positions) && (
                   <ul className="steps__live">
-                    {c.walletTx != null && <li>{whole(c.walletTx)} of the wallet’s latest transactions read</li>}
+                    {c.walletTx != null && (
+                      <li>
+                        {whole(c.walletTx)} of the wallet’s latest transactions read
+                        {c.found != null && `, ${c.found} closed ${c.found === 1 ? "position" : "positions"} found`}
+                      </li>
+                    )}
                     {c.positions && (
                       <li>
                         {c.positions[0]} of {c.positions[1]} closed positions priced

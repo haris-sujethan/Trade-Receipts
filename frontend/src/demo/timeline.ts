@@ -84,6 +84,7 @@ export type Counters = {
   snipes?: [number, number];
   /** A copy-trade backtest's: the wallet's transactions read, and its positions priced of all of them. */
   walletTx?: number;
+  found?: number;
   positions?: [number, number];
 };
 
@@ -119,7 +120,10 @@ function countersOf(events: ProgressEvent[]) {
     }
     if (ev.step === "funders") counters.funders = [ev.scanned ?? 0, ev.of ?? 0];
     if (ev.step === "snipes") counters.snipes = [ev.lookups ?? 0, ev.sniper_bots ?? 0];
-    if (ev.step === "wallet") counters.walletTx = ev.transactions;
+    if (ev.step === "wallet") {
+      counters.walletTx = ev.transactions;
+      counters.found = ev.positions;
+    }
     if (ev.step === "positions") counters.positions = [ev.done ?? 0, ev.of ?? 0];
   }
   return counters;

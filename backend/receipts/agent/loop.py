@@ -80,7 +80,9 @@ TOOLS = [
      "parameters": {"type": "object", "properties": {
          "wallet": {"type": "string", "description": "the wallet address (from a pump.fun profile link)"},
          "buy_after_seconds": {"type": "integer", "minimum": 0},
-         "sell_after_seconds": {"type": "integer", "minimum": 0}},
+         "sell_after_seconds": {"type": "integer", "minimum": 0},
+         "positions": {"type": "integer", "minimum": 1, "maximum": 100,
+                       "description": "how many of its latest closed positions to copy; 50 unless the user asks for another number"}},
          "required": ["wallet", "buy_after_seconds", "sell_after_seconds"], "additionalProperties": False}},
     {"type": "function", "name": "find_token",
      "description": "Find pump.fun tokens by ticker or name, the most active first, with their age, market cap and holders.",
@@ -173,10 +175,10 @@ class Run:
             out["partial"] = "Some busy wallets' history was read only in part."
         return out
 
-    def copy_trade(self, wallet: str, buy_after_seconds: int, sell_after_seconds: int) -> dict:
+    def copy_trade(self, wallet: str, buy_after_seconds: int, sell_after_seconds: int, positions: int = copytrade.POSITIONS) -> dict:
         if not valid_mint(wallet):
             return {"error": f"{wallet} isn't a valid Solana address"}
-        r = copytrade.CopyTrade(wallet, buy_after_seconds, sell_after_seconds,
+        r = copytrade.CopyTrade(wallet, buy_after_seconds, sell_after_seconds, positions=positions,
                                 progress=lambda **kv: self.emit({"type": "progress", "tool": "copy_trade", **kv})).run()
         self.copy = r
         if not r["positions"]:
@@ -189,6 +191,8 @@ class Run:
         return {
             "wallet": wallet, "copy": f"buy {prompt._secs(buy_after_seconds)} after each of its buys, sell {prompt._secs(sell_after_seconds)} after each of its sells, {r['size_sol']:g} SOL per position",
             "positions": r["positions"],
+            "based_on": (f"its latest {r['positions']} closed positions, one per token, from its last "
+                         f"{r['history']['transactions']:,} transactions ({prompt._secs(int(3600 * (r['history']['hours'] or 0)))})"),
             "wallet_result": f"{w['pnl_sol']:+.2f} SOL on {w['spent_sol']:.2f} SOL spent ({pct(w['pnl_pct'])}); {w['won']} of {r['positions']} positions made money",
             "your_result": f"{y['pnl_sol']:+.2f} SOL on {y['spent_sol']:.2f} SOL spent ({pct(y['pnl_pct'])}); {y['won']} of {r['positions']} positions made money",
             "positions_latest_first": [
