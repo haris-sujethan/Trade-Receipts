@@ -1,11 +1,23 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
-import { AlertTriangle, ArrowUp, Check, ImagePlus, Paperclip, Plus, History } from "lucide-react";
+import { AlertTriangle, ArrowUp, Check, ImagePlus, Paperclip, Plus, History, X } from "lucide-react";
 import { projectFiles, rsiThread, type ThreadStep } from "../data/examples";
 import { RunSteps } from "../demo/CheckViews";
 import { loadRun } from "../demo/runs";
 import { useBackend, useCheckFrame } from "./live";
-import { BACKTEST_SOON, exampleThreadTitle, HERO_KEY, LIVE_SOON, savedMatch, threadTitle, useIde, type ThreadRef, type WorkTab } from "./state";
+import { BACKTEST_SOON, exampleThreadTitle, HERO_KEY, LIVE_SOON, savedMatch, threadTitle, useIde, type Attachment, type ThreadRef, type WorkTab } from "./state";
 import "../demo/demo.css";
+
+// What the backend accepts (receipts/server.py): mp4 clips up to 25 MB, images up to 8 MB.
+const LIMITS = { video: 25 * 2 ** 20, image: 8 * 2 ** 20 };
+
+function readAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
 
 const placeholders: Record<WorkTab, string> = {
   Backtest: "Describe a crypto strategy to test…",
@@ -17,6 +29,11 @@ export function Thread() {
   const backend = useBackend();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [sending, setSending] = useState(false);
+  const [attachment, setAttachment] = useState<Attachment | null>(null);
+  const [attachError, setAttachError] = useState<string | null>(null);
+  const clipInput = useRef<HTMLInputElement>(null);
+  const imageInput = useRef<HTMLInputElement>(null);
+  const canAttach = backend === "online" && state.workTab === "Analyze";
   const user = typeof state.thread === "number" ? state.threads.find((t) => t.id === state.thread) : undefined;
   const items = user?.items ?? [];
   const hero = state.checks[HERO_KEY];
@@ -32,11 +49,25 @@ export function Thread() {
     return () => ro.disconnect();
   }, [items.length, state.thread, hero?.status]);
 
+  async function attach(kind: Attachment["kind"], file: File | undefined) {
+    setAttachError(null);
+    if (!file) return;
+    if (kind === "video" && file.type !== "video/mp4") return setAttachError("Clips must be mp4.");
+    if (kind === "image" && !file.type.startsWith("image/")) return setAttachError("That isn't an image.");
+    if (file.size > LIMITS[kind]) return setAttachError(kind === "video" ? "Clips can be up to 25 MB." : "Screenshots can be up to 8 MB.");
+    setAttachment({ kind, name: file.name, dataUrl: await readAsDataUrl(file) });
+  }
+
   async function send(e?: FormEvent) {
     e?.preventDefault();
     const text = state.draft.trim();
-    if (!text || sending) return;
+    if ((!text && !attachment) || sending) return;
     if (state.workTab === "Backtest") return dispatch({ type: "send", reply: { kind: "text", text: BACKTEST_SOON } });
+    if (attachment && backend === "online") {
+      dispatch({ type: "send", reply: { kind: "live", attachment } });
+      setAttachment(null);
+      return;
+    }
     const match = savedMatch(text, state.saved);
     if (match) {
       setSending(true);
@@ -100,6 +131,12 @@ export function Thread() {
             <ThreadCheck key={i} checkKey={m.key} />
           ) : (
             <div key={i} className={`msg msg--${m.kind}`}>
+              {m.kind === "user" && m.attached && (
+                <span className="clip-chip">
+                  <Paperclip size={13} aria-hidden />
+                  <span className="mono">{m.attached}</span>
+                </span>
+              )}
               <p>{m.text}</p>
             </div>
           ),
@@ -120,23 +157,60 @@ export function Thread() {
           onKeyDown={onKey}
           placeholder={placeholders[state.workTab]}
         />
+        {attachment && (
+          <span className="clip-chip">
+            <Paperclip size={13} aria-hidden />
+            <span className="mono">{attachment.name}</span>
+            <button type="button" className="icon-btn icon-btn--sm" aria-label={`Remove ${attachment.name}`} onClick={() => setAttachment(null)}>
+              <X size={13} aria-hidden />
+            </button>
+          </span>
+        )}
+        {attachError && (
+          <p className="thread__error" role="alert">
+            <AlertTriangle size={14} aria-hidden />
+            {attachError}
+          </p>
+        )}
+        <input ref={clipInput} type="file" accept="video/mp4" hidden onChange={(e) => void attach("video", e.target.files?.[0])} />
+        <input ref={imageInput} type="file" accept="image/*" hidden onChange={(e) => void attach("image", e.target.files?.[0])} />
         <div className="composer__bar">
-          <button type="button" className="icon-btn icon-btn--sm" title="Attach a clip (coming soon)" aria-label="Attach a clip (coming soon)" disabled>
+          <button
+            type="button"
+            className="icon-btn icon-btn--sm"
+            title={canAttach ? "Attach a clip (mp4, up to 25 MB)" : "Attach a clip (needs the live backend)"}
+            aria-label={canAttach ? "Attach a clip" : "Attach a clip (needs the live backend)"}
+            disabled={!canAttach}
+            onClick={() => clipInput.current?.click()}
+          >
             <Paperclip size={15} aria-hidden />
           </button>
-          <button type="button" className="icon-btn icon-btn--sm" title="Add a screenshot (coming soon)" aria-label="Add a screenshot (coming soon)" disabled>
+          <button
+            type="button"
+            className="icon-btn icon-btn--sm"
+            title={canAttach ? "Add a screenshot (up to 8 MB)" : "Add a screenshot (needs the live backend)"}
+            aria-label={canAttach ? "Add a screenshot" : "Add a screenshot (needs the live backend)"}
+            disabled={!canAttach}
+            onClick={() => imageInput.current?.click()}
+          >
             <ImagePlus size={15} aria-hidden />
           </button>
           <span className="composer__model" title="The model that runs the agent">
             Muse Spark 1.3
           </span>
-          <button type="submit" className="send" aria-label="Send" disabled={!state.draft.trim() || sending}>
+          <button type="submit" className="send" aria-label="Send" disabled={(!state.draft.trim() && !attachment) || sending}>
             <ArrowUp size={16} strokeWidth={2.5} aria-hidden />
           </button>
         </div>
       </form>
-      {state.workTab === "Analyze" && backend !== "online" && (
-        <p className="thread__note">{backend === "checking" ? "Looking for the backend…" : "Live checks are coming soon. Saved checks replay."}</p>
+      {state.workTab === "Analyze" && (
+        <p className="thread__note">
+          {backend === "checking"
+            ? "Looking for the backend…"
+            : backend === "online"
+              ? "Live: any pump.fun token is checked from the chain now. Saved checks replay."
+              : "Live checks are coming soon. Saved checks replay."}
+        </p>
       )}
     </aside>
   );
@@ -149,10 +223,19 @@ function ThreadCheck({ checkKey }: { checkKey: string }) {
   const cf = useCheckFrame(check, () => dispatch({ type: "finishCheck", key: checkKey }));
   if (!check || !cf) return null;
   const hasCheck = !!cf.answer?.check;
+  const notices = check.run.events.filter((e) => e.type === "notice").map((e) => (e.type === "notice" ? e.message : ""));
   return (
     <div className="thread__run">
       {check.mode === "replay" && <p className="thread__tag">Saved check, replayed</p>}
+      {notices.map((n, i) => (
+        <p key={i} className="thread__tag">
+          {n}
+        </p>
+      ))}
       <RunSteps frame={cf.frame} words={cf.words} answer={cf.answer} />
+      {cf.answer && cf.answer.explained_by === null && cf.frame.audited && (
+        <p className="thread__tag">The agent is off, so this answer is the check’s own findings.</p>
+      )}
       {check.status === "running" && cf.frame.steps.length === 0 && <p className="thread__tag">Starting…</p>}
       {check.status === "error" && (
         <p className="thread__error" role="alert">

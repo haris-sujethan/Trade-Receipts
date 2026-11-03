@@ -14,17 +14,25 @@ export type WorkTab = "Backtest" | "Analyze";
 export type TabId = string;
 
 /** A rug check the IDE knows about: a saved run (replayed or finished), or a live one streaming in. */
+/** A screenshot or clip sent with a message, as a data URL. */
+export type Attachment = { kind: "image" | "video"; dataUrl: string; name: string };
+/** One earlier message in the thread, sent with a follow-up so the agent has the context. */
+export type Turn = { role: "user" | "assistant"; text: string };
+
 export type CheckRun = {
   key: string;
   run: Run;
   mode: "replay" | "live";
+  /** Live checks: the thread before this message, and what was attached. */
+  history?: Turn[];
+  attachment?: Attachment;
   /** performance.now() when a replay started; -Infinity shows it finished. */
   startedAt: number;
   status: "waiting" | "running" | "done" | "error";
   error?: string;
 };
 
-export type ThreadItem = { kind: "user"; text: string } | { kind: "agent"; text: string } | { kind: "check"; key: string };
+export type ThreadItem = { kind: "user"; text: string; attached?: string } | { kind: "agent"; text: string } | { kind: "check"; key: string };
 export type UserThread = { id: number; title: string; items: ThreadItem[] };
 /** The two example threads (the replayed rug check and the finished backtest), then threads started in this session. */
 export type ThreadRef = "rug" | "backtest" | number;
@@ -81,7 +89,7 @@ type Action =
   | { type: "selectThread"; thread: ThreadRef };
 
 /** What the IDE does with a sent message, decided before it reaches the reducer (see `replyFor`). */
-export type Reply = { kind: "replay"; run: Run } | { kind: "live" } | { kind: "text"; text: string };
+export type Reply = { kind: "replay"; run: Run } | { kind: "live"; attachment?: Attachment } | { kind: "text"; text: string };
 
 export const BACKTEST_SOON =
   "Running new strategies is coming soon. Open a file in strategies to see a finished example, with its results.";
@@ -239,7 +247,8 @@ function reducer(s: State, a: Action): State {
     case "draft":
       return { ...s, draft: a.text };
     case "send": {
-      const text = s.draft.trim();
+      const attachment = a.reply.kind === "live" ? a.reply.attachment : undefined;
+      const text = s.draft.trim() || (attachment ? `Check the token in this ${attachment.kind === "video" ? "clip" : "screenshot"}.` : "");
       if (!text) return s;
       let threads = s.threads;
       let thread = s.thread;
@@ -257,12 +266,19 @@ function reducer(s: State, a: Action): State {
         const key = a.reply.kind === "replay" ? `replay:${seq}` : `live:${seq}`;
         const run: Run =
           a.reply.kind === "replay" ? { ...a.reply.run, message: text } : { id: key, mint: "", age_s: 0, about: "", message: text, clip: null, events: [] };
-        checks = { ...checks, [key]: { key, run, mode: a.reply.kind, startedAt: performance.now(), status: "running" } };
+        const prior = threads.find((t) => t.id === thread)?.items ?? [];
+        const history: Turn[] = prior.flatMap((m): Turn[] => {
+          if (m.kind === "user") return [{ role: "user", text: m.text }];
+          if (m.kind === "agent") return [{ role: "assistant", text: m.text }];
+          const said = checks[m.key] && answerOf(checks[m.key].run)?.text;
+          return said ? [{ role: "assistant", text: said }] : [];
+        });
+        checks = { ...checks, [key]: { key, run, mode: a.reply.kind, startedAt: performance.now(), status: "running", history, attachment } };
         added = { kind: "check", key };
         if (a.reply.kind === "replay") open = `check:${key}`;
       }
       threads = threads.map((t) =>
-        t.id === thread ? { ...t, title: t.title || titleFrom(text), items: [...t.items, { kind: "user", text }, added] } : t,
+        t.id === thread ? { ...t, title: t.title || titleFrom(text), items: [...t.items, { kind: "user", text, attached: attachment?.name }, added] } : t,
       );
       const next = { ...s, threads, thread, draft: "", checks, seq };
       return open ? { ...withTab(next, open), openSeq: s.openSeq + 1 } : next;
@@ -430,7 +446,7 @@ export function IdeProvider({ children }: { children: ReactNode }) {
     for (const c of Object.values(state.checks)) {
       if (c.mode !== "live" || c.status !== "running" || started.current.has(c.key)) continue;
       started.current.add(c.key);
-      streamAgent(c.run.message, (event) => dispatch({ type: "liveEvent", key: c.key, event })).then(
+      streamAgent(c.run.message, (event) => dispatch({ type: "liveEvent", key: c.key, event }), { history: c.history, attachment: c.attachment }).then(
         () => dispatch({ type: "liveEnd", key: c.key }),
         (err: Error) => dispatch({ type: "liveEvent", key: c.key, event: { type: "error", message: `Couldn't reach the backend: ${err.message}` } }),
       );

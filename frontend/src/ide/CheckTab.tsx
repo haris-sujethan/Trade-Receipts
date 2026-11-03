@@ -10,6 +10,14 @@ import "../demo/demo.css";
 
 type View = "overview" | "chart" | "holders" | "signals";
 
+/** What a check that ended without a score says (the backend's statuses, receipts/crypto/live.py). */
+const UNSCORED: Record<string, string> = {
+  below_floor: "Too little activity to score yet",
+  rugged: "Already rugged",
+  too_old: "Older than a day: the model covers a token's first day",
+  not_sol_quoted: "Priced in another token, not SOL: the model covers SOL-priced tokens",
+};
+
 /** A rug check in the editor area: what it covered, then its overview, chart, holders and signals. */
 export function CheckTab({ check }: { check: CheckRun }) {
   const { state, dispatch } = useIde();
@@ -18,15 +26,17 @@ export function CheckTab({ check }: { check: CheckRun }) {
   if (!cf) return null;
   const { frame, words, answer } = cf;
   const data = answer?.check;
+  // A check that ended without a score (too little activity, already rugged) has no chart or holders to show.
+  const scored = !!data?.chart;
   const fromRun = check.run.events.find((e) => e.type === "step" && e.tool === "check_token" && e.status === "running");
   const auto: View | null = frame.view === "result" ? "overview" : frame.view;
   const picked = state.checkViews[check.key];
   const view: View | null = picked ?? auto;
   const ready: Record<View, boolean> = {
     overview: !!data && frame.answerChars > 0,
-    chart: !!data && frame.kindsStarted.includes("token"),
-    holders: !!data && frame.kindsStarted.includes("wallets"),
-    signals: !!data && frame.finished,
+    chart: scored && frame.kindsStarted.includes("token"),
+    holders: scored && frame.kindsStarted.includes("wallets"),
+    signals: scored && frame.finished,
   };
   const tabs: { id: View; label: string }[] = [
     { id: "overview", label: "Overview" },
@@ -51,7 +61,7 @@ export function CheckTab({ check }: { check: CheckRun }) {
           </div>
           <div>
             <dt>Checked at</dt>
-            <dd>{data ? `${Math.round(data.age_s / 60)} min after launch` : "Now"}</dd>
+            <dd>{data?.age_s != null ? `${Math.round(data.age_s / 60)} min after launch` : "Now"}</dd>
           </div>
         </dl>
         <p className="runbar__note">
@@ -99,28 +109,42 @@ export function CheckTab({ check }: { check: CheckRun }) {
             <LoaderCircle size={18} className="spin" aria-hidden />
             <div>
               <p className="check__state-title">{frame.steps.length ? "The agent is working" : "Waiting for the agent"}</p>
-              <p>{saved ? "The chart and holders fill in here as the token is read." : "The chart, holders and signals open here when the check is done."}</p>
+              <p>{saved ? "The chart and holders fill in here as the token is read." : "A live check takes about a minute. The chart, holders and signals open here when it’s done."}</p>
             </div>
           </div>
         )}
-        {data && view === "overview" && (
+        {data && !scored && (
+          <div className="check__state">
+            <AlertTriangle size={18} aria-hidden />
+            <div>
+              <p className="check__state-title">{UNSCORED[data.status ?? ""] ?? "No rug chance for this token"}</p>
+              <Answer text={words.slice(0, frame.answerChars || words.length).join("")} />
+            </div>
+          </div>
+        )}
+        {data && scored && view === "overview" && (
           <div data-tour="results">
             <ResultPanel
               check={data}
               about={saved ? check.run.about : ""}
               claim={null}
               reveal={frame.finished ? 1 : Math.min(1, frame.answerChars / Math.max(1, words.length * 0.8))}
-              explanation={<Answer text={words.slice(0, frame.answerChars).join("")} />}
+              explanation={
+                <>
+                  {answer?.explained_by === null && <p className="result__small">Written from the check’s own findings; the agent is off.</p>}
+                  <Answer text={words.slice(0, frame.answerChars).join("")} />
+                </>
+              }
             />
           </div>
         )}
-        {data && view === "chart" && <ChartView check={data} frame={frame} width={900} height={380} />}
-        {data && view === "holders" && (
+        {data && scored && view === "chart" && <ChartView check={data} frame={frame} width={900} height={380} />}
+        {data && scored && view === "holders" && (
           <div data-tour="holders">
             <HoldersView check={data} frame={frame} mapWidth={560} mapHeight={380} rows={12} />
           </div>
         )}
-        {data && view === "signals" && (
+        {data && scored && view === "signals" && (
           <div className="check__signals">
             <CheckCards run={check.run} check={data} />
             <p className="checks__note">

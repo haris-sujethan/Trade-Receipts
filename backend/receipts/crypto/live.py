@@ -33,6 +33,7 @@ import shutil
 import time
 import types
 import typing
+from concurrent.futures import ThreadPoolExecutor
 
 import duckdb
 import numpy as np
@@ -45,15 +46,18 @@ from receipts.crypto import (baselines, chart, copycats, dataset, events, fundin
 
 ROOT = settings.data_dir / "live"
 TOKEN_PAGES = 300  # up to 30,000 of the token's transactions
-WALLET_PAGES = 5  # up to 500 of a traced wallet's transactions before the launch
-SINCE_PAGES = 3  # and up to 300 from the launch to T
+WALLET_PAGES = 5  # up to 500 of an early buyer's transactions before the launch (its sniping habit)
+FIRST_PAGES = 1  # every other traced wallet: its last 100 transactions before the launch
+SINCE_PAGES = 1  # and 100 from the launch to T
 FUNDER_PAGES = 2
 FUNDERS = 150  # funders scanned for hop 2, biggest transfers first
 BUSY_TXS = 200
 BUSY_CHECKS = 300
+WORKERS = 8  # parallel Helius requests; the client still spaces them MIN_INTERVAL apart
 SNIPE_LOOKUPS = 150  # other tokens' launches looked up for the sniper-bot habit
 KINDS = {"launches": events.Launch, "trades": events.Trade, "graduations": events.Graduation,
          "migrations": events.Migration, "pools": events.Pool}
+QUOTE_NAMES = {programs.USDC: "USDC", "pumpCmXqMfrsAkQ5r49WcJnRayYRqmXz6ae8H7H9Dfn": "PUMP"}
 HOPS = pa.schema([("hop", pa.int64()), ("ts", pa.int64()), ("src", pa.string()), ("dst", pa.string()),
                   ("lamports", pa.int64()), ("receivers", pa.int64())])
 
@@ -137,12 +141,21 @@ class Check:
             self.records += transactions.records(tx)
             self.transfers += transactions.sol_transfers(tx)
 
-    def _scan(self, address: str, gte: int, pages: int, gap: str, lte: int | None = None) -> None:
-        complete = False
-        for txs, complete in self.h.history(address, gte=gte, lte=self.T if lte is None else lte, order="desc", max_pages=pages):
-            self._read(txs)
-        if not complete:
-            self.gaps[gap] = self.gaps.get(gap, 0) + 1
+    def _fetch(self, address: str, gte: int, lte: int, pages: int) -> tuple[list[dict], bool]:
+        txs, complete = [], False
+        for page, complete in self.h.history(address, gte=gte, lte=lte, order="desc", max_pages=pages):
+            txs += page
+        return txs, complete
+
+    def _scan_many(self, jobs: list[tuple[str, int, int, int]], gap: str, step: str) -> None:
+        """Scan (address, gte, lte, pages) jobs WORKERS at a time, reading them in job order, so the
+        result is the same as scanning one after another."""
+        with ThreadPoolExecutor(WORKERS) as pool:
+            for i, (txs, complete) in enumerate(pool.map(lambda job: self._fetch(*job), jobs)):
+                self._read(txs)
+                if not complete:
+                    self.gaps[gap] = self.gaps.get(gap, 0) + 1
+                self.progress(step=step, scanned=i + 1, of=len(jobs))
 
     # The steps
 
@@ -180,16 +193,19 @@ class Check:
         holders = sorted((w for w in names if held[w] > 0), key=lambda w: (-min(held[w], programs.TOTAL_SUPPLY), w))
         return {launch.creator, *buyers, *holders[:signals.TRACE_HOLDERS]}
 
-    def wallets(self, traced: set[str], start: int, launch_ts: int) -> None:
+    def wallets(self, traced: set[str], start: int, launch_ts: int, early: set[str]) -> None:
         """Each traced wallet's last transactions before the launch (funding and history), then
         those since the launch. Busy traders' scans stop early, so the pre-launch day is read
-        separately rather than lost behind their trading after the launch."""
-        for i, w in enumerate(sorted(traced)):
-            if w == programs.MAYHEM_AGENT:  # pump.fun's own agent: no funding, endless history
-                continue
-            self._scan(w, start, WALLET_PAGES, "wallet_scans_cut_short", lte=launch_ts - 1)
-            self._scan(w, launch_ts, SINCE_PAGES, "wallet_scans_cut_short")
-            self.progress(step="wallets", scanned=i + 1, of=len(traced))
+        separately rather than lost behind their trading after the launch.
+
+        Only the early buyers' habit decides who's team (a launch-slot buyer that sniped 10 other
+        launches is a bot, not the creator's bundle), so they get WALLET_PAGES; the rest get
+        FIRST_PAGES, which already shows a busy trader's recent tokens. That keeps a check near a
+        minute at Helius's 10 requests a second. Pages are cached, so the deeper scans reuse the first."""
+        wallets = [w for w in sorted(traced) if w != programs.MAYHEM_AGENT]  # the agent: no funding, endless history
+        jobs = [(w, start, launch_ts - 1, WALLET_PAGES if w in early else FIRST_PAGES) for w in wallets]
+        jobs += [(w, launch_ts, self.T, SINCE_PAGES) for w in wallets]
+        self._scan_many(jobs, "wallet_scans_cut_short", "wallets")
 
     def busy(self, senders: list[str], start: int) -> dict[str, int]:
         """Busy senders among these: known from training, or with BUSY_TXS+ transactions in the window."""
@@ -198,11 +214,12 @@ class Check:
         unknown = [s for s in senders if s not in known]
         if len(unknown) > BUSY_CHECKS:
             self.gaps["busy_checks_skipped"] = len(unknown) - BUSY_CHECKS
-        for i, s in enumerate(unknown[:BUSY_CHECKS]):
-            n = self.h.count_since(s, gte=start, lte=self.T)
-            if n >= BUSY_TXS:
-                found[s] = n
-            self.progress(step="busy", checked=i + 1, of=min(len(unknown), BUSY_CHECKS))
+        checked = unknown[:BUSY_CHECKS]
+        with ThreadPoolExecutor(WORKERS) as pool:
+            for i, (s, n) in enumerate(zip(checked, pool.map(lambda a: self.h.count_since(a, gte=start, lte=self.T), checked))):
+                if n >= BUSY_TXS:
+                    found[s] = n
+                self.progress(step="busy", checked=i + 1, of=len(checked))
         return found
 
     def snipes(self, launch: events.Launch, early: list[str], slot0: set[str]) -> None:
@@ -233,33 +250,52 @@ class Check:
             pending = {w for w, n in snipes.items() if n < roles.SNIPER_HABIT}
             if not pending:
                 break
-            # greedy: the token that helps the most launch-slot buyers still short of the habit
-            m = max(buys, key=lambda m: (len({b.wallet for b in buys[m]} & pending & slot0),
-                                         len({b.wallet for b in buys[m]} & pending), max(b.token_reserves for b in buys[m])))
-            if not {b.wallet for b in buys[m]} & pending:
+
+            # greedy: the tokens that help the most launch-slot buyers still short of the habit,
+            # looked up WORKERS at a time
+            def score(m):
+                ws = {b.wallet for b in buys[m]}
+                return (len(ws & pending & slot0), len(ws & pending), max(b.token_reserves for b in buys[m]))
+
+            batch = [m for m in sorted(buys, key=score, reverse=True) if {b.wallet for b in buys[m]} & pending][:WORKERS]
+            if not batch:
                 break
             if lookups >= SNIPE_LOOKUPS:
                 self.gaps["snipe_lookups_capped"] = 1
                 break
-            lookups += 1
-            for txs, _ in self.h.history(m, gte=0, lte=max(b.ctx.block_time for b in buys[m]), order="asc", max_pages=1):
+            batch = batch[:SNIPE_LOOKUPS - lookups]
+            lookups += len(batch)
+            with ThreadPoolExecutor(WORKERS) as pool:
+                pages = list(pool.map(lambda m: self._first_page(m, max(b.ctx.block_time for b in buys[m])), batch))
+            for m, txs in zip(batch, pages):
                 self._read(txs)
-            launch_of = next((r for r in self.records if isinstance(r, events.Launch) and r.mint == m), None)
-            if launch_of is None:
-                buys.pop(m)
-                continue
-            launched[m] = launch_of.ctx.block_time
-            count(m)
+                launch_of = next((r for r in self.records if isinstance(r, events.Launch) and r.mint == m), None)
+                if launch_of is None:
+                    buys.pop(m)
+                    continue
+                launched[m] = launch_of.ctx.block_time
+                count(m)
             self.progress(step="snipes", lookups=lookups, sniper_bots=sum(n >= roles.SNIPER_HABIT for n in snipes.values()))
+
+    def _first_page(self, mint: str, before: int) -> list[dict]:
+        for txs, _ in self.h.history(mint, gte=0, lte=before, order="asc", max_pages=1):
+            return txs
+        return []
 
     def run(self) -> dict:
         shutil.rmtree(self.folder, ignore_errors=True)
         (self.folder / "raw").mkdir(parents=True)
         launch = self.token()
+        # Training kept only tokens priced in SOL (signals.build); a token priced in USDC or another pump
+        # token would read its market cap in the wrong units. Known from the launch, before any wallet scan.
+        if launch.quote_mint not in (programs.WSOL, programs.NATIVE_SOL_QUOTE):
+            return self._finish(self._base(launch, set()) | {
+                "status": "not_sol_quoted", "quote_mint": launch.quote_mint, "quote": QUOTE_NAMES.get(launch.quote_mint, "another token")})
         L = launch.ctx.block_time
         start = L - dataset.FUNDING_LOOKBACK
         traced = self.traced(launch)
-        self.wallets(traced, start, L)
+        early_buys = {t.wallet for t in self.token_trades() if t.is_buy and t.ctx.block_time <= L + dataset.SNIPE_SECONDS}
+        self.wallets(traced, start, L, early_buys)
 
         hop1 = [x for x in self.transfers if x[2] in traced and start <= x[0] <= self.T]
         senders = sorted({x[1] for x in hop1 if x[3] >= dataset.MIN_LINK_LAMPORTS})
@@ -271,10 +307,8 @@ class Check:
         funders = sorted(by_size, key=lambda s: -by_size[s])
         if len(funders) > FUNDERS:
             self.gaps["funders_skipped"] = len(funders) - FUNDERS
-        for i, f in enumerate(funders[:FUNDERS]):
-            if f not in traced:
-                self._scan(f, start, FUNDER_PAGES, "funder_scans_cut_short")
-            self.progress(step="funders", scanned=i + 1, of=min(len(funders), FUNDERS))
+        self._scan_many([(f, start, self.T, FUNDER_PAGES) for f in funders[:FUNDERS] if f not in traced],
+                        "funder_scans_cut_short", "funders")
         funder_set = set(funders[:FUNDERS])
         hop2 = [x for x in self.transfers if x[2] in funder_set and start <= x[0] <= self.T]
         busy |= self.busy(sorted({x[1] for x in hop2 if x[3] >= dataset.MIN_LINK_LAMPORTS} - set(busy)), start)
@@ -313,13 +347,14 @@ class Check:
                      "pools": [raw / "pools.parquet"], "hop1": [raw / "hop1.parquet"], "hop2": [raw / "hop2.parquet"],
                      "busy": [raw / "busy.parquet"], "wallets": [raw / "wallets.parquet"],
                      "history": [raw / "history.parquet"]})
-        result = {"mint": self.mint, "as_of": self.T, "launch_ts": launch.ctx.block_time, "age_s": self.T - launch.ctx.block_time,
-                  "name": copycats.clean_name(launch.name), "symbol": copycats.clean_name(launch.symbol), "creator": launch.creator,
-                  "transactions_read": len(self.seen), "traced_wallets": len(traced), "gaps": self.gaps}
-        counts = dataset.prepare(b)
-        if not counts["tokens"]:
+        result = self._base(launch, traced)
+        # Below the starting floor (20 buyers or 60 SOL of market cap in its first day) a token gets no
+        # snapshot in training either, and the later steps have nothing to read.
+        if not dataset.prepare(b, ("tokens",))["tokens"]:
             result["status"] = "below_floor"
             return self._finish(result)
+
+        dataset.prepare(b, ("trades", "edges", "wallets"))
         labels.build_team(b)
         labels.build(b)
         dataset.reputation(b, signals.LABEL_HOURS)
@@ -346,8 +381,10 @@ class Check:
         result["bubble_map"]["funders"] = self.funders(result["bubble_map"], hop1, busy)
         result["same_size_buys"] = chart.same_size_buys(tok, ctx)
         result["similar"] = similar.similar(sig | {"mint": self.mint}, tok.launch_ts)
-        if copycats.covered(self.T):
-            result["copycats"] = copycats.search(launch.symbol, self.T, exclude=self.mint)
+        # Name search reads the launch history (through mid-September 2026); later tokens get an empty list.
+        covered = copycats.covered(self.T)
+        result["copycats"] = (copycats.search(launch.symbol, self.T, exclude=self.mint) if covered
+                              else {"total": 0, "tokens": []}) | {"covered": covered}
         return self._finish(result)
 
     def funders(self, bubble: dict, hop1: list, busy: dict) -> list[dict]:
@@ -360,6 +397,11 @@ class Check:
                 funded.setdefault(src, set()).add(dst)
         hubs = sorted(((f, ws) for f, ws in funded.items() if len(ws) >= 2), key=lambda kv: (-len(kv[1]), kv[0]))
         return [{"wallet": f, "funds": sorted(ws)} for f, ws in hubs[:20]]
+
+    def _base(self, launch: events.Launch, traced: set[str]) -> dict:
+        return {"mint": self.mint, "as_of": self.T, "launch_ts": launch.ctx.block_time, "age_s": self.T - launch.ctx.block_time,
+                "name": copycats.clean_name(launch.name), "symbol": copycats.clean_name(launch.symbol), "creator": launch.creator,
+                "transactions_read": len(self.seen), "traced_wallets": len(traced), "gaps": self.gaps}
 
     def _finish(self, result: dict) -> dict:
         result["helius_credits"] = self.h.spent_this_month() - self.credits_start

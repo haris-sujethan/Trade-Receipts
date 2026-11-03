@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { AnswerEvent, RunEvent } from "../demo/runs";
 import { frameAt, frameFromEvents, plan as makePlan, type Frame, type Plan } from "../demo/timeline";
-import type { CheckRun } from "./state";
+import type { Attachment, CheckRun, Turn } from "./state";
 
 /**
  * The backend, when there is one. Locally, Vite proxies /api to `uv run uvicorn receipts.server:app --port 8000`;
@@ -44,12 +44,21 @@ export function useBackend(): Backend {
 
 type Streamed = RunEvent | { type: "error"; message: string };
 
-/** Sends a message to the agent and hands each event to `onEvent` as it streams back (server-sent events). */
-export async function streamAgent(message: string, onEvent: (e: Streamed) => void, signal?: AbortSignal) {
+/**
+ * Sends a message to the agent, with the thread so far and any attachment, and hands each event to `onEvent` as it
+ * streams back (server-sent events).
+ */
+export async function streamAgent(
+  message: string,
+  onEvent: (e: Streamed) => void,
+  opts: { history?: Turn[]; attachment?: Attachment; signal?: AbortSignal } = {},
+) {
+  const { history = [], attachment, signal } = opts;
+  const media = attachment ? { [attachment.kind]: attachment.dataUrl } : {};
   const res = await fetch(`${API}/api/agent`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({ message, history, ...media }),
     signal,
   });
   if (!res.ok || !res.body) {

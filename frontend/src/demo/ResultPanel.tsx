@@ -106,9 +106,9 @@ export function ResultPanel({ check, about, claim, reveal, explanation }: Props)
               ))}
             </ul>
           </div>
-          {check.copycats.total > 0 && (
+          {(check.copycats?.total ?? 0) > 0 && (
             <p className="result__small">
-              {whole(check.copycats.total)} other tokens used the same name or ticker in the week before.
+              {whole(check.copycats?.total ?? 0)} other tokens used the same name or ticker in the week before.
             </p>
           )}
         </div>

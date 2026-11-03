@@ -16,6 +16,7 @@ import base64
 import hashlib
 import json
 import math
+import re
 import time
 import uuid
 
@@ -29,6 +30,10 @@ from receipts.crypto.goplus import CREDIT as GOPLUS_CREDIT, GoPlus
 MODEL = "muse-spark-1.3"
 UPLOADS = settings.data_dir / "uploads"  # clips sent to the agent (gitignored with data/)
 MAX_ROUNDS = 6
+HISTORY_TURNS = 8  # earlier messages sent with a follow-up
+HISTORY_CHARS = 4000
+MINT_IN_TEXT = re.compile(r"(?<![1-9A-HJ-NP-Za-km-z])[1-9A-HJ-NP-Za-km-z]{32,44}(?![1-9A-HJ-NP-Za-km-z])")
+TICKER_IN_TEXT = re.compile(r"\$([A-Za-z0-9]{2,12})\b")
 MAX_OUTPUT = 1500
 NOT_ADVICE = "Not financial advice."
 # Constants the product states, which the explanation may cite (audit `allowed`).
@@ -49,7 +54,7 @@ Rules:
 - Facts and flags, never advice: never say buy, sell or hold, and never call a token safe. A low rug chance means fewer of the warning signs past rugs showed, nothing more.
 - Describe wallets, not people. No names, no accusations.
 - Say "token", not "coin".
-- If check_token's status is below_floor, rugged or too_old, say so plainly instead of giving a rug chance. When the status is scored, don't mention these statuses.
+- If check_token's status is below_floor, rugged, too_old or not_sol_quoted, say so plainly instead of giving a rug chance. When the status is scored, don't mention these statuses.
 - End with: {NOT_ADVICE}"""
 
 TOOLS = [
@@ -121,6 +126,9 @@ class Run:
         out["age"] = prompt._secs(result["age_s"])
         if result["status"] == "rugged":
             out["rugged_after"] = prompt._secs(result["rug_age_s"])
+        if result["status"] == "not_sol_quoted":
+            out["note"] = (f"This token is priced in {result['quote']}, not SOL. The rug model learned from SOL-priced "
+                           "tokens only, so it gives no rug chance here.")
         if result["status"] == "scored":
             out["verdict"] = result["verdict"]
             out["rug_chance"] = f"{round(100 * result['trees_rug_chance'])}%"
@@ -230,12 +238,24 @@ class Run:
                                   "max_output_tokens": MAX_OUTPUT, "store": False, "reasoning": {"effort": "low"},
                                   "parallel_tool_calls": True}, purpose=purpose)
 
-    def run(self, message: str) -> dict:
+    def run(self, message: str, history: list[dict] | None = None) -> dict:
+        """`history` is the conversation so far, [{"role": "user" | "assistant", "text"}], so a follow-up
+        (which of these tokens?) has its context. With the Meta API off, out of budget or past the
+        credit window, the check still runs and its own findings are shown (`without_model`)."""
+        self.history = [h for h in history or [] if h.get("role") in ("user", "assistant") and h.get("text")][-HISTORY_TURNS:]
+        try:
+            return self.with_model(message)
+        except (meta.MetaDisabled, meta.BudgetExceeded) as e:
+            self.emit({"type": "notice", "message": "Written explanations are off right now, so the check shows its own findings."})
+            return self.without_model(message, str(e))
+
+    def with_model(self, message: str) -> dict:
         content = [{"type": "input_text", "text": message or "Check this token."}]
         if self.image is not None or self.video is not None:
             kind = "clip" if self.video is not None else "screenshot"
             content.append({"type": "input_text", "text": f"(The user attached a {kind}; call read_address to read it.)"})
-        items: list = [{"role": "user", "content": content}]
+        items: list = [{"role": h["role"], "content": h["text"][:HISTORY_CHARS]} for h in self.history]
+        items.append({"role": "user", "content": content})
         text = ""
         for _ in range(MAX_ROUNDS):
             response = self.respond(items, "rug check")
@@ -253,8 +273,63 @@ class Run:
             text = "The check took too many steps to finish. Try again with the token's mint address."
         return self.answer(items, text, message)
 
+    def without_model(self, message: str, reason: str) -> dict:
+        """The check with no Meta call: find the mint in the message, run the tools, and show their
+        findings as written, so every number comes straight from a tool."""
+        mints = [m for m in MINT_IN_TEXT.findall(message or "") if valid_mint(m)]
+        lines: list[str] = []
+        if mints:
+            out = self.call("check_token", {"mint": mints[0]})
+            if "error" in out:
+                lines.append(out["error"])
+            else:
+                name = out.get("symbol") or out.get("name") or mints[0][:6]
+                if out["status"] == "scored":
+                    lines.append(f"{name}: {out['verdict']} · {out['rug_chance']} rug chance, {out['age']} after launch.")
+                    if out.get("second_opinion"):
+                        lines.append(f"Second opinion from Muse Glimmer: {out['second_opinion']['rug_chance']}.")
+                    picked = [l for l in out.get("signals", []) if l.split(":")[0] in ("Team", "Launch", "Snipers", "Supply", "Wallets")]
+                    lines += ["", "What the check found:"] + [f"- {l}" for l in picked]
+                    if out.get("copycats"):
+                        lines += ["", out["copycats"]]
+                elif out["status"] == "rugged":
+                    lines.append(f"{name} has already rugged: the team sold out {out['rugged_after']} after launch.")
+                elif out["status"] == "below_floor":
+                    lines.append(f"{name} has too little activity to score yet. Its signals are in the report.")
+                elif out["status"] == "not_sol_quoted":
+                    lines.append(f"{name}: {out['note']}")
+                else:
+                    lines.append(f"{name} is more than a day old, and this model covers a token's first day. Its signals are in the report.")
+                security = self.call("token_security", {"mint": mints[0]})
+                if "error" not in security:
+                    mint_ok, freeze_ok = security["new tokens can be minted"], security["holders' accounts can be frozen"]
+                    lines += ["", f"Authorities (Powered by GoPlus): new tokens can be minted: {mint_ok}; "
+                                  f"holders' accounts can be frozen: {freeze_ok}."]
+        elif (ticker := TICKER_IN_TEXT.search(message or "")) and not self.history:
+            found = self.call("find_token", {"query": ticker.group(1)})
+            lines += [found["error"]] if "error" in found else (
+                [f"Found {found['found']} tokens with that name or ticker. The most active:"] + [f"- {x}" for x in found["most_active"]]
+                + ["", "Paste the mint of the one you mean."])
+        else:
+            lines.append("Paste the token's mint address or pump.fun link to check it.")
+        lines += ["", "Muse Spark's written explanation isn't available right now, so these are the check's findings as measured."]
+        text = "\n".join(lines)
+        result = audit.audit(text, self.outputs, CONSTANTS + tuple(audit.values(message or "")))
+        return self.finish(text, result, result, model=False)
+
+    def finish(self, text: str, first: audit.Audit, final: audit.Audit, model: bool = True) -> dict:
+        audit.log(self.id, "rug check" if model else "rug check without the model", first, final)
+        if NOT_ADVICE not in text:
+            text = f"{text.rstrip()}\n\n{NOT_ADVICE}"
+        event = {"type": "answer", "text": audit.mark(text, final) if not final.passed else text,
+                 "audit": {"numbers": len(final.numbers), "passed": final.passed, "first_try_passed": first.passed,
+                           "unverified": [n.text for n in final.unverified]},
+                 "check": self.check, "explained_by": MODEL if model else None}
+        self.emit(event)
+        return event
+
     def answer(self, items: list, text: str, message: str) -> dict:
-        allowed = CONSTANTS + tuple(audit.values(message or ""))
+        allowed = CONSTANTS + tuple(audit.values(message or "")) + tuple(audit.values([h["text"] for h in self.history]))
         first = audit.audit(text, self.outputs, allowed)
         final = first
         if not first.passed:
@@ -266,15 +341,7 @@ class Run:
             second = audit.audit(rewrite, self.outputs, allowed)
             if second.passed or len(second.unverified) < len(first.unverified):
                 text, final = rewrite, second
-        audit.log(self.id, "rug check", first, final)
-        if NOT_ADVICE not in text:
-            text = f"{text.rstrip()}\n\n{NOT_ADVICE}"
-        event = {"type": "answer", "text": audit.mark(text, final) if not final.passed else text,
-                 "audit": {"numbers": len(final.numbers), "passed": final.passed, "first_try_passed": first.passed,
-                           "unverified": [n.text for n in final.unverified]},
-                 "check": self.check}
-        self.emit(event)
-        return event
+        return self.finish(text, first, final)
 
 
 def summary(name: str, result: dict) -> str:
@@ -285,7 +352,8 @@ def summary(name: str, result: dict) -> str:
         if result["status"] == "scored":
             return f"{result.get('symbol') or result['mint'][:6]}: {result['verdict']} · {result['rug_chance']} rug chance"
         return {"rugged": "Already rugged", "below_floor": "Too little activity to score",
-                "too_old": "Older than a day: signals only"}.get(result["status"], result["status"])
+                "too_old": "Older than a day: signals only",
+                "not_sol_quoted": "Priced in another token, not SOL: no score"}.get(result["status"], result["status"])
     if name == "read_address":
         return f"Read {result.get('mint') or 'no address'}" + (f" ({result['ticker']})" if result.get("ticker") else "")
     if name == "find_token":
@@ -296,5 +364,5 @@ def summary(name: str, result: dict) -> str:
 
 
 def run(message: str, image: bytes | None = None, image_type: str = "image/png", emit=print, client: meta.Meta | None = None,
-        as_of: int | None = None, video: bytes | None = None) -> dict:
-    return Run(client=client, emit=emit, image=image, image_type=image_type, as_of=as_of, video=video).run(message)
+        as_of: int | None = None, video: bytes | None = None, history: list[dict] | None = None) -> dict:
+    return Run(client=client, emit=emit, image=image, image_type=image_type, as_of=as_of, video=video).run(message, history)

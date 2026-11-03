@@ -709,7 +709,17 @@ No accuracy claim appears anywhere without these numbers behind it.
   - Three tokens had one more trade in training than live. Each was a failed transaction the reserve chain didn't catch (7.7); live checks drop failed transactions exactly.
   - Report: `data/reports/live_parity.json`.
 - **Already rugged** comes from the same label code: the team's sells as of now.
-- **Cost:** a few hundred to about 8,000 Helius credits per token, depending on how many sniper bots bought it. About 20 seconds to 3 minutes.
+- **Cost (Nov 3, on new tokens):** about 3,000 Helius credits and about a minute.
+  - Requests run 8 at a time, spaced to Helius's 10 a second, and slow down whenever Helius refuses one.
+  - Only early buyers get 5 pages of history (their sniping habit decides who's team); every other wallet gets 1.
+  - Parity on the May token checked before and after this change: the same rug chance (91.4%), and the same signals off.
+  - Version-1 transactions (about half of pump.fun's by Nov 2) are read too.
+- **Not scored, with the reason shown:**
+  - below the activity floor;
+  - already rugged;
+  - older than a day;
+  - priced in another token, not SOL. About 1 in 5 new launches is priced in PUMP, and the model learned from SOL-priced tokens only.
+- **Limits on the public site:** 6 live checks per visitor per hour and 60 a day in all (`CHECKS_PER_HOUR`, `CHECKS_PER_DAY`), so the 900,000 monthly credits last.
 - **Two fixes found by the parity check:**
   - Events are numbered by position in their parent instruction, as BigQuery numbers them, because training orders a slot's trades by that number.
   - Sniper bots are scanned too: they're on the busy-sender list because they pay many wallets.
@@ -799,6 +809,13 @@ Added Nov 2:
 - **Measured cost:** a full check, clip included, costs about $0.001 on the contributor model.
 
 Tool outputs carry no timings or credit counts, so a repeated check sends identical requests and is served from the Meta cache.
+
+Added Nov 3:
+- **The IDE's chat is connected.** With the backend running, a message about any pump.fun token runs a live check and streams each step into the thread. Muse Spark explains the result, and the report opens on the same views as the demo.
+  - The thread so far is sent with each message, so follow-ups work, such as picking one of several tokens with the same name.
+  - Screenshots and clips can be attached.
+  - Without a backend (the static site), the chat replays the saved checks.
+- **With the Meta API off** (switched off, out of budget, or after Nov 4), the check still runs. The thread shows the check's own findings, word for word from the tools, and says the written explanation isn't available.
 
 ### 8.2 Tools
 

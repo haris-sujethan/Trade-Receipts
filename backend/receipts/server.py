@@ -1,7 +1,7 @@
 """The backend's HTTP API (SPEC.md 10), streamed as server-sent events (SPEC.md 8.3).
 
     POST /api/check   {"mint": ..., "as_of": null}            a live rug check, no Meta API
-    POST /api/agent   {"message": ..., "image": "data:..."}   the agent: tools plus an audited explanation
+    POST /api/agent   {"message", "history", "image", "video"}  the agent: tools plus an audited explanation
     GET  /api/demo    the saved demo runs; GET /api/demo/<id> replays one
     GET  /api/meta    Meta API spend against the guard's limit
     GET  /api/health
@@ -10,11 +10,14 @@ Run from backend/:  uv run uvicorn receipts.server:app --port 8000
 """
 
 import base64
+import collections
 import json
+import os
 import queue
 import threading
+import time
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -27,6 +30,31 @@ app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http
                    allow_methods=["GET", "POST"], allow_headers=["Content-Type"])
 
 MAX_IMAGE_BYTES = 8 * 2**20
+# A live check reads a few thousand Helius credits (900,000 a month) and, with the Meta API on, a cent
+# or less of Meta credits. Per visitor and in all, the public site stops well short of either.
+CHECKS_PER_HOUR = int(os.environ.get("CHECKS_PER_HOUR", 6))
+CHECKS_PER_DAY = int(os.environ.get("CHECKS_PER_DAY", 60))
+_checks: dict[str, collections.deque] = collections.defaultdict(collections.deque)
+_all_checks: collections.deque = collections.deque()
+_checks_lock = threading.Lock()
+
+
+def allow_check(request: Request) -> None:
+    """Refuse a live check past the visitor's hourly limit or the site's daily one."""
+    who = (request.headers.get("x-forwarded-for") or (request.client.host if request.client else "?")).split(",")[0].strip()
+    now = time.time()
+    with _checks_lock:
+        mine = _checks[who]
+        while mine and mine[0] < now - 3600:
+            mine.popleft()
+        while _all_checks and _all_checks[0] < now - 86400:
+            _all_checks.popleft()
+        if len(mine) >= CHECKS_PER_HOUR:
+            raise HTTPException(429, f"That's {CHECKS_PER_HOUR} live checks this hour. Saved checks still replay; try again later.")
+        if len(_all_checks) >= CHECKS_PER_DAY:
+            raise HTTPException(429, "The site's live checks for today are used up. Saved checks still replay.")
+        mine.append(now)
+        _all_checks.append(now)
 MAX_VIDEO_BYTES = 25 * 2**20
 
 
@@ -35,8 +63,14 @@ class CheckRequest(BaseModel):
     as_of: int | None = None
 
 
+class Turn(BaseModel):
+    role: str
+    text: str
+
+
 class AgentRequest(BaseModel):
     message: str = ""
+    history: list[Turn] = []  # the conversation so far, for follow-ups
     image: str | None = None  # a data URL
     video: str | None = None  # an mp4 data URL
     as_of: int | None = None  # check tokens as they stood then (the demo's past tokens)
@@ -93,9 +127,10 @@ def meta_report() -> dict:
 
 
 @app.post("/api/check")
-def check(req: CheckRequest) -> StreamingResponse:
+def check(req: CheckRequest, request: Request) -> StreamingResponse:
     if not loop.valid_mint(req.mint):
         raise HTTPException(400, "Not a valid Solana address")
+    allow_check(request)
 
     def work(emit):
         try:
@@ -109,7 +144,7 @@ def check(req: CheckRequest) -> StreamingResponse:
 
 
 @app.post("/api/agent")
-def agent(req: AgentRequest) -> StreamingResponse:
+def agent(req: AgentRequest, request: Request) -> StreamingResponse:
     image, image_type = None, "image/png"
     if req.image:
         header, _, data = req.image.partition(",")
@@ -128,4 +163,7 @@ def agent(req: AgentRequest) -> StreamingResponse:
         if len(video) > MAX_VIDEO_BYTES:
             raise HTTPException(413, "clip is over 25 MB")
 
-    return stream(lambda emit: loop.run(req.message, image=image, image_type=image_type, emit=emit, as_of=req.as_of, video=video))
+    allow_check(request)
+    history = [t.model_dump() for t in req.history]
+    return stream(lambda emit: loop.run(req.message, image=image, image_type=image_type, emit=emit, as_of=req.as_of,
+                                        video=video, history=history))

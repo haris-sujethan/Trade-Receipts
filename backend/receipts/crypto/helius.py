@@ -10,6 +10,7 @@ import datetime as dt
 import hashlib
 import json
 import sqlite3
+import threading
 import time
 
 import httpx
@@ -29,6 +30,7 @@ CREDITS = {
 }
 PAGE = 100  # full transactions per getTransactionsForAddress page
 MIN_INTERVAL = 0.1  # stay near 10 requests a second
+MAX_INTERVAL = 1.0
 
 
 class BudgetExceeded(RuntimeError):
@@ -40,6 +42,9 @@ class HeliusError(RuntimeError):
 
 
 class Helius:
+    """Safe to share between threads: the cache, the ledger and the request pacing are locked, and
+    requests themselves run in parallel up to MIN_INTERVAL apart."""
+
     def __init__(self, settings: Settings = default_settings, http: httpx.Client | None = None):
         self.settings = settings
         self.key = settings.require("helius_api_key")
@@ -47,64 +52,81 @@ class Helius:
         self.ledger_path = settings.data_dir / "ledger" / "helius.jsonl"
         cache_path = settings.data_dir / "cache" / "helius.sqlite"
         cache_path.parent.mkdir(parents=True, exist_ok=True)
-        self.cache = sqlite3.connect(cache_path)
+        self.cache = sqlite3.connect(cache_path, check_same_thread=False)
         self.cache.execute("CREATE TABLE IF NOT EXISTS calls (key TEXT PRIMARY KEY, result TEXT)")
         self._last_call = 0.0
+        self._interval = MIN_INTERVAL  # widened while Helius is refusing requests, then narrowed again
+        self._lock = threading.Lock()  # cache and ledger
+        self._pace = threading.Lock()  # request spacing
+        self._month: tuple[str, int] | None = None  # (month, credits logged), read from the ledger once
 
     def spent_this_month(self) -> int:
-        if not self.ledger_path.exists():
-            return 0
         month = dt.datetime.now(dt.UTC).strftime("%Y-%m")
-        return sum(
-            entry["credits"]
-            for entry in map(json.loads, self.ledger_path.read_text().splitlines())
-            if entry["at"].startswith(month)
-        )
+        if self._month is None or self._month[0] != month:
+            total = 0
+            if self.ledger_path.exists():
+                total = sum(entry["credits"] for entry in map(json.loads, self.ledger_path.read_text().splitlines())
+                            if entry["at"].startswith(month))
+            self._month = (month, total)
+        return self._month[1]
 
     def rpc(self, method: str, params: list, *, fresh: bool = False):
         key = hashlib.sha256(json.dumps([method, params], sort_keys=True).encode()).hexdigest()
         if not fresh:
-            row = self.cache.execute("SELECT result FROM calls WHERE key = ?", (key,)).fetchone()
+            with self._lock:
+                row = self.cache.execute("SELECT result FROM calls WHERE key = ?", (key,)).fetchone()
             if row:
                 return json.loads(row[0])
 
         credits = CREDITS.get(method, 1)
         budget = self.settings.helius_monthly_budget_credits
-        if self.spent_this_month() + credits > budget:
-            raise BudgetExceeded(f"Helius: {method} would pass this month's {budget:,} credit budget")
+        with self._lock:
+            if self.spent_this_month() + credits > budget:
+                raise BudgetExceeded(f"Helius: {method} would pass this month's {budget:,} credit budget")
 
-        wait = self._last_call + MIN_INTERVAL - time.monotonic()
-        if wait > 0:
-            time.sleep(wait)
         body = None
-        for attempt in range(5):
-            self._last_call = time.monotonic()
+        for attempt in range(8):
+            with self._pace:
+                wait = self._last_call + self._interval - time.monotonic()
+                if wait > 0:
+                    time.sleep(wait)
+                self._last_call = time.monotonic()
             reply = self.http.post(
                 RPC_URL.format(key=self.key),
                 json={"jsonrpc": "2.0", "id": 1, "method": method, "params": params},
             )
             if reply.status_code == 429:
-                time.sleep(2**attempt)
+                # Slow every thread down, then back off this request (Helius may say how long).
+                with self._pace:
+                    self._interval = min(MAX_INTERVAL, self._interval * 2)
+                time.sleep(float(reply.headers.get("retry-after") or min(16, 0.5 * 2**attempt)))
                 continue
             reply.raise_for_status()
             body = reply.json()
+            with self._pace:
+                self._interval = max(MIN_INTERVAL, self._interval * 0.95)
             break
         if body is None:
             raise HeliusError(f"{method}: still rate limited after retries")
-        self._log(method, credits)
+        with self._lock:
+            self._log(method, credits)
         if "error" in body:
             raise HeliusError(f"{method}: {body['error']}")
         result = body["result"]
         if result is not None:
-            self.cache.execute("INSERT OR REPLACE INTO calls VALUES (?, ?)", (key, json.dumps(result)))
-            self.cache.commit()
+            with self._lock:
+                self.cache.execute("INSERT OR REPLACE INTO calls VALUES (?, ?)", (key, json.dumps(result)))
+                self.cache.commit()
         return result
 
     def _log(self, method: str, credits: int) -> None:
         self.ledger_path.parent.mkdir(parents=True, exist_ok=True)
-        entry = {"at": dt.datetime.now(dt.UTC).isoformat(timespec="seconds"), "method": method, "credits": credits}
+        now = dt.datetime.now(dt.UTC)
+        entry = {"at": now.isoformat(timespec="seconds"), "method": method, "credits": credits}
         with self.ledger_path.open("a") as f:
             f.write(json.dumps(entry) + "\n")
+        if self._month and self._month[0] == now.strftime("%Y-%m"):
+            self._month = (self._month[0], self._month[1] + credits)
 
     # The calls the pipeline uses
 
@@ -127,7 +149,7 @@ class Helius:
         for page in range(max_pages):
             options = {"transactionDetails": "full", "sortOrder": order, "limit": PAGE,
                        "filters": {"blockTime": {"gte": int(gte), "lte": int(lte)}, "status": "succeeded"},
-                       "encoding": "json", "maxSupportedTransactionVersion": 0}
+                       "encoding": "json", "maxSupportedTransactionVersion": 1}
             if token:
                 options["paginationToken"] = token
             result = self.rpc("getTransactionsForAddress", [address, options], fresh=lte >= time.time() - 60)

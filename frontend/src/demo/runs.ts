@@ -113,7 +113,8 @@ export type Check = {
   };
   bubble_map: { nodes: MapNode[]; links: MapLink[]; funders?: MapFunder[] };
   similar: Similar[];
-  copycats: { total: number; tokens: { mint: string; name: string; symbol: string; age_s: number }[] };
+  /** `covered` is false for tokens launched after the name-search history ends (mid-September 2026). */
+  copycats?: { total: number; covered?: boolean; tokens: { mint: string; name: string; symbol: string; age_s: number }[] };
   /** The most repeated exact buy sizes: how many buys, from how many wallets. */
   same_size_buys?: { sol: number; count: number; wallets: number }[];
 };
@@ -123,9 +124,14 @@ export type AnswerEvent = {
   text: string;
   audit: { numbers: number; passed: boolean; first_try_passed: boolean; unverified: string[] };
   check: Check;
+  /** The model that wrote the text, or null when Meta is off and the text is the check's own findings. */
+  explained_by?: string | null;
 };
 
-export type RunEvent = StepEvent | ProgressEvent | AnswerEvent;
+/** Something the backend wants the person to know while it works (a slow source, a limit close by). */
+export type NoticeEvent = { type: "notice"; message: string };
+
+export type RunEvent = StepEvent | ProgressEvent | AnswerEvent | NoticeEvent;
 
 export type Run = {
   id: string;

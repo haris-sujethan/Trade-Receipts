@@ -229,7 +229,7 @@ function OutcomeLine({ check }: { check: Check }) {
 }
 
 function Copycats({ check }: { check: Check }) {
-  const list = check.copycats.tokens.slice(0, 4);
+  const list = (check.copycats?.tokens ?? []).slice(0, 4);
   if (!list.length) return <p className="viz-empty">No other token used the name in the week before.</p>;
   return (
     <ul className="viz-copy" aria-label="Tokens that used the same name or ticker in the week before">
@@ -403,7 +403,7 @@ function cards(run: Run, check: Check): Card[] {
       sub: "Copycats and token authorities",
       visual: <Copycats check={check} />,
       rows: [
-        ["Copycat names in the week before", whole(check.copycats.total)],
+        ["Copycat names in the week before", check.copycats?.covered === false ? "Not checked yet" : whole(check.copycats?.total ?? 0)],
         ["New tokens can be minted", yesNo(auth["new tokens can be minted"])],
         ["Holders’ accounts can be frozen", yesNo(auth["holders' accounts can be frozen"])],
         ["Authorities source", "Powered by GoPlus"],
