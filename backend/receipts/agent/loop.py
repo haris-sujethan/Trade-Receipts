@@ -13,6 +13,7 @@ Events for the thread (server-sent events, SPEC.md 8.3):
 """
 
 import base64
+import datetime as dt
 import hashlib
 import json
 import math
@@ -21,10 +22,11 @@ import time
 import uuid
 
 import base58
+import httpx
 
 from receipts.agent import audit, meta
 from receipts.config import settings
-from receipts.crypto import copycats, copytrade, live, prompt
+from receipts.crypto import copycats, copytrade, live, prompt, search
 from receipts.crypto.goplus import CREDIT as GOPLUS_CREDIT, GoPlus
 
 MODEL = "muse-spark-1.3"
@@ -60,7 +62,8 @@ NOT_CHECKED_LIVE = ("creator_rugs_24h", "group_rugs_24h", "group_launches_24h", 
 SYSTEM = f"""You are the agent in Trade Receipts. You check new pump.fun tokens on Solana for the chance that their team rugs (sells its supply into buyers), and you backtest copying a pump.fun wallet: what someone would have made buying a while after it bought and selling a while after it sold.
 
 How to work:
-- Get the token's mint. If the user sent a screenshot or clip, call read_address on it. If they gave only a name or ticker, call find_token, list the tokens it finds with their age, market cap and holders, and ask which one they mean. Never pick one for them.
+- Get the token's mint. If the user sent a screenshot or clip, call read_address on it. If they gave only a name or ticker, or read_address found a ticker but no address, call find_token. If it finds exactly one pump.fun token, check that one and say it was the only match. If it finds several, list them with what find_token gives and ask which one they mean; never pick one of several for them.
+- When a clip or screenshot made claims (gains, market caps, "dev doxxed"), say what the check shows next to each claim it covers.
 - Call check_token with the mint. Call token_security as a cross-check.
 - If the user gives a pump.fun profile link (pump.fun/profile/...) or asks about copying a wallet, you need three values: how long after its buys they'd buy, how long after its sells they'd sell, and how many of its latest closed positions to copy (25, 50 or 100). If they gave all three, call copy_trade (convert minutes to seconds). If any is missing, don't call it yet: reply with the values you'd use (theirs, otherwise 30 seconds, 30 seconds and 50 positions) and ask them to confirm or change them. Call copy_trade once they confirm.
 - Report the wallet's result and theirs, what it's based on, and what the price did right after the wallet bought and sold. Don't judge the wallet or say why it makes money; give the numbers.
@@ -232,15 +235,31 @@ class Run:
         }
 
     def find_token(self, query: str) -> dict:
+        """Tokens by ticker or name: the launch history when it covers the time asked about, otherwise
+        a live search (search.py, DEX Screener)."""
         when = self.as_of or int(time.time())
-        if not copycats.covered(when):
-            return {"error": "Name search covers launches through mid-September 2026 for now. Ask the user for the token's mint address."}
-        found = copycats.search(query, when)
+        if copycats.covered(when):
+            found = copycats.search(query, when)
+            if not found["total"]:
+                return {"error": f"No pump.fun token named {query} launched in the week before. Ask for the mint address."}
+            return {"found": found["total"], "most_active": [
+                f"{x['name']} ({x['symbol']}), mint {x['mint']}: {prompt._secs(x['age_s'])} old, "
+                + (f"market cap {prompt._sol(x['mcap_sol'])}, {x['holders']} holders" if x["mcap_sol"] is not None else "little activity")
+                for x in found["tokens"]]}
+        try:
+            found = search.search(query)
+        except httpx.HTTPError as e:
+            return {"error": f"The live token search didn't answer ({type(e).__name__}). Ask for the token's mint or pump.fun link."}
         if not found["total"]:
-            return {"error": f"No pump.fun token named {query} launched in the week before. Ask for the mint address."}
-        return {"found": found["total"], "most_active": [
-            f"{x['name']} ({x['symbol']}), mint {x['mint']}: {prompt._secs(x['age_s'])} old, "
-            + (f"market cap {prompt._sol(x['mcap_sol'])}, {x['holders']} holders" if x["mcap_sol"] is not None else "little activity")
+            return {"error": f"No pump.fun token with the ticker or name {query} turned up. Ask for the mint or pump.fun link."}
+
+        def usd(x):
+            return "n/a" if x is None else f"${x:,.0f}"
+
+        return {"found": found["total"], "source": f"Live search by {found['source']}", "most_liquid": [
+            f"{x['name']} ({x['symbol']}), mint {x['mint']}: first pair "
+            + (dt.datetime.fromtimestamp(x["created_ts"], dt.UTC).strftime("%b %d, %Y") if x["created_ts"] else "date unknown")
+            + f"; market cap {usd(x['mcap_usd'])}, liquidity {usd(x['liquidity_usd'])}, 24h volume {usd(x['volume_24h_usd'])}"
             for x in found["tokens"]]}
 
     def token_security(self, mint: str) -> dict:

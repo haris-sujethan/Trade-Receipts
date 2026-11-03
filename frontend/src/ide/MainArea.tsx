@@ -3,11 +3,11 @@ import { Check, Columns2, Copy, Download, FileCode2, FileText, FileVideo, Play, 
 import { runs, type ProjectFile } from "../data/examples";
 import { answerOf } from "../demo/runs";
 import { onTablistKeyDown } from "../lib/tabs";
-import { checkOf, copyRunOf, copyTitle, fileById, fileOf, hasRun, useIde, type TabId } from "./state";
+import { checkOf, copyRunOf, copyTitle, fileById, fileOf, hasRun, NEW_COPY_TAB, useIde, type TabId } from "./state";
 import { CodeView } from "./CodeView";
 import { ResultsView } from "./ResultsView";
 import { CheckTab } from "./CheckTab";
-import { CopyTab } from "./CopyTab";
+import { CopyTab, NewCopyTab } from "./CopyTab";
 import { ClipView } from "./ClipView";
 import { useNarrow } from "./useNarrow";
 
@@ -20,6 +20,7 @@ function tabLabel(id: TabId, state: ReturnType<typeof useIde>["state"]): string 
     const symbol = answerOf(check.run)?.check?.symbol;
     return symbol ? `${symbol} check` : "New check";
   }
+  if (id === NEW_COPY_TAB) return "New backtest";
   const copy = copyRunOf(state, id);
   if (copy) return copyTitle(copy);
   if (id.startsWith("results:")) {
@@ -119,6 +120,7 @@ function TabContent({ id, split, narrow }: { id: TabId; split: boolean; narrow: 
   const { state } = useIde();
   const check = checkOf(state, id);
   if (check) return <CheckTab check={check} />;
+  if (id === NEW_COPY_TAB) return <NewCopyTab />;
   const copy = copyRunOf(state, id);
   if (copy) return <CopyTab key={copy.key} run={copy} />;
   if (id.startsWith("check:") || id.startsWith("copy:")) return <EmptyState />;

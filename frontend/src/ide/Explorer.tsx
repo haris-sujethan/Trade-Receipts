@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, ChevronRight, FileCode2, FileText, FileVideo, Lock, ScanSearch, Timer } from "lucide-react";
+import { ChevronDown, ChevronRight, FileCode2, FileText, FileVideo, Lock, PanelLeftClose, ScanSearch, Timer } from "lucide-react";
 import { projectFiles, type ProjectFile } from "../data/examples";
 import { answerOf, duration, loadRun, shortAddr } from "../demo/runs";
 import { copyTitle, isCopyRun, tabOf, useIde } from "./state";
@@ -114,6 +114,9 @@ export function Explorer() {
           <Lock size={11} aria-hidden />
           Read-only
         </span>
+        <button className="icon-btn icon-btn--sm pane-hide" title="Hide the files" aria-label="Hide the files" onClick={() => dispatch({ type: "pane", pane: "files", open: false })}>
+          <PanelLeftClose size={15} aria-hidden />
+        </button>
       </div>
       <ul className="tree tree--root">
         {folders.map((folder) => {

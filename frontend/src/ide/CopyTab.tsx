@@ -1,9 +1,21 @@
-import { Fragment, useMemo, useState, type FormEvent } from "react";
-import { AlertTriangle, ChevronDown, ChevronRight, LoaderCircle, Play } from "lucide-react";
-import { duration, pct, shortAddr, signedPct, signedSol, whole, type CopyRequest, type CopyTrade, type Fill, type Position, type Result, type Totals } from "../demo/runs";
+import { Fragment, useEffect, useMemo, useState, type FormEvent } from "react";
+import { AlertTriangle, ChevronDown, ChevronRight, LoaderCircle, Play, RotateCcw, SquareArrowOutUpRight } from "lucide-react";
+import { duration, loadRun, pct, shortAddr, signedPct, signedSol, whole, type CopyRequest, type CopyTrade, type Fill, type Position, type Result } from "../demo/runs";
 import { useBackend, useCheckFrame } from "./live";
-import { MarkKey, mcap, PositionChart, ResultBar } from "./PositionChart";
-import { COPY_POSITIONS, copyRequestOf, copyResultOf, finishedCopyOf, isCopyRun, tabOf, useIde, type CheckRun } from "./state";
+import { change, CopySummary } from "../demo/CopyViews";
+import { MarkKey, mcap, PositionChart, ResultBar } from "../demo/PositionChart";
+import {
+  COPY_FRESH_MS,
+  COPY_POSITIONS,
+  copyRequestOf,
+  copyResultOf,
+  finishedCopyOf,
+  isCopyRun,
+  latestCopy,
+  tabOf,
+  useIde,
+  type CheckRun,
+} from "./state";
 import "./copy.css";
 
 /**
@@ -87,16 +99,99 @@ export function CopyTab({ run }: { run: CheckRun }) {
   );
 }
 
+/** The blank form in Copy trade mode, with the saved backtest to open. Nothing runs until Run backtest is pressed. */
+export function NewCopyTab() {
+  const { state, dispatch } = useIde();
+  const [loading, setLoading] = useState<string | null>(null);
+
+  function open(id: string) {
+    const key = `saved:${id}`;
+    if (state.checks[key]) return dispatch({ type: "open", id: `copy:${key}` });
+    setLoading(id);
+    loadRun(id)
+      .then((run) => dispatch({ type: "openSavedCopy", key, run }))
+      .finally(() => setLoading(null));
+  }
+
+  return (
+    <div className="copy">
+      <CopyForm runKey="new" />
+      <div className="copy__body">
+        <section className="copyx" aria-labelledby="copyx-h">
+          <h2 id="copyx-h" className="copyr__h">
+            Saved backtest
+          </h2>
+          {state.savedCopies.length === 0 ? (
+            <p className="copyx__note">None saved in this preview.</p>
+          ) : (
+            <ul>
+              {state.savedCopies.map((r) => (
+                <li key={r.id}>
+                  <button onClick={() => open(r.id)}>
+                    <span className="mono">{shortAddr(r.wallet)}</span>
+                    <span>
+                      {r.buy_after_s != null && r.sell_after_s != null ? `${duration(r.buy_after_s)} after its buys, ${duration(r.sell_after_s)} after its sells` : ""}
+                      {r.positions != null ? `, ${r.positions} positions` : ""}
+                    </span>
+                    <span className="copyx__when">{loading === r.id ? "Opening" : `Saved ${ago(r.saved_at * 1000)}`}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="copyx__note">A wallet from pump.fun’s leaderboard. Opening it shows the saved result; nothing runs.</p>
+        </section>
+      </div>
+    </div>
+  );
+}
+
 /* ---------- The form ---------- */
 
+/** How long ago something ran: "just now", "3 min ago", "2 h ago", "4 days ago". */
+function ago(ms: number) {
+  const s = Math.max(0, (Date.now() - ms) / 1000);
+  if (s < 60) return "just now";
+  if (s < 3600) return `${Math.floor(s / 60)} min ago`;
+  if (s < 48 * 3600) return `${Math.floor(s / 3600)} h ago`;
+  return `${Math.floor(s / 86400)} days ago`;
+}
+
+/** Re-renders every half minute, so "3 min ago" and the 30-minute refresh stay true. */
+function useMinuteClock() {
+  const [, setNow] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => setNow((n) => n + 1), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
+}
+
+type Draft = { wallet: string; buy: number | null; sell: number | null; size: string; positions: number };
+/** Each tab's form as last left, so switching tabs and back keeps what was typed (for this visit). */
+const drafts = new Map<string, Draft>();
+
 function CopyForm({ runKey, request }: { runKey: string; request?: CopyRequest }) {
-  const { dispatch } = useIde();
+  const { state, dispatch } = useIde();
   const backend = useBackend();
-  const [wallet, setWallet] = useState(request?.wallet ?? "");
-  const [buy, setBuy] = useState<number | null>(request?.buy_after_s ?? 300);
-  const [sell, setSell] = useState<number | null>(request?.sell_after_s ?? 600);
-  const [size, setSize] = useState(String(request?.size_sol ?? 1));
-  const [positions, setPositions] = useState(request?.positions ?? COPY_POSITIONS);
+  useMinuteClock();
+  const [start] = useState<Draft>(
+    () =>
+      drafts.get(runKey) ?? {
+        wallet: request?.wallet ?? "",
+        buy: request?.buy_after_s ?? 30,
+        sell: request?.sell_after_s ?? 30,
+        size: String(request?.size_sol ?? 1),
+        positions: request?.positions ?? COPY_POSITIONS,
+      },
+  );
+  const [wallet, setWallet] = useState(start.wallet);
+  const [buy, setBuy] = useState<number | null>(start.buy);
+  const [sell, setSell] = useState<number | null>(start.sell);
+  const [size, setSize] = useState(start.size);
+  const [positions, setPositions] = useState(start.positions);
+  useEffect(() => {
+    drafts.set(runKey, { wallet, buy, sell, size, positions });
+  }, [runKey, wallet, buy, sell, size, positions]);
   const positionOptions = [...new Set([...POSITION_PRESETS, positions])].sort((a, b) => a - b);
   const [tried, setTried] = useState(false);
   const live = backend === "online";
@@ -110,12 +205,30 @@ function CopyForm({ runKey, request }: { runKey: string; request?: CopyRequest }
         ? "SOL per position: more than 0, up to 1,000."
         : null;
 
+  // The same values make the same run: point at it instead of running it again, unless its data is past 30 minutes.
+  const values: CopyRequest | null = !problem && address && buy != null && sell != null ? { wallet: address, buy_after_s: buy, sell_after_s: sell, size_sol: sizeSol, positions } : null;
+  const same = values ? latestCopy(state, values) : undefined;
+  const here = same?.key === runKey;
+  const fresh = !!same && same.status === "done" && Date.now() - (same.at ?? 0) < COPY_FRESH_MS;
+  const action: "run" | "running" | "open" | "showing" | "again" =
+    !same ? "run" : same.status === "running" ? (here ? "running" : "open") : fresh ? (here ? "showing" : "open") : "again";
+
   function submit(e: FormEvent) {
     e.preventDefault();
     setTried(true);
-    if (problem || !live || !address || buy == null || sell == null) return;
-    dispatch({ type: "copyStart", request: { wallet: address, buy_after_s: buy, sell_after_s: sell, size_sol: sizeSol, positions } });
+    if (problem || !live || !values) return;
+    if (same && (action === "open" || action === "showing")) return dispatch({ type: "open", id: `copy:${same.key}` });
+    if (action === "running") return;
+    dispatch({ type: "copyStart", request: values });
   }
+
+  const label = { run: "Run backtest", running: "Running…", open: "Open result", showing: "Showing this result", again: "Run again with newer trades" }[action];
+  const when =
+    same?.status === "running"
+      ? "Running now"
+      : same?.at
+        ? `Ran ${ago(same.at)}${action === "showing" ? "; change a value to run another" : ""}`
+        : null;
 
   const note =
     backend === "checking"
@@ -165,6 +278,27 @@ function CopyForm({ runKey, request }: { runKey: string; request?: CopyRequest }
         <DelayField legend="Sell after its sells" name={`sell-${runKey}`} value={sell} onChange={setSell} />
       </fieldset>
       <div className="copyf__foot">
+        <div className="copyf__confirm" id={`copy-values-${runKey}`}>
+          <p>{confirm}</p>
+          {live && when && <p className="copyf__when">{when}</p>}
+        </div>
+        <button
+          className="run-btn"
+          type="submit"
+          disabled={!live || action === "running" || action === "showing"}
+          aria-describedby={`copy-values-${runKey} copy-why-${runKey}`}
+        >
+          {action === "open" ? (
+            <SquareArrowOutUpRight size={13} aria-hidden />
+          ) : action === "again" ? (
+            <RotateCcw size={13} aria-hidden />
+          ) : action === "running" ? (
+            <LoaderCircle size={13} className="spin" aria-hidden />
+          ) : (
+            <Play size={13} aria-hidden fill="currentColor" />
+          )}
+          {label}
+        </button>
         <p className="copyf__note" id={`copy-why-${runKey}`}>
           {tried && problem && live ? (
             <span className="copyf__error" role="alert">
@@ -174,13 +308,6 @@ function CopyForm({ runKey, request }: { runKey: string; request?: CopyRequest }
             note
           )}
         </p>
-        <p className="copyf__confirm" id={`copy-values-${runKey}`}>
-          {confirm}
-        </p>
-        <button className="run-btn" type="submit" disabled={!live} aria-describedby={`copy-values-${runKey} copy-why-${runKey}`}>
-          <Play size={13} aria-hidden fill="currentColor" />
-          Run backtest
-        </button>
       </div>
     </form>
   );
@@ -265,19 +392,9 @@ function DelayField({ legend, name, value, onChange }: { legend: string; name: s
 
 /* ---------- The result ---------- */
 
-function median(values: (number | null)[]) {
-  const v = values.filter((x): x is number => x != null).sort((a, b) => a - b);
-  if (!v.length) return null;
-  const m = Math.floor(v.length / 2);
-  return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2;
-}
-
-const change = (v: number | null) => (v == null ? "No price" : signedPct(v));
-
 function CopyResult({ r, runKey }: { r: CopyTrade; runKey: string }) {
   const { state, dispatch } = useIde();
   const [open, setOpen] = useState<number | null>(0);
-  const moves = useMemo(() => ({ buy: median(r.rows.map((p) => p.after_buy.change)), sell: median(r.rows.map((p) => p.after_sell.change)) }), [r]);
   // One scale for every row's drawing: zero, and the widest result either side of it.
   const [lo, hi] = useMemo(() => {
     const v = r.rows.flatMap((p) => [p.wallet.pnl_pct, p.you.pnl_pct]).filter((x): x is number => x != null);
@@ -285,61 +402,10 @@ function CopyResult({ r, runKey }: { r: CopyTrade; runKey: string }) {
   }, [r]);
   // Other runs on the same wallet in this session, to compare timings.
   const others = Object.values(state.checks).filter((c) => isCopyRun(c) && finishedCopyOf(c)?.wallet === r.wallet);
-  const left: [number, string][] = [
-    [r.skipped.not_sol_priced, "priced in something other than SOL"],
-    [r.skipped.still_open, "still open"],
-    [r.skipped.bought_before_history, "opened before the history read"],
-    [r.skipped.no_prices, "with no trades to price them"],
-  ];
 
   return (
     <div className="copyr">
-      <header className="copyr__head">
-        <div>
-          <h2 className="copyr__title">
-            Copying <span className="mono">{shortAddr(r.wallet)}</span>
-          </h2>
-          <p className="copyr__sub">
-            {duration(r.buy_after_s)} after its buys, {duration(r.sell_after_s)} after its sells, {r.size_sol} SOL a position.
-          </p>
-          <p className="copyr__sub">{basedOn(r)}</p>
-        </div>
-        <a className="copyr__link" href={`https://pump.fun/profile/${r.wallet}`} target="_blank" rel="noreferrer">
-          Its pump.fun profile
-        </a>
-      </header>
-
-      <div className="copyr__totals">
-        <Total who="The wallet" t={r.wallet_total} n={r.positions} mark="wallet" />
-        <Total who="You, copying it" t={r.you_total} n={r.positions} mark="you" />
-        <section className="total total--after" aria-label="The price after its trades">
-          <p className="total__who">The price after its trades, median</p>
-          <dl className="total__moves">
-            <div>
-              <dt>In the {duration(r.buy_after_s)} after its buys</dt>
-              <dd>{change(moves.buy)}</dd>
-            </div>
-            <div>
-              <dt>In the {duration(r.sell_after_s)} after its sells</dt>
-              <dd>{change(moves.sell)}</dd>
-            </div>
-          </dl>
-        </section>
-      </div>
-
-      <ul className="copyr__notes">
-        {left
-          .filter(([n]) => n > 0)
-          .map(([n, why]) => (
-            <li key={why}>
-              Left out: {n} {n === 1 ? "token" : "tokens"} {why}.
-            </li>
-          ))}
-        {r.notes.map((n) => (
-          <li key={n}>{n}</li>
-        ))}
-        <li>Not financial advice.</li>
-      </ul>
+      <CopySummary r={r} />
 
       {others.length > 1 && (
         <section className="copyr__runs" aria-labelledby={`runs-${runKey}`}>
@@ -354,7 +420,7 @@ function CopyResult({ r, runKey }: { r: CopyTrade; runKey: string }) {
                 <li key={c.key}>
                   <button className={here ? "is-on" : ""} aria-current={here ? "true" : undefined} onClick={() => dispatch({ type: "open", id: tabOf(c) })}>
                     <span>
-                      {duration(o.buy_after_s)} / {duration(o.sell_after_s)}
+                      {duration(o.buy_after_s)} / {duration(o.sell_after_s)}, {o.positions_wanted ?? o.positions} positions
                     </span>
                     <span className="num">{signedSol(o.you_total.pnl_sol)}</span>
                     <span className="num">{o.you_total.pnl_pct != null ? signedPct(o.you_total.pnl_pct) : ""}</span>
@@ -464,39 +530,6 @@ function CopyResult({ r, runKey }: { r: CopyTrade; runKey: string }) {
 
 const when = (ts: number) =>
   new Date(ts * 1000).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
-
-/** A stretch of trading, roughly: "about 40 minutes", "about 17 hours", "about 3 days". */
-function span(hours: number) {
-  if (hours < 1) return `about ${Math.max(1, Math.round(hours * 60))} minutes`;
-  if (hours < 48) return `about ${Math.round(hours)} ${Math.round(hours) === 1 ? "hour" : "hours"}`;
-  return `about ${Math.round(hours / 24)} days`;
-}
-
-/** What a run is based on: its positions, one per token, and how much of the wallet's history they came from. */
-function basedOn(r: CopyTrade) {
-  const n = `${r.positions} closed ${r.positions === 1 ? "position" : "positions"} (one per token)`;
-  const h = r.history;
-  if (!h) return `Based on its latest ${n}, newest first.`;
-  const from = `${h.complete ? "its whole history, " : "its last "}${whole(h.transactions)} transactions${h.hours != null ? `, ${span(h.hours)} of trading` : ""}`;
-  const based = r.positions_wanted != null && r.positions < r.positions_wanted ? `Only ${n} in ${from}.` : `Based on its latest ${n}, from ${from}.`;
-  return r.reused_data ? `${based} Reused the data already pulled for this wallet.` : based;
-}
-
-function Total({ who, t, n, mark }: { who: string; t: Totals; n: number; mark: "wallet" | "you" }) {
-  return (
-    <section className="total" aria-label={who}>
-      <p className="total__who">
-        <MarkKey who={mark} />
-        {who}
-      </p>
-      <p className="total__pnl">{t.pnl_pct != null ? signedPct(t.pnl_pct) : signedSol(t.pnl_sol)}</p>
-      <p className="total__pct">{t.pnl_pct != null ? `${signedSol(t.pnl_sol)} on ${t.spent_sol.toFixed(2)} SOL spent` : "Nothing spent"}</p>
-      <p className="total__won">
-        {t.won} of {n} {n === 1 ? "position" : "positions"} made money
-      </p>
-    </section>
-  );
-}
 
 /** One position opened up: what the price did while you waited, its chart, and every fill. */
 function PositionDetail({ p, r }: { p: Position; r: CopyTrade }) {

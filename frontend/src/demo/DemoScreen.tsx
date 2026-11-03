@@ -3,12 +3,38 @@ import { Pause, Play, RotateCcw } from "lucide-react";
 import wallpaper from "../assets/home/wallpaper.jpg";
 import { onTablistKeyDown } from "../lib/tabs";
 import { DemoWindow } from "./DemoWindow";
-import { loadRun, loadRuns, type Run, type RunSummary } from "./runs";
+import { loadCopyRuns, loadRun, loadRuns, type Run } from "./runs";
 import { frameAt, plan as makePlan, type View } from "./timeline";
 import "./demo.css";
 
 /** After a check finishes, its result stays up this long before the next token. */
 const HOLD_MS = 9000;
+
+/** One example on the desktop: a saved run, its pill's label, and the line under the demo. */
+type Slot = { id: string; label: string; about: string };
+
+const CHECK_ABOUT =
+  "A saved check, replayed. The token launched on May 16, 2026, a day the models never trained on, and was checked 15 minutes after launch.";
+
+/**
+ * The three examples, in order: a rug check (BABYBULL), a copy-trade backtest of a real wallet from pump.fun's
+ * leaderboard, and a check that didn't rug (Jim). Any that isn't saved here is left out.
+ */
+const SLOTS: Slot[] = [
+  { id: "8ieFgzKCkQj1eTLjpfSpXGS6vqkxDmYpu3avzWMhpump_900", label: "BABYBULL", about: CHECK_ABOUT },
+  {
+    id: "copy_GeUnv1jmtviRbR7Gu1JnXSGkUMUgFVBHuEVQVpTaUX1W",
+    label: "Copy trade",
+    about: "A saved copy-trade backtest, replayed: a wallet from pump.fun’s leaderboard, copied 5 minutes after its buys and 10 after its sells.",
+  },
+  { id: "BnK8QgRW6BGPbPV2b1tAZgxVwAJvJpEC9xPoQikRpump_900", label: "Jim", about: CHECK_ABOUT },
+];
+
+/** People type their question and paste the link: a message that opens with a link shows it pasted at the end. */
+function linkLast(message: string) {
+  const m = /^(\S*(?:pump\.fun\/|[1-9A-HJ-NP-Za-km-z]{32,44})\S*)\s+(.+)$/s.exec(message.trim());
+  return m ? `${m[2]} ${m[1]}` : message;
+}
 
 const reducedMotion = () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -17,7 +43,7 @@ const reducedMotion = () => typeof window !== "undefined" && window.matchMedia("
  * message to the result. It starts once it's on screen, and moves to the next token when a result has been up a while.
  */
 export function DemoScreen() {
-  const [runs, setRuns] = useState<RunSummary[] | null>(null);
+  const [runs, setRuns] = useState<Slot[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [active, setActive] = useState(0);
   const [run, setRun] = useState<Run | null>(null);
@@ -29,7 +55,10 @@ export function DemoScreen() {
   const frameRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    loadRuns().then(setRuns, () => setFailed(true));
+    Promise.all([loadRuns(), loadCopyRuns()]).then(([checks, copies]) => {
+      const saved = new Set([...checks.map((r) => r.id), ...copies.map((r) => r.id)]);
+      setRuns(SLOTS.filter((s) => saved.has(s.id)));
+    }, () => setFailed(true));
   }, []);
 
   useEffect(() => {
@@ -38,7 +67,7 @@ export function DemoScreen() {
     loadRun(runs[active].id).then(
       (r) => {
         if (!live) return;
-        setRun(r);
+        setRun(r.kind === "copy_trade" ? { ...r, message: linkLast(r.message) } : r);
         setT(reducedMotion() ? Number.POSITIVE_INFINITY : 0);
         setUserView(null);
       },
@@ -82,7 +111,7 @@ export function DemoScreen() {
     return () => window.clearTimeout(id);
   }, [finished, held, paused, visible, runs]);
 
-  const frame = plan && run ? frameAt(plan, run, Math.min(t, plan.end)) : null;
+  const frame = plan && run ? frameAt(plan, Math.min(t, plan.end)) : null;
   const view = userView ?? frame?.view ?? null;
 
   function choose(i: number) {
@@ -107,7 +136,7 @@ export function DemoScreen() {
       >
         <img className="mac__wall" src={wallpaper} alt="" />
         {runs && runs.length > 0 && (
-          <div className="mac__tabs" role="tablist" aria-label="Saved checks" onKeyDown={onTablistKeyDown}>
+          <div className="mac__tabs" role="tablist" aria-label="Saved examples" onKeyDown={onTablistKeyDown}>
             {runs.map((r, i) => (
               <button
                 key={r.id}
@@ -118,24 +147,20 @@ export function DemoScreen() {
                 className={i === active ? "is-on" : ""}
                 onClick={() => choose(i)}
               >
-                {r.symbol ?? shortMint(r.mint)}
-                {r.clip && <span className="mac__tab-note">from a clip</span>}
+                {r.label}
               </button>
             ))}
           </div>
         )}
 
         <div id="demo-window" className="mac__window" role="tabpanel">
-          {failed && <p className="mac__empty">The saved checks didn’t load. Launch the IDE to run one live.</p>}
+          {failed && <p className="mac__empty">The saved examples didn’t load. Launch the IDE to run one live.</p>}
           {!failed && run && plan && frame && <DemoWindow run={run} plan={plan} frame={frame} view={view} onView={setUserView} />}
         </div>
       </div>
 
       <div className="demo__foot">
-        <p>
-          A saved check, replayed. Each token launched on May 16, 2026, a day the models never trained on, and was checked
-          15 minutes after launch.
-        </p>
+        <p>{runs?.[active]?.about ?? CHECK_ABOUT}</p>
         {plan && (
           <div className="demo__controls">
             {!finished && (
@@ -154,5 +179,3 @@ export function DemoScreen() {
     </div>
   );
 }
-
-const shortMint = (m: string) => `${m.slice(0, 4)}…`;

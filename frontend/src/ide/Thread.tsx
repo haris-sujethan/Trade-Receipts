@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
-import { AlertTriangle, ArrowUp, ImagePlus, Paperclip, Plus, History, X } from "lucide-react";
+import { AlertTriangle, ArrowUp, ImagePlus, PanelRightClose, Paperclip, Play, Plus, History, X } from "lucide-react";
 import { RunSteps } from "../demo/CheckViews";
-import { loadRun } from "../demo/runs";
+import { answerOf, loadRun } from "../demo/runs";
 import { useBackend, useCheckFrame } from "./live";
 import {
+  COPY_FRESH_MS,
   COPY_HERO_KEY,
   copySoon,
   exampleThreadTitle,
@@ -13,6 +14,7 @@ import {
   LIVE_SOON,
   savedCopyMatch,
   savedMatch,
+  tabOf,
   threadSubjects,
   threadTitle,
   useIde,
@@ -21,6 +23,11 @@ import {
   type WorkTab,
 } from "./state";
 import "../demo/demo.css";
+
+const minutesAgo = (ms: number) => {
+  const m = Math.floor((Date.now() - ms) / 60_000);
+  return m < 1 ? "just now" : `${m} min ago`;
+};
 
 /** A Solana address in a message: a token's mint or a wallet. */
 const ADDRESS = /[1-9A-HJ-NP-Za-km-z]{32,44}/g;
@@ -85,6 +92,21 @@ export function Thread() {
   // What the thread's results are about: a message naming anything else gets a thread of its own.
   const subjects = threadSubjects(state);
   const hasResult = subjects.size > 0;
+  // One live answer at a time in a thread: the box waits while the agent works.
+  const busy = items.some((m) => m.kind === "check" && state.checks[m.key]?.mode === "live" && state.checks[m.key]?.status === "running");
+
+  /** The same message sent again in this thread, while its result is running or fresh: point at it instead. */
+  function repeatOf(text: string) {
+    const said = text.trim().toLowerCase();
+    for (let i = items.length - 1; i >= 0; i--) {
+      const m = items[i];
+      const next = items[i + 1];
+      if (m.kind !== "user" || m.text.trim().toLowerCase() !== said || next?.kind !== "check") continue;
+      const c = state.checks[next.key];
+      if (c && (c.status === "running" || (c.status === "done" && Date.now() - (c.at ?? 0) < COPY_FRESH_MS))) return c;
+    }
+    return undefined;
+  }
 
   async function attach(kind: Attachment["kind"], file: File | undefined) {
     setAttachError(null);
@@ -98,7 +120,23 @@ export function Thread() {
   async function send(e?: FormEvent) {
     e?.preventDefault();
     const text = state.draft.trim();
-    if ((!text && !attachment) || sending) return;
+    if ((!text && !attachment) || sending || busy) return;
+    const repeat = !attachment && repeatOf(text);
+    if (repeat) {
+      const tab = tabOf(repeat);
+      const opens = isCopyRun(repeat) || !!answerOf(repeat.run)?.check;
+      if (opens) dispatch({ type: "open", id: tab });
+      return dispatch({
+        type: "send",
+        reply: {
+          kind: "text",
+          text:
+            repeat.status === "running"
+              ? "That's the same as your message above, and it's still running there."
+              : `That's the same as your message above, so its result stands: it ran ${minutesAgo(repeat.at ?? Date.now())}.${opens ? " It's open in the editor." : ""} Change a value to run another.`,
+        },
+      });
+    }
     // A clip or screenshot is a token to check, so with a result here already it starts a thread of its own.
     if (attachment && backend === "online") {
       dispatch({ type: "send", reply: { kind: "live", attachment }, fresh: hasResult });
@@ -155,6 +193,9 @@ export function Thread() {
             <Plus size={16} aria-hidden />
           </button>
           <ThreadHistory />
+          <button className="icon-btn icon-btn--sm pane-hide" title="Hide the thread" aria-label="Hide the thread" onClick={() => dispatch({ type: "pane", pane: "thread", open: false })}>
+            <PanelRightClose size={15} aria-hidden />
+          </button>
         </div>
       </div>
 
@@ -246,7 +287,13 @@ export function Thread() {
           <span className="composer__model" title="The model that runs the agent">
             Muse Spark 1.3
           </span>
-          <button type="submit" className="send" aria-label="Send" disabled={(!state.draft.trim() && !attachment) || sending}>
+          <button
+            type="submit"
+            className="send"
+            aria-label={busy ? "Send (waiting for the answer above)" : "Send"}
+            title={busy ? "Waiting for the answer above" : undefined}
+            disabled={(!state.draft.trim() && !attachment) || sending || busy}
+          >
             <ArrowUp size={16} strokeWidth={2.5} aria-hidden />
           </button>
         </div>
@@ -312,16 +359,27 @@ function ThreadCheck({ checkKey }: { checkKey: string }) {
   );
 }
 
-/** An example thread: the lead saved check, replayed during the tour, or the saved copy-trade backtest. */
+/** An example thread: the lead saved check, replayed during the tour, or the saved copy-trade backtest. It plays only
+ * when asked. */
 function Example({ checkKey, tour }: { checkKey: string; tour?: boolean }) {
-  const { state } = useIde();
+  const { state, dispatch } = useIde();
   const run = state.checks[checkKey];
   return (
     <>
       <div className="msg msg--user" data-tour={tour ? "ask" : undefined}>
         <p>{run.run.message}</p>
       </div>
-      {run.status !== "waiting" && <ThreadCheck checkKey={checkKey} />}
+      {run.status === "waiting" ? (
+        <div className="thread__run">
+          <p className="thread__tag">A saved {checkKey === COPY_HERO_KEY ? "backtest" : "check"}. It replays when you ask; nothing runs live.</p>
+          <button className="tool-btn" onClick={() => dispatch({ type: "playExample", key: checkKey })}>
+            <Play size={12} aria-hidden fill="currentColor" />
+            Replay it
+          </button>
+        </div>
+      ) : (
+        <ThreadCheck checkKey={checkKey} />
+      )}
     </>
   );
 }

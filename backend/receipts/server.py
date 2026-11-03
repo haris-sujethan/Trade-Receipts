@@ -63,7 +63,7 @@ def allow_check(request: Request, follow_up: bool = False) -> None:
         while _all_checks and _all_checks[0] < now - 86400:
             _all_checks.popleft()
         if len(mine) >= CHECKS_PER_HOUR:
-            raise HTTPException(429, f"That's {CHECKS_PER_HOUR} live checks this hour. Saved checks still replay; try again later.")
+            raise HTTPException(429, f"That's {CHECKS_PER_HOUR} live checks and backtests this hour. Saved ones still replay; try again later.")
         if len(_all_checks) >= CHECKS_PER_DAY:
             raise HTTPException(429, "The site's live checks for today are used up. Saved checks still replay.")
         mine.append(now)

@@ -920,6 +920,7 @@ Before any explanation is shown, every number in the model's text is checked aga
 | pump.fun history for training | Google BigQuery public Solana dataset | Public chain data, queried in the free sandbox (1 TB a month). Google's terms for commercial use of query results **(verify)** |
 | Live token data and funding traces | Helius free tier | 1M credits a month; made for building apps |
 | Token security fields | GoPlus | Free; requires "Powered by GoPlus" |
+| Name and ticker search for new tokens | DEX Screener public API (`/latest/dex/search`), added Nov 3 | Free, no key or card. Its API terms allow commercial use and bar only building a product that competes directly with DEX Screener, or making its API available to others. Used only to find a token's mint by name or ticker after the BigQuery launch history ends (mid-September 2026); results are cached for 10 minutes and not stored |
 | Label definitions | MELT (definitions only, non-commercial) and SolRPDS (CC BY 4.0, credited) | We compute our own labels from raw chain data |
 
 **Not used:** Yahoo/yfinance (terms ban automated collection), Coinbase market data (personal or research use only, no apps for other users, no AI training), Alpaca, Massive/Polygon individual plans, EODHD, FMP, Alpha Vantage, Stooq, WRDS/CRSP (display not allowed for a public app), Etherscan (commercial terms), and any TradingView data.

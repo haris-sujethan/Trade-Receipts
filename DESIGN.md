@@ -161,6 +161,9 @@ Controls 8px, cards 10px, windows and popovers 12 to 14px, the desktop frame 18p
 ### The demo window and the IDE
 - Title bar with three window lights, an Analyze / Copy trade switch, workspace tabs with a 2px blue underline, the
   thread on a slightly darker side panel, and a rounded message box.
+- The home demo has three examples: BABYBULL (a rug check), a copy-trade backtest of a real leaderboard wallet (its
+  latest position's chart while the positions are priced, then the result at a glance), and Jim (a check that didn't
+  rug). The message is typed a letter at a time and the link is pasted whole.
 - Agent steps: a spinner, then a check; live counts under "Checking the token"; the answer streams in; "N
   numbers checked against the data" closes it.
 
@@ -176,7 +179,10 @@ Controls 8px, cards 10px, windows and popovers 12 to 14px, the desktop frame 18p
 - Form on top: the wallet (a pump.fun profile link or an address, editable after a run), SOL per position, and three
   segmented rows of native radios: Positions (25, 50, 100), "Buy after its buys" and "Sell after its sells" (2 s,
   10 s, 30 s, 1 min, 5 min, 10 min, Custom in seconds or minutes). Nothing runs until Run backtest is pressed; the
-  values it will use are stated beside the button. Without the backend the fieldset is disabled and the reason is
+  values it will use are stated beside the button. One run per set of values: the same values make the button "Open
+  result" (or "Showing this result") with when it ran, "Running…" while it runs, and "Run again with newer trades"
+  once it's over 30 minutes old. Switching to Copy trade opens a blank form with the saved backtest to open; nothing
+  replays or runs by itself. Without the backend the fieldset is disabled and the reason is
   shown. Each run opens in its own tab, named for the wallet and the timing. A run that reused the data already pulled
   for the wallet says so in its header.
 - Totals: three wells. The wallet and you each have a serif P&L in SOL, the percentage on what was spent, and how many
@@ -191,6 +197,9 @@ Controls 8px, cards 10px, windows and popovers 12 to 14px, the desktop frame 18p
   The marks have hover tips, and the fills are also listed as text.
 
 ### Threads
+- The file list and the thread can each be hidden (a button in its head, toggles in the top bar); the choice is
+  remembered per visitor.
+- A thread runs one live answer at a time, and the same message sent again while its result is fresh points to it.
 - A thread keeps every result in it; earlier ones are a scroll up, and thread history reopens old threads intact.
 - A message naming another token or wallet opens a new thread; a question about what's there is a follow-up, sent with
   the latest answer's `run_id` (or "demo:<saved id>") as `context_id` and answered from the data already pulled. A

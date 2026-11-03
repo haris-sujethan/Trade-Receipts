@@ -45,6 +45,8 @@ export type CheckRun = {
   /** A copy-trade backtest run from its form: what was asked, and the result once it's in. */
   request?: CopyRequest;
   copy?: CopyTrade;
+  /** When its result came in (epoch ms); for a saved run, when it was saved. */
+  at?: number;
   /** Live checks: the thread before this message, what was attached, and the result a follow-up is about. */
   history?: Turn[];
   attachment?: Attachment;
@@ -90,7 +92,11 @@ type State = {
   thread: ThreadRef;
   /** Numbers new replays and live checks. */
   seq: number;
+  /** The file list and the thread, shown or hidden; remembered per visitor. */
+  panes: Panes;
 };
+
+export type Panes = { files: boolean; thread: boolean };
 
 type Action =
   | { type: "open"; id: TabId }
@@ -116,7 +122,10 @@ type Action =
   /** `fresh`: the message is about another token or wallet than the thread's results, so it gets a thread of its own. */
   | { type: "send"; reply: Reply; fresh?: boolean }
   | { type: "newThread" }
-  | { type: "selectThread"; thread: ThreadRef };
+  | { type: "selectThread"; thread: ThreadRef }
+  /** Plays an example thread's saved run, when the visitor asks for it. */
+  | { type: "playExample"; key: string }
+  | { type: "pane"; pane: keyof Panes; open: boolean };
 
 /** What the IDE does with a sent message, decided before it reaches the reducer (see `replyFor`). */
 export type Reply = { kind: "replay"; run: Run } | { kind: "live"; attachment?: Attachment } | { kind: "text"; text: string };
@@ -162,11 +171,36 @@ function demoState(): State {
     threads: [],
     thread: "rug",
     seq: 0,
+    panes: { files: true, thread: true },
   };
 }
 
+const PANES_KEY = "ide.panes";
+
+function readPanes(): Panes {
+  try {
+    const p = JSON.parse(localStorage.getItem(PANES_KEY) ?? "null");
+    return { files: p?.files !== false, thread: p?.thread !== false };
+  } catch {
+    return { files: true, thread: true };
+  }
+}
+
+function savePanes(p: Panes) {
+  try {
+    localStorage.setItem(PANES_KEY, JSON.stringify(p));
+  } catch {
+    // Without storage the panels simply open again next visit.
+  }
+}
+
+/** The Copy trade mode's blank form, for a backtest of your own. */
+export const NEW_COPY_TAB = "copy:new";
+
 function initialState(): State {
-  return { ...demoState(), tourOpen: !readDone() };
+  const tourOpen = !readDone();
+  // The tour points at the thread, so it opens with both panels.
+  return { ...demoState(), tourOpen, panes: tourOpen ? { files: true, thread: true } : readPanes() };
 }
 
 /** The mode that matches what a tab shows. */
@@ -185,7 +219,8 @@ function titleFrom(text: string) {
   return text.length > 44 ? `${text.slice(0, 43).trimEnd()}…` : text;
 }
 
-const savedCheck = (run: Run, key: string): CheckRun => ({ key, run, mode: "replay", startedAt: Number.NEGATIVE_INFINITY, status: "done" });
+const savedAt = (run: Run) => (run.saved_at ? run.saved_at * 1000 : undefined);
+const savedCheck = (run: Run, key: string): CheckRun => ({ key, run, mode: "replay", startedAt: Number.NEGATIVE_INFINITY, status: "done", at: savedAt(run) });
 
 /** The tab a run opens in. */
 export const tabOf = (c: CheckRun) => `${isCopyRun(c) ? "copy" : "check"}:${c.key}`;
@@ -213,11 +248,10 @@ function reducer(s: State, a: Action): State {
       s = typeof s.thread === "number" ? s : { ...s, thread: a.tab === "Copy trade" ? "copy" : "rug" };
       const fits = (id: TabId) => modeOf(id) === a.tab;
       if (s.active && fits(s.active)) return { ...s, workTab: a.tab };
-      // Show the most recent tab of that kind, or the matching example (the copy-trade one plays the first time).
+      // Show the most recent tab of that kind: in Analyze the example check, in Copy trade the blank form. Nothing
+      // runs or replays on its own.
       const recent = [...s.openTabs].reverse().find(fits);
-      if (!recent && a.tab === "Copy trade" && s.checks[COPY_HERO_KEY]?.status === "waiting") return startReplay({ ...s, workTab: a.tab }, COPY_HERO_KEY);
-      const example = a.tab === "Analyze" ? HERO_KEY : COPY_HERO_KEY;
-      const target = recent ?? (s.checks[example] ? tabOf(s.checks[example]) : null);
+      const target = recent ?? (a.tab === "Copy trade" ? NEW_COPY_TAB : s.checks[HERO_KEY] ? `check:${HERO_KEY}` : null);
       return target ? { ...withTab(s, target), openSeq: s.openSeq + 1 } : { ...s, workTab: a.tab };
     }
     case "split":
@@ -245,12 +279,12 @@ function reducer(s: State, a: Action): State {
       // The copy-trade example waits until the mode is first opened, then plays.
       const checks =
         a.hero && !s.checks[COPY_HERO_KEY]
-          ? { ...s.checks, [COPY_HERO_KEY]: { key: COPY_HERO_KEY, run: a.hero, mode: "replay" as const, startedAt: Number.NEGATIVE_INFINITY, status: "waiting" as const } }
+          ? {
+              ...s.checks,
+              [COPY_HERO_KEY]: { key: COPY_HERO_KEY, run: a.hero, mode: "replay" as const, startedAt: Number.NEGATIVE_INFINITY, status: "waiting" as const, at: savedAt(a.hero) },
+            }
           : s.checks;
-      const next = { ...s, savedCopies: a.copies, checks };
-      // Copy trade opened before the saved backtest arrived: play it now.
-      const waiting = s.workTab === "Copy trade" && !s.openTabs.some((t) => t.startsWith("copy:"));
-      return waiting ? startReplay(next, COPY_HERO_KEY) : next;
+      return { ...s, savedCopies: a.copies, checks };
     }
     case "openSavedCopy": {
       const checks = s.checks[a.key] ? s.checks : { ...s.checks, [a.key]: savedCheck(a.run, a.key) };
@@ -261,6 +295,10 @@ function reducer(s: State, a: Action): State {
       const key = `live:${seq}`;
       const run: Run = { id: key, mint: "", age_s: 0, about: "", message: "", clip: null, events: [], kind: "copy_trade", wallet: a.request.wallet };
       const c: CheckRun = { key, run, mode: "live", via: "copytrade", request: a.request, startedAt: performance.now(), status: "running" };
+      // One run per set of values: the same values open the run already made (CopyTab decides; this is the guard).
+      const same = latestCopy(s, a.request);
+      if (same && (same.status === "running" || (same.status === "done" && Date.now() - (same.at ?? 0) < COPY_FRESH_MS)))
+        return { ...withTab(s, `copy:${same.key}`), openSeq: s.openSeq + 1 };
       return { ...withTab({ ...s, seq, checks: { ...s.checks, [key]: c } }, `copy:${key}`), openSeq: s.openSeq + 1 };
     }
     case "startHero": {
@@ -285,11 +323,11 @@ function reducer(s: State, a: Action): State {
       if (!c) return s;
       const e = a.event;
       if (e.type === "error") return { ...s, checks: { ...s.checks, [a.key]: { ...c, status: "error", error: e.message } } };
-      if (e.type === "result") return { ...s, checks: { ...s.checks, [a.key]: { ...c, copy: e.copy_trade } } };
+      if (e.type === "result") return { ...s, checks: { ...s.checks, [a.key]: { ...c, copy: e.copy_trade, at: Date.now() } } };
       // The backtest's own progress events don't name their tool; the agent's do.
       const event: RunEvent = e.type === "progress" && !e.tool ? { ...e, tool: "copy_trade" } : e;
       const run = { ...c.run, events: [...c.run.events, event] };
-      const next = { ...s, checks: { ...s.checks, [a.key]: { ...c, run } } };
+      const next = { ...s, checks: { ...s.checks, [a.key]: { ...c, run, at: event.type === "answer" ? Date.now() : c.at } } };
       // The run's tab opens as soon as the agent starts on the token, or on the wallet.
       const kind = event.type === "step" && event.status === "running" ? ({ check_token: "check", copy_trade: "copy" } as Record<string, string>)[event.tool] : undefined;
       const tab = kind && `${kind}:${a.key}`;
@@ -313,6 +351,7 @@ function reducer(s: State, a: Action): State {
       return {
         ...demoState(),
         saved: s.saved,
+        savedCopies: s.savedCopies,
         checks,
         threads: s.threads,
         draft: s.draft,
@@ -361,7 +400,18 @@ function reducer(s: State, a: Action): State {
         const contextId = a.reply.kind === "live" && !a.fresh ? latestContext(prior, checks) : undefined;
         checks = {
           ...checks,
-          [key]: { key, run, mode: a.reply.kind, via: "agent", startedAt: performance.now(), status: "running", history, attachment, contextId },
+          [key]: {
+            key,
+            run,
+            mode: a.reply.kind,
+            via: "agent",
+            startedAt: performance.now(),
+            status: "running",
+            history,
+            attachment,
+            contextId,
+            at: a.reply.kind === "replay" ? savedAt(run) : undefined,
+          },
         };
         added = { kind: "check", key };
         if (a.reply.kind === "replay") open = tabOf(checks[key]);
@@ -379,9 +429,27 @@ function reducer(s: State, a: Action): State {
       return { ...s, threads: [...s.threads, { id, title: "", items: [] }], thread: id };
     }
     case "selectThread":
-      // The copy-trade example plays the first time it's picked.
-      return a.thread === "copy" ? startReplay({ ...s, thread: a.thread }, COPY_HERO_KEY) : { ...s, thread: a.thread };
+      return { ...s, thread: a.thread };
+    case "playExample":
+      return startReplay(s, a.key);
+    case "pane":
+      return { ...s, panes: { ...s.panes, [a.pane]: a.open } };
   }
+}
+
+/** A copy-trade result this old is run again rather than reopened: past the backend's 30-minute reuse window. */
+export const COPY_FRESH_MS = 30 * 60_000;
+
+/** The values that make two copy-trade runs the same run. */
+export const copyKey = (q: CopyRequest) => [q.wallet, q.buy_after_s, q.sell_after_s, q.positions, q.size_sol].join("|");
+
+/** The latest run with these values that is running or has a result: saved, from the form, or from the agent. */
+export function latestCopy(state: State, q: CopyRequest): CheckRun | undefined {
+  const key = copyKey(q);
+  return Object.values(state.checks)
+    .filter((c) => isCopyRun(c) && c.status !== "error" && c.status !== "waiting" && copyRequestOf(c) && copyKey(copyRequestOf(c)!) === key)
+    .filter((c) => c.status === "running" || copyResultOf(c))
+    .sort((a, b) => (b.at ?? Number.POSITIVE_INFINITY) - (a.at ?? Number.POSITIVE_INFINITY))[0];
 }
 
 /** The result a follow-up is about: the latest answer in the thread, by its run id ("demo:<id>" for a saved run). */
@@ -570,6 +638,7 @@ export function checkOutput(c: CheckRun | undefined): string[] {
 
 /** The panels describe what's in front: the open check or backtest, or else the last check. */
 export function problemsFor(state: State): Problem[] {
+  if (state.active === NEW_COPY_TAB) return [];
   const active = checkOf(state, state.active);
   if (active) return checkProblems(active);
   const copy = copyRunOf(state, state.active);
@@ -579,6 +648,7 @@ export function problemsFor(state: State): Problem[] {
 }
 
 export function outputFor(state: State): string[] {
+  if (state.active === NEW_COPY_TAB) return [];
   const active = checkOf(state, state.active) ?? copyRunOf(state, state.active);
   if (active) return checkOutput(active);
   const runs = state.ranRuns.flatMap((id) => (id === "rsi" ? rsiOutput : []));
@@ -666,6 +736,11 @@ export function IdeProvider({ children }: { children: ReactNode }) {
     const t = window.setTimeout(() => dispatch({ type: "runDone", runId }), 1400);
     return () => window.clearTimeout(t);
   }, [state.running]);
+
+  // The panels' state is remembered, except while the tour holds them open.
+  useEffect(() => {
+    if (!state.tourOpen) savePanes(state.panes);
+  }, [state.panes, state.tourOpen]);
 
   const value = useMemo(() => ({ state, dispatch }), [state]);
   return <IdeContext.Provider value={value}>{children}</IdeContext.Provider>;

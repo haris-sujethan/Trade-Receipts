@@ -1824,3 +1824,20 @@
     animation: none;
   }
 }
+
+/* Hiding the side panels: a button in each panel's head, toggles in the top bar to bring them back */
+.explorer .pane-head__note {
+  margin-left: auto;
+}
+
+.topbar__pane {
+  color: var(--desk-text-3);
+}
+
+.topbar__pane.is-on {
+  color: var(--desk-text);
+}
+
+.ide--narrow .pane-hide {
+  display: none;
+}

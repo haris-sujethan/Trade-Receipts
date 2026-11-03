@@ -178,26 +178,83 @@
   width: 76px;
 }
 
+/* The values and the button on one row, the note on its own line under them */
 .copyf__foot {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 12px;
+  gap: 4px 16px;
+}
+
+.copyf__foot .run-btn {
+  margin-left: 0;
 }
 
 .copyf__note {
-  flex: 1;
+  grid-column: 1 / -1;
   margin: 0;
   font-size: 12px;
   color: var(--desk-text-2);
 }
 
-/* The values the run will use, beside its button */
+/* The values the run will use, beside its button, and when they last ran */
 .copyf__confirm {
-  margin: 0;
+  min-width: 0;
   font-size: 12.5px;
+}
+
+.copyf__confirm p {
+  margin: 0;
   font-weight: 500;
   color: var(--desk-text);
-  text-align: right;
+}
+
+.copyf__confirm .copyf__when {
+  font-weight: 400;
+  color: var(--desk-text-2);
+}
+
+/* The saved backtest, offered under the blank form */
+.copyx ul {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.copyx button {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: baseline;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--desk-1);
+  font: 400 13px var(--font-sans);
+  color: var(--desk-text);
+  text-align: left;
+  transition: background-color 140ms var(--ease-out);
+}
+
+.copyx button:hover {
+  background: var(--desk-2);
+}
+
+.copyx button:active {
+  background: var(--desk-3);
+}
+
+.copyx__when,
+.copyx__note {
+  font-size: 12.5px;
+  color: var(--desk-text-2);
+}
+
+.copyx__note {
+  margin: 0;
 }
 
 .copyf__error {
@@ -224,148 +281,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* The result */
-
-.copyr {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 20px;
-  font-variant-numeric: tabular-nums;
-}
-
-.copyr__head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.copyr__title {
-  margin: 0;
-  font: 400 26px/1.15 var(--font-display);
-  color: var(--desk-text);
-  overflow-wrap: break-word;
-  min-width: 0;
-}
-
-.copyr__title .mono {
-  font-size: 0.78em;
-}
-
-.copyr__sub {
-  margin: 4px 0 0;
-  font-size: 13.5px;
-  color: var(--desk-text-2);
-}
-
-.copyr__link {
-  flex: none;
-  font-size: 12.5px;
-  color: var(--color-accent-ink);
-}
-
-.copyr__link:hover {
-  color: var(--color-accent-deep);
-}
-
-.copyr__totals {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 12px;
-}
-
-.total {
-  display: grid;
-  align-content: start;
-  gap: 2px;
-  padding: 16px;
-  border-radius: 10px;
-  background: var(--desk-1);
-}
-
-.total__who {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 8px;
-  font-size: 12.5px;
-  font-weight: 500;
-  color: var(--desk-text-2);
-}
-
-.total__pnl {
-  margin: 0;
-  font: 400 36px/1.05 var(--font-display);
-  letter-spacing: -0.02em;
-  color: var(--desk-text);
-}
-
-.total__pct {
-  margin: 4px 0 0;
-  font-size: 13.5px;
-  color: var(--desk-text);
-}
-
-.total__won {
-  margin: 0;
-  font-size: 12.5px;
-  color: var(--desk-text-2);
-}
-
-.total__moves {
-  display: grid;
-  gap: 8px;
-  margin: 0;
-}
-
-.total__moves div {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--desk-line);
-}
-
-.total__moves div:last-child {
-  border-bottom: 0;
-  padding-bottom: 0;
-}
-
-.total__moves dt {
-  font-size: 12.5px;
-  color: var(--desk-text-2);
-}
-
-.total__moves dd {
-  margin: 0;
-  font: 400 22px/1 var(--font-display);
-  color: var(--desk-text);
-}
-
-.copyr__notes {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 16px;
-  margin: -8px 0 0;
-  padding: 0;
-  list-style: none;
-  font-size: 12.5px;
-  color: var(--desk-text-2);
-}
-
-.copyr__h {
-  margin: 0 0 8px;
-  font: 600 13px var(--font-sans);
-  color: var(--desk-text);
-  text-align: left;
-}
-
-.copyr__empty {
-  margin: 0;
-  color: var(--desk-text-2);
-}
-
 /* Other timings tried on the same wallet */
 .copyr__runs ul {
   display: grid;
@@ -377,7 +292,7 @@
 
 .copyr__runs button {
   display: grid;
-  grid-template-columns: minmax(120px, 180px) 96px 72px 1fr;
+  grid-template-columns: minmax(160px, 240px) 96px 72px 1fr;
   align-items: center;
   gap: 12px;
   width: 100%;
@@ -580,148 +495,6 @@
   overflow-wrap: anywhere;
 }
 
-/* The position's chart */
-
-.pchart {
-  position: relative;
-  padding: 8px 4px 0;
-  border-radius: 8px;
-  background: var(--desk-0);
-  box-shadow: 0 0 0 1px var(--desk-line);
-}
-
-.pchart svg {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-
-.pchart__grid {
-  stroke: var(--desk-line);
-  stroke-width: 1;
-}
-
-.pchart__tick {
-  font: 400 11px var(--font-sans);
-  fill: var(--desk-text-3);
-  font-variant-numeric: tabular-nums;
-}
-
-.pchart__price {
-  fill: none;
-  stroke: var(--color-ink-2);
-  stroke-width: 1.75;
-  stroke-linejoin: round;
-}
-
-.pchart__wait {
-  stroke: var(--color-accent-ink);
-  stroke-width: 1.25;
-  stroke-dasharray: 3 3;
-}
-
-.pchart__mark {
-  stroke: var(--desk-0);
-  stroke-width: 1.5;
-  paint-order: stroke;
-}
-
-.pchart__mark--wallet {
-  fill: var(--color-ink);
-}
-
-.pchart__mark--you {
-  fill: var(--color-accent);
-}
-
-.pchart__mark.is-on {
-  stroke-width: 3;
-}
-
-.pchart__hit {
-  fill: transparent;
-  pointer-events: all;
-}
-
-.pchart__tip {
-  position: absolute;
-  transform: translate(-50%, calc(-100% - 12px));
-  display: grid;
-  gap: 1px;
-  padding: 8px;
-  border-radius: 7px;
-  background: var(--color-ink);
-  color: var(--color-paper);
-  font-size: 11.5px;
-  white-space: nowrap;
-  pointer-events: none;
-}
-
-/* Near the right edge the tip opens to the left, so it stays inside the chart. */
-.pchart__tip--left {
-  transform: translate(calc(-100% + 14px), calc(-100% - 12px));
-}
-
-.pchart__legend {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 16px;
-  margin: -4px 0 0;
-  padding: 0;
-  list-style: none;
-  font-size: 12px;
-  color: var(--desk-text-2);
-}
-
-.pchart__legend li {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.pchart__legend-wait {
-  width: 18px;
-  border-top: 1.25px dashed var(--color-accent-ink);
-}
-
-.pchart__legend-note {
-  color: var(--desk-text-3);
-}
-
-.mark-key {
-  flex: none;
-}
-
-/* Each row's result, drawn */
-.rbar {
-  display: block;
-}
-
-.rbar__zero {
-  stroke: var(--desk-line-2);
-  stroke-width: 1;
-}
-
-.rbar__gap {
-  stroke: var(--desk-line-2);
-  stroke-width: 1.5;
-}
-
-.rbar__dot {
-  stroke: var(--desk-0);
-  stroke-width: 1.5;
-  paint-order: stroke;
-}
-
-.rbar__dot--wallet {
-  fill: var(--color-ink);
-}
-
-.rbar__dot--you {
-  fill: var(--color-accent);
-}
-
 /* A narrow editor area keeps the numbers and drops the extras: the buy time (it's in each position's detail), then
    the drawing. */
 @container (max-width: 960px) {
@@ -739,6 +512,14 @@
 @container (max-width: 560px) {
   .pos__name {
     display: none;
+  }
+
+  .copyf__foot {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .copyf__foot .run-btn {
+    justify-self: start;
   }
 
   .delay legend {

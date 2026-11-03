@@ -12,6 +12,24 @@ type Kind = ProgressEvent["step"];
 const KIND_MS: Record<Kind, number> = { token: 1700, wallets: 3400, busy: 900, funders: 1700, snipes: 1800, wallet: 1600, positions: 2800, reused: 400 };
 const SECURITY_MS = 1000;
 const TYPE_MS = 24;
+/** A link is pasted, not typed: a short beat, then all of it at once, as people do. */
+const PASTE_PAUSE_MS = 380;
+const LINK = /(?:https?:\/\/)?pump\.fun\/\S+|\S*[1-9A-HJ-NP-Za-km-z]{32,44}\S*/;
+
+/** When each character of the message appears: typed a letter at a time, any link pasted whole. */
+function typingTimes(message: string, start: number): number[] {
+  const link = LINK.exec(message);
+  const from = link ? link.index : -1;
+  const to = link ? link.index + link[0].length : -1;
+  const at: number[] = [];
+  let t = start;
+  for (let i = 0; i < message.length; i++) {
+    if (i === from) t += PASTE_PAUSE_MS;
+    else if (i < from || i >= to) t += TYPE_MS;
+    at.push(t);
+  }
+  return at;
+}
 const WORD_MS = 20;
 const ANSWER_MAX_MS = 4600;
 
@@ -19,6 +37,7 @@ export type PlannedStep = { tool: string; start: number; end: number; done?: Ste
 export type Plan = {
   typeStart: number;
   typeEnd: number;
+  typeAt: number[];
   sendAt: number;
   steps: PlannedStep[];
   progress: { at: number; ev: ProgressEvent }[];
@@ -32,7 +51,8 @@ export type Plan = {
 
 export function plan(run: Run): Plan {
   const typeStart = 450;
-  const typeEnd = typeStart + run.message.length * TYPE_MS;
+  const typeAt = typingTimes(run.message, typeStart);
+  const typeEnd = typeAt.length ? typeAt[typeAt.length - 1] : typeStart;
   const sendAt = typeEnd + 450;
 
   const steps: PlannedStep[] = [];
@@ -71,7 +91,7 @@ export function plan(run: Run): Plan {
   const words = answer ? answer.text.split(/(\s+)/) : [];
   const answerStart = t + 400;
   const answerEnd = answerStart + Math.min(ANSWER_MAX_MS, (words.length / 2) * WORD_MS);
-  return { typeStart, typeEnd, sendAt, steps, progress, phase, answer, words, answerStart, answerEnd, end: answerEnd + 700 };
+  return { typeStart, typeEnd, typeAt, sendAt, steps, progress, phase, answer, words, answerStart, answerEnd, end: answerEnd + 700 };
 }
 
 export type View = "chart" | "holders" | "result";
@@ -135,7 +155,7 @@ function countersOf(events: ProgressEvent[]) {
 const mapColor = (started: Kind[], answered: boolean): Frame["map"]["color"] =>
   started.includes("snipes") || answered ? "all" : started.includes("funders") ? "team" : "none";
 
-export function frameAt(p: Plan, run: Run, t: number): Frame {
+export function frameAt(p: Plan, t: number): Frame {
   let maxTx = 0;
   for (const { ev } of p.progress) if (ev.step === "token") maxTx = Math.max(maxTx, ev.transactions ?? 0);
   const counters = countersOf(p.progress.filter((x) => x.at <= t).map((x) => x.ev));
@@ -162,7 +182,7 @@ export function frameAt(p: Plan, run: Run, t: number): Frame {
 
   const answerChars = t < p.answerStart ? 0 : Math.round(((t - p.answerStart) / (p.answerEnd - p.answerStart)) * p.words.length);
   return {
-    typed: Math.max(0, Math.min(run.message.length, Math.floor((t - p.typeStart) / TYPE_MS))),
+    typed: p.typeAt.filter((at) => at <= t).length,
     sent: t >= p.sendAt,
     steps,
     counters,

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { duration, type Fill, type Position } from "../demo/runs";
+import { duration, type Fill, type Position } from "./runs";
 
 /**
  * One copied position: the token's price from the wallet's first buy until the copier's last sell, with the wallet's

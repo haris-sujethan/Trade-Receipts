@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { CircleHelp, Settings, Share2 } from "lucide-react";
+import { CircleHelp, PanelLeft, PanelRight, Settings, Share2 } from "lucide-react";
 import { APP_NAME } from "../config";
 import { useBackend } from "./live";
 import { clearTourDone, useIde, type WorkTab } from "./state";
@@ -31,6 +31,22 @@ export function TopBar() {
 
       <div className="topbar__tools">
         <PreviewNote />
+        {(["files", "thread"] as const).map((pane) => {
+          const open = state.panes[pane];
+          const name = pane === "files" ? "files" : "thread";
+          return (
+            <button
+              key={pane}
+              className={`icon-btn topbar__wide topbar__pane${open ? " is-on" : ""}`}
+              title={`${open ? "Hide" : "Show"} the ${name}`}
+              aria-label={`Show the ${name}`}
+              aria-pressed={open}
+              onClick={() => dispatch({ type: "pane", pane, open: !open })}
+            >
+              {pane === "files" ? <PanelLeft size={17} aria-hidden /> : <PanelRight size={17} aria-hidden />}
+            </button>
+          );
+        })}
         <button
           className="icon-btn topbar__wide"
           title="Replay the tour"

@@ -150,7 +150,7 @@ export function useCheckFrame(c: CheckRun | undefined, onFinish?: () => void): C
 
   if (!c) return null;
   if (replayPlan) {
-    const frame = frameAt(replayPlan, c.run, Math.min(replayT, replayPlan.end));
+    const frame = frameAt(replayPlan, Math.min(replayT, replayPlan.end));
     return { frame, plan: replayPlan, words: replayPlan.words, answer: replayPlan.answer, finished: frame.finished };
   }
   const frame = frameFromEvents(c.run, c.status !== "running");

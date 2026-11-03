@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Group, Panel, Separator } from "react-resizable-panels";
+import { Group, Panel, Separator, usePanelRef } from "react-resizable-panels";
 import { APP_NAME } from "../config";
-import { HERO_KEY, IdeProvider, problemsFor, useIde } from "../ide/state";
+import { HERO_KEY, IdeProvider, problemsFor, useIde, type Panes } from "../ide/state";
 import { TopBar } from "../ide/TopBar";
 import { Explorer } from "../ide/Explorer";
 import { MainArea } from "../ide/MainArea";
@@ -20,8 +20,30 @@ export function Ide() {
   return <IdeProvider>{narrow ? <NarrowIde /> : <WideIde />}</IdeProvider>;
 }
 
+/** A side panel that can be hidden: it follows the IDE's state, and dragging it shut (or open) updates the state. */
+function useSidePanel(pane: keyof Panes) {
+  const { state, dispatch } = useIde();
+  const ref = usePanelRef();
+  const open = state.panes[pane];
+  const latest = useRef(open);
+  latest.current = open;
+  useEffect(() => {
+    const p = ref.current;
+    if (!p) return;
+    if (open && p.isCollapsed()) p.expand();
+    if (!open && !p.isCollapsed()) p.collapse();
+  }, [open, ref]);
+  const onResize = () => {
+    const collapsed = ref.current?.isCollapsed();
+    if (collapsed != null && collapsed === latest.current) dispatch({ type: "pane", pane, open: !collapsed });
+  };
+  return { panelRef: ref, onResize, collapsible: true, collapsedSize: 0 };
+}
+
 function WideIde() {
   const { state } = useIde();
+  const files = useSidePanel("files");
+  const thread = useSidePanel("thread");
 
   return (
     <div className="theme-glass ide">
@@ -31,7 +53,7 @@ function WideIde() {
         <TopBar />
         <main className="ide__body">
           <Group orientation="horizontal" id="ide-columns">
-            <Panel id="explorer" defaultSize={228} minSize={180} maxSize={420}>
+            <Panel id="explorer" defaultSize={228} minSize={180} maxSize={420} {...files}>
               <Explorer />
             </Panel>
             <Separator className="sep sep--v" aria-label="Resize the file list" />
@@ -47,7 +69,7 @@ function WideIde() {
               </Group>
             </Panel>
             <Separator className="sep sep--v" aria-label="Resize the thread" />
-            <Panel id="thread" defaultSize={364} minSize={300} maxSize={600}>
+            <Panel id="thread" defaultSize={364} minSize={300} maxSize={600} {...thread}>
               <Thread />
             </Panel>
           </Group>

@@ -1,0 +1,295 @@
+/* Hallmark · v2.0.0 · part of the IDE build stamped in ide/ide.css, whose tokens it uses */
+/* waive 26b: the only control here is the profile link, which has no disabled state */
+/* A copy-trade result at a glance and a position's chart: the IDE's Copy trade tab and the home demo share them. */
+
+/* The result */
+
+.copyr {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.copyr__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.copyr__title {
+  margin: 0;
+  font: 400 26px/1.15 var(--font-display);
+  color: var(--desk-text);
+  overflow-wrap: break-word;
+  min-width: 0;
+}
+
+.copyr__title .mono {
+  font-size: 0.78em;
+}
+
+.copyr__sub {
+  margin: 4px 0 0;
+  font-size: 13.5px;
+  color: var(--desk-text-2);
+}
+
+.copyr__link {
+  flex: none;
+  font-size: 12.5px;
+  color: var(--color-accent-ink);
+}
+
+.copyr__link:hover,
+.copyr__link:active {
+  color: var(--color-accent-deep);
+}
+
+.copyr__link:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.copyr__totals {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.total {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  padding: 16px;
+  border-radius: 10px;
+  background: var(--desk-1);
+}
+
+.total__who {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--desk-text-2);
+}
+
+.total__pnl {
+  margin: 0;
+  font: 400 36px/1.05 var(--font-display);
+  letter-spacing: -0.02em;
+  color: var(--desk-text);
+}
+
+.total__pct {
+  margin: 4px 0 0;
+  font-size: 13.5px;
+  color: var(--desk-text);
+}
+
+.total__won {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--desk-text-2);
+}
+
+.total__moves {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.total__moves div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--desk-line);
+}
+
+.total__moves div:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.total__moves dt {
+  font-size: 12.5px;
+  color: var(--desk-text-2);
+}
+
+.total__moves dd {
+  margin: 0;
+  font: 400 22px/1 var(--font-display);
+  color: var(--desk-text);
+}
+
+.copyr__notes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: -8px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12.5px;
+  color: var(--desk-text-2);
+}
+
+.copyr__h {
+  margin: 0 0 8px;
+  font: 600 13px var(--font-sans);
+  color: var(--desk-text);
+  text-align: left;
+}
+
+.copyr__empty {
+  margin: 0;
+  color: var(--desk-text-2);
+}
+
+/* The position's chart */
+
+.pchart {
+  position: relative;
+  padding: 8px 4px 0;
+  border-radius: 8px;
+  background: var(--desk-0);
+  box-shadow: 0 0 0 1px var(--desk-line);
+}
+
+.pchart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.pchart__grid {
+  stroke: var(--desk-line);
+  stroke-width: 1;
+}
+
+.pchart__tick {
+  font: 400 11px var(--font-sans);
+  fill: var(--desk-text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.pchart__price {
+  fill: none;
+  stroke: var(--color-ink-2);
+  stroke-width: 1.75;
+  stroke-linejoin: round;
+}
+
+.pchart__wait {
+  stroke: var(--color-accent-ink);
+  stroke-width: 1.25;
+  stroke-dasharray: 3 3;
+}
+
+.pchart__mark {
+  stroke: var(--desk-0);
+  stroke-width: 1.5;
+  paint-order: stroke;
+}
+
+.pchart__mark--wallet {
+  fill: var(--color-ink);
+}
+
+.pchart__mark--you {
+  fill: var(--color-accent);
+}
+
+.pchart__mark.is-on {
+  stroke-width: 3;
+}
+
+.pchart__hit {
+  fill: transparent;
+  pointer-events: all;
+}
+
+.pchart__tip {
+  position: absolute;
+  transform: translate(-50%, calc(-100% - 12px));
+  display: grid;
+  gap: 1px;
+  padding: 8px;
+  border-radius: 7px;
+  background: var(--color-ink);
+  color: var(--color-paper);
+  font-size: 11.5px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Near the right edge the tip opens to the left, so it stays inside the chart. */
+.pchart__tip--left {
+  transform: translate(calc(-100% + 14px), calc(-100% - 12px));
+}
+
+.pchart__legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 16px;
+  margin: -4px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  color: var(--desk-text-2);
+}
+
+.pchart__legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pchart__legend-wait {
+  width: 18px;
+  border-top: 1.25px dashed var(--color-accent-ink);
+}
+
+.pchart__legend-note {
+  color: var(--desk-text-3);
+}
+
+.mark-key {
+  flex: none;
+}
+
+/* Each row's result, drawn */
+.rbar {
+  display: block;
+}
+
+.rbar__zero {
+  stroke: var(--desk-line-2);
+  stroke-width: 1;
+}
+
+.rbar__gap {
+  stroke: var(--desk-line-2);
+  stroke-width: 1.5;
+}
+
+.rbar__dot {
+  stroke: var(--desk-0);
+  stroke-width: 1.5;
+  paint-order: stroke;
+}
+
+.rbar__dot--wallet {
+  fill: var(--color-ink);
+}
+
+.rbar__dot--you {
+  fill: var(--color-accent);
+}
+

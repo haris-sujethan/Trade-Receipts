@@ -20,6 +20,7 @@ Sources: tiingo.com/documentation/appendix/developers · tiingo.com/documentatio
 
 | Need | Source | Notes |
 |---|---|---|
+| Name and ticker search (new tokens) | DEX Screener public API | No key or card. Terms (docs.dexscreener.com/api/api-terms-and-conditions, checked Nov 3): free and paid versions, commercial use allowed, no competing product, no reselling or exposing the API. Search returns pairs per chain; `backend/receipts/crypto/search.py` keeps Solana pump.fun tokens only |
 | Token permissions, holders, LP lock | GoPlus | Works without a key; free tier about 30 calls/min. Requires "Powered by GoPlus" credit. EVM and Solana fields cover everything in SPEC 7.3 |
 | EVM logs and forking | Ankr free (getLogs 3,000 blocks; 1,000 on BNB), Alchemy free (getLogs 10 blocks) | Both have archive data; anvil forking works with archive endpoints |
 | Solana history | Helius free: 1M credits/month, archival included | getSignaturesForAddress and getTransaction 1 credit each |

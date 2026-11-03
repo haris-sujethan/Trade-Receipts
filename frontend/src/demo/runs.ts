@@ -213,8 +213,9 @@ export type Run = {
   id: string;
   /** Saved copy-trade backtests say so; rug checks don't. */
   kind?: "copy_trade";
-  /** A copy-trade backtest's wallet. */
+  /** A copy-trade backtest's wallet, and when it was saved (epoch seconds). */
   wallet?: string;
+  saved_at?: number;
   mint: string;
   age_s: number;
   about: string;
