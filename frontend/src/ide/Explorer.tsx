@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, ChevronRight, FileCode2, FileText, FileVideo, Lock, PanelLeftClose, ScanSearch, Timer } from "lucide-react";
+import { ChevronDown, ChevronRight, FileCode2, FileText, FileVideo, ScanSearch, Timer } from "lucide-react";
 import { projectFiles, type ProjectFile } from "../data/examples";
 import { answerOf, duration, loadRun, shortAddr } from "../demo/runs";
 import { copyTitle, isCopyRun, tabOf, useIde } from "./state";
@@ -13,7 +13,7 @@ function FileIcon({ kind }: { kind: ProjectFile["kind"] }) {
   return <FileCode2 size={15} aria-hidden />;
 }
 
-/** The demo project: the saved rug checks, the saved copy-trade backtests, and runs started in this session. */
+/** The files: the examples (saved rug checks and copy-trade backtests), then the runs started in this session. */
 export function Explorer() {
   const { state, dispatch } = useIde();
   const [closed, setClosed] = useState<Record<string, boolean>>({});
@@ -24,7 +24,7 @@ export function Explorer() {
       (c.key.startsWith("live:") || /^replay:\d/.test(c.key)) &&
       (isCopyRun(c) || c.run.events.some((e) => e.type === "step" && e.tool === "check_token") || !!answerOf(c.run)?.check),
   );
-  const folders: Folder[] = ["checks", "copy trades", ...(session.length ? (["this session"] as Folder[]) : [])];
+  const examples: Folder[] = ["checks", "copy trades"];
 
   function openSaved(id: string) {
     const key = `saved:${id}`;
@@ -106,31 +106,34 @@ export function Explorer() {
       ));
   };
 
-  return (
-    <aside className="explorer" aria-label="Project files" data-tour="explorer">
-      <div className="pane-head">
-        <span className="pane-head__title">Demo project</span>
-        <span className="pane-head__note" title="Saved checks and backtests can be opened and read, not changed">
-          <Lock size={11} aria-hidden />
-          Read-only
-        </span>
-        <button className="icon-btn icon-btn--sm pane-hide" title="Hide the files" aria-label="Hide the files" onClick={() => dispatch({ type: "pane", pane: "files", open: false })}>
-          <PanelLeftClose size={15} aria-hidden />
+  const folder = (name: Folder, label: string = name) => {
+    const open = !closed[name];
+    return (
+      <li key={name}>
+        <button className="tree__folder" aria-expanded={open} onClick={() => setClosed((c) => ({ ...c, [name]: !c[name] }))}>
+          {open ? <ChevronDown size={14} aria-hidden /> : <ChevronRight size={14} aria-hidden />}
+          <span>{label}</span>
         </button>
+        {open && <ul className="tree">{folderBody(name)}</ul>}
+      </li>
+    );
+  };
+  const examplesOpen = !closed.examples;
+
+  return (
+    <aside className="explorer" aria-label="Files" data-tour="explorer">
+      <div className="pane-head">
+        <span className="pane-head__title">Files</span>
       </div>
       <ul className="tree tree--root">
-        {folders.map((folder) => {
-          const open = !closed[folder];
-          return (
-            <li key={folder}>
-              <button className="tree__folder" aria-expanded={open} onClick={() => setClosed((c) => ({ ...c, [folder]: !c[folder] }))}>
-                {open ? <ChevronDown size={14} aria-hidden /> : <ChevronRight size={14} aria-hidden />}
-                <span>{folder}</span>
-              </button>
-              {open && <ul className="tree">{folderBody(folder)}</ul>}
-            </li>
-          );
-        })}
+        {session.length > 0 && folder("this session")}
+        <li data-tour="examples">
+          <button className="tree__folder" aria-expanded={examplesOpen} onClick={() => setClosed((c) => ({ ...c, examples: !c.examples }))}>
+            {examplesOpen ? <ChevronDown size={14} aria-hidden /> : <ChevronRight size={14} aria-hidden />}
+            <span>examples</span>
+          </button>
+          {examplesOpen && <ul className="tree">{examples.map((f) => folder(f))}</ul>}
+        </li>
       </ul>
     </aside>
   );

@@ -1841,3 +1841,15 @@
 .ide--narrow .pane-hide {
   display: none;
 }
+
+/* The agent's first moments on a question: "Thinking", and the seconds since it was sent. */
+.thread__thinking {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.thread__thinking .num {
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+}

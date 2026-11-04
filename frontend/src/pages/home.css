@@ -1,4 +1,4 @@
-/* Hallmark · v2.0.0 · theme: custom (the category standard the user picked, direction 5, played straight) · genre: modern-minimal · shape: Settled, centred head over the product on a desktop · hero: head and actions centred, the live demo below on a Mac desktop at 1240px · signature: a saved rug check replayed from the user's message to the result, on a Mac screen · nav: edge-aligned wordmark, two links, one action · footer: credits and the disclaimer · photo: Moraine Lake (Gorgo, public domain, Wikimedia Commons) */
+/* Hallmark · v2.0.0 · theme: custom (the category standard the user picked, direction 5, played straight) · genre: modern-minimal · shape: Settled, centred head over the product on a desktop · hero: head and actions centred, the live demo below on a Mac desktop at 1240px · signature: a saved rug check replayed from the user's message to the result, on a Mac screen · nav: edge-aligned wordmark, two links, one action · footer: the name and the disclaimer, centred · photo: Moraine Lake (Gorgo, public domain, Wikimedia Commons) */
 /* Hallmark · pre-emit critique: P5 H4 E4 S4 R5 V5 · weakest: H, the centred head over a product band is the category's opener; kept because the user asked for it by reference */
 /* waive 47a: the user asked for the demo to sit on a Mac screen, so the window chrome is drawn on purpose (no menu bar, per the user) */
 /* waive 29: liquid glass is the brief; it is used for the token pills on the photograph only */
@@ -255,8 +255,10 @@ body:has(.theme-glass) {
   padding: 28px 24px 44px;
   border-top: 1px solid var(--color-rule);
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px 28px;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
   font-size: 13px;
   color: var(--color-muted);
 }

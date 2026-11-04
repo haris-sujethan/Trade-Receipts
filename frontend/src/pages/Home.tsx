@@ -69,13 +69,6 @@ export function Home() {
       <footer className="hn-foot">
         <p className="hn-foot__name">{APP_NAME}</p>
         <p>For research and education. Not financial advice.</p>
-        <p>Token authorities: Powered by GoPlus.</p>
-        <p>
-          Photograph:{" "}
-          <a href="https://commons.wikimedia.org/wiki/File:Moraine_Lake_17092005.jpg">Moraine Lake by Gorgo</a> (public domain,
-          Wikimedia Commons)
-        </p>
-        <p>Built for the Meta Global AI Developer Hackathon, 2026.</p>
       </footer>
     </div>
   );

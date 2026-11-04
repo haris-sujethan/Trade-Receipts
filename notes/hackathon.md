@@ -71,7 +71,15 @@ The kickoff livestream slides add two more: **Streamlit apps** and **dashboards 
 ## Prizes
 
 - **Indie Developer track ($400,000):** 1st $150,000 · 2nd $100,000 · 3rd $75,000 · 4th $50,000 · 5th $25,000.
-- **Bonus prizes (up to $50,000):** for example, a community vote award or a most viral project award.
+- **Bonus prizes from Meta ($50,000),** from the participant guide:
+
+  | Prize | Amount | How it's judged |
+  |---|---|---|
+  | Most Viral Project | $20,000 | Post the demo on X and submit the post's link on the hackathon platform. Highest total engagement (likes, reposts, comments) through Nov 8 end of day wins. The guide names no hashtag |
+  | Best Build on Meta Open Weight Models | $10,000 | Muse Glimmer or Muse Spark Open, served on your own hardware or through partner inference (Baseten, Modal, Fireworks). Flagged in the first judging round; the infrastructure partner checks it runs on an eligible open-weight model |
+  | Community Vote | $10,000 | Most votes in the public gallery, one per verified account. Announced Nov 16 |
+  | Best Agentic Use-Case | $5,000 | Agents completing meaningful tasks, making decisions or running multi-step workflows. Judged on autonomy, effectiveness and usefulness |
+  | Best Creative Build | $5,000 | Built with Muse Image or Muse Wonder. Not open to us: we use neither |
 
 ## Credits and resources
 

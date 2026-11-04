@@ -36,6 +36,22 @@ def test_partial_sells_are_copied_as_shares_of_holdings():
     assert you["got_sol"] == pytest.approx(1.25)
 
 
+def test_a_sell_that_moved_no_sol_takes_the_market_price():
+    # the wallet dumps its last tokens for nothing: that fill has no price of its own
+    dust = Fill(20, 20, 0, False, 1e12, 0.0, 0.0)
+    p = Position("M", [fill(0, True, 100), fill(10, False, 200, sol=2.0), dust])
+    prices = Prices(p.fills + [fill(30, True, 150)])
+    assert not dust.priced and prices.at(20) == pytest.approx(200)
+    you = copytrade.copy_result(p, prices, 0, 0)
+    assert you["pnl_pct"] == pytest.approx(1.0)  # sold everything at 200 before the dust
+    run = copytrade.CopyTrade.__new__(copytrade.CopyTrade)
+    run.buy_delay, run.sell_delay, run.size_sol = 0, 30, 1.0
+    row = run.row(p, prices)[0]
+    assert row["after_sell"]["mcap_at_sell"] == pytest.approx(200)
+    assert row["after_sell"]["change"] == pytest.approx(150 / 200 - 1)
+    assert all(f["mcap_sol"] > 0 for f in row["wallet_fills"])
+
+
 def test_profile_links_and_addresses():
     w = "GeUnv1jmtviRbR7Gu1JnXSGkUMUgFVBHuEVQVpTaUX1W"
     assert copytrade.wallet_from(f"https://pump.fun/profile/{w}") == w

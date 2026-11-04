@@ -63,7 +63,7 @@ export function useBackend(): Backend {
 }
 
 /** What the backend streams: the agent's events, a copy-trade backtest's result, or an error. */
-export type Streamed = RunEvent | { type: "result"; copy_trade: CopyTrade } | { type: "error"; message: string };
+export type Streamed = RunEvent | { type: "result"; copy_trade: CopyTrade; run_id?: string | null } | { type: "error"; message: string };
 
 /**
  * Sends a message to the agent, with the thread so far and any attachment, and hands each event to `onEvent` as it

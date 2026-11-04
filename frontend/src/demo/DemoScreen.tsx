@@ -25,7 +25,7 @@ const SLOTS: Slot[] = [
   {
     id: "copy_GeUnv1jmtviRbR7Gu1JnXSGkUMUgFVBHuEVQVpTaUX1W",
     label: "Copy trade",
-    about: "A saved copy-trade backtest, replayed: a wallet from pump.fun’s leaderboard, copied 5 minutes after its buys and 10 after its sells.",
+    about: "A saved copy-trade backtest, replayed: a wallet from pump.fun’s leaderboard, copied 5 minutes after they buy and 10 after they sell.",
   },
   { id: "BnK8QgRW6BGPbPV2b1tAZgxVwAJvJpEC9xPoQikRpump_900", label: "Jim", about: CHECK_ABOUT },
 ];

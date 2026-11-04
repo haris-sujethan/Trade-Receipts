@@ -51,7 +51,7 @@ const placeholders: Record<WorkTab, string> = {
 
 const starts: Record<WorkTab, { hello: string; sub: string }> = {
   Analyze: { hello: "Which token should I check?", sub: "Paste a pump.fun link, a ticker or a token’s address." },
-  "Copy trade": { hello: "Which wallet should I copy?", sub: "Paste a pump.fun profile link and say how long after its buys and sells you’d copy." },
+  "Copy trade": { hello: "Which wallet should I copy?", sub: "Paste a pump.fun profile link and say how long after they buy and sell you’d copy." },
 };
 
 export function Thread() {
@@ -177,7 +177,7 @@ export function Thread() {
     "Copy trade": copyWallet
       ? [
           copyWallet.message,
-          ...(backend === "online" ? [`If I copied pump.fun/profile/${copyWallet.wallet} 10 seconds after its buys and sells, what would I make?`] : []),
+          ...(backend === "online" ? [`If I copied pump.fun/profile/${copyWallet.wallet} 10 seconds after they buy and sell, what would I make?`] : []),
         ]
       : [],
   };
@@ -317,11 +317,50 @@ export function Thread() {
   );
 }
 
+/** "Thinking", and how long the agent has been at it, until its first step shows. */
+function Thinking({ since }: { since: number }) {
+  const [now, setNow] = useState(() => performance.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(performance.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+  const s = Math.max(0, Math.floor((now - since) / 1000));
+  return (
+    <p className="thread__tag thread__thinking" role="status">
+      Thinking<span className="num">{s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`}</span>
+    </p>
+  );
+}
+
+/** A backtest run from its form, in its chat: what it's doing, and a way to its tab. */
+function FormRun({ checkKey }: { checkKey: string }) {
+  const { state, dispatch } = useIde();
+  const c = state.checks[checkKey];
+  if (!c) return null;
+  return (
+    <div className="thread__run">
+      <p className="thread__tag">
+        {c.status === "error" ? "The backtest stopped." : c.copy ? "Backtested. Ask anything about the result." : c.status === "running" ? "Backtesting in the editor…" : "No result came back."}
+      </p>
+      {c.status === "error" && c.error && (
+        <p className="thread__error" role="alert">
+          <AlertTriangle size={14} aria-hidden />
+          {c.error}
+        </p>
+      )}
+      <button className="tool-btn" onClick={() => dispatch({ type: "open", id: `copy:${checkKey}` })}>
+        Open the backtest
+      </button>
+    </div>
+  );
+}
+
 /** One check in a thread: the agent's steps as they happen, then its answer and a way to the full check. */
 function ThreadCheck({ checkKey }: { checkKey: string }) {
   const { state, dispatch } = useIde();
   const check = state.checks[checkKey];
   const cf = useCheckFrame(check, () => dispatch({ type: "finishCheck", key: checkKey }));
+  if (check?.via === "copytrade") return <FormRun checkKey={checkKey} />;
   if (!check || !cf) return null;
   const hasCheck = !!cf.answer?.check;
   const copy = isCopyRun(check);
@@ -338,7 +377,7 @@ function ThreadCheck({ checkKey }: { checkKey: string }) {
       {cf.answer && cf.answer.explained_by === null && cf.frame.audited && (
         <p className="thread__tag">The agent is off, so this answer is the check’s own findings.</p>
       )}
-      {check.status === "running" && cf.frame.steps.length === 0 && <p className="thread__tag">Starting…</p>}
+      {check.status === "running" && cf.frame.steps.length === 0 && !cf.answer && <Thinking since={check.startedAt} />}
       {check.status === "error" && (
         <p className="thread__error" role="alert">
           <AlertTriangle size={14} aria-hidden />

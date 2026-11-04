@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState } from "react";
-import { Check, Columns2, Copy, Download, FileCode2, FileText, FileVideo, Play, ScanSearch, Timer, X } from "lucide-react";
+import { Check, Columns2, Copy, Download, FileCode2, FileText, FileVideo, MessageSquare, Play, ScanSearch, Timer, X } from "lucide-react";
 import { runs, type ProjectFile } from "../data/examples";
 import { answerOf } from "../demo/runs";
 import { onTablistKeyDown } from "../lib/tabs";
@@ -77,6 +77,12 @@ export function MainArea() {
           ))}
         </div>
         <div className="tabbar__tools">
+          {!state.panes.thread && !narrow && (
+            <button className="tool-btn" onClick={() => dispatch({ type: "pane", pane: "thread", open: true })}>
+              <MessageSquare size={14} aria-hidden />
+              Chat
+            </button>
+          )}
           {file && isCode && <ExportButtons file={file} />}
           {file && isCode && hasRun(file.id) && !narrow && (
             <button
@@ -253,10 +259,10 @@ function ExportButtons({ file }: { file: ProjectFile }) {
 function EmptyState() {
   return (
     <div className="empty">
-      <p className="empty__title">Open a check or a backtest to see it here.</p>
+      <p className="empty__title">Ask about a token in the chat to check it.</p>
       <p className="empty__body">
-        Saved checks open with their chart, holders and signals. Copy-trade backtests open with each position: the wallet’s trades, yours a
-        little later, and what the price did.
+        Paste a pump.fun link, a ticker or an address. Its chart, holders and signals open here. The examples folder has saved checks and a
+        copy-trade backtest to look through.
       </p>
     </div>
   );

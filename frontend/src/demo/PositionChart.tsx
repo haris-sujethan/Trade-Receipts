@@ -93,8 +93,8 @@ export function PositionChart({ p, buyAfter, sellAfter, width = 760, height = 25
   const who = (m: Mark) =>
     m.who === "wallet"
       ? m.side === "buy"
-        ? `It bought ${m.sol.toFixed(2)} SOL`
-        : `It sold for ${m.sol.toFixed(2)} SOL`
+        ? `They bought ${m.sol.toFixed(2)} SOL`
+        : `They sold for ${m.sol.toFixed(2)} SOL`
       : m.side === "buy"
         ? `You buy ${m.sol.toFixed(2)} SOL`
         : `You sell ${m.rest ? "the rest " : ""}for ${m.sol.toFixed(2)} SOL`;
@@ -104,7 +104,7 @@ export function PositionChart({ p, buyAfter, sellAfter, width = 760, height = 25
       <svg
         viewBox={`0 0 ${width} ${height}`}
         role="img"
-        aria-label={`${p.symbol || p.mint.slice(0, 6)}: market cap in SOL from the wallet's first buy to your last sell, with its trades and yours marked`}
+        aria-label={`${p.symbol || p.mint.slice(0, 6)}: market cap in SOL from the wallet's first buy to your last sell, with their trades and yours marked`}
         onPointerLeave={() => setHover(null)}
       >
         {geo.yTicks.map((v) => (
@@ -139,7 +139,7 @@ export function PositionChart({ p, buyAfter, sellAfter, width = 760, height = 25
         >
           <span>{who(shown)}</span>
           <span>Market cap {mcap(shown.v)}</span>
-          <span>{shown.s === 0 ? "At its first buy" : `${duration(shown.s)} after its first buy`}</span>
+          <span>{shown.s === 0 ? "At their first buy" : `${duration(shown.s)} after their first buy`}</span>
         </div>
       )}
     </div>

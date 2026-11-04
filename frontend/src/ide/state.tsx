@@ -47,6 +47,8 @@ export type CheckRun = {
   copy?: CopyTrade;
   /** When its result came in (epoch ms); for a saved run, when it was saved. */
   at?: number;
+  /** A backtest run from its form: the backend's id for its result, so questions in the thread are answered from it. */
+  runId?: string;
   /** Live checks: the thread before this message, what was attached, and the result a follow-up is about. */
   history?: Turn[];
   attachment?: Attachment;
@@ -125,7 +127,11 @@ type Action =
   | { type: "selectThread"; thread: ThreadRef }
   /** Plays an example thread's saved run, when the visitor asks for it. */
   | { type: "playExample"; key: string }
-  | { type: "pane"; pane: keyof Panes; open: boolean };
+  | { type: "pane"; pane: keyof Panes; open: boolean }
+  /** Opens the chat on a run: the thread it's in, or a new one about it. */
+  | { type: "askAbout"; key: string }
+  /** The tour shows an example: the rug check in Analyze, the backtest in Copy trade, or the backtest form. */
+  | { type: "tourShow"; show: "rug" | "copy" | "form" };
 
 /** What the IDE does with a sent message, decided before it reaches the reducer (see `replyFor`). */
 export type Reply = { kind: "replay"; run: Run } | { kind: "live"; attachment?: Attachment } | { kind: "text"; text: string };
@@ -199,8 +205,34 @@ export const NEW_COPY_TAB = "copy:new";
 
 function initialState(): State {
   const tourOpen = !readDone();
-  // The tour points at the thread, so it opens with both panels.
-  return { ...demoState(), tourOpen, panes: tourOpen ? { files: true, thread: true } : readPanes() };
+  // The tour points at the thread, so it opens with both panels. After it, the IDE starts blank: an empty thread,
+  // nothing open, the examples in their folder.
+  if (tourOpen) return { ...demoState(), tourOpen, panes: { files: true, thread: true } };
+  return { ...demoState(), tourOpen, threads: [blankThread(1)], thread: 1, panes: { ...readPanes(), thread: true } };
+}
+
+const blankThread = (id: number): UserThread => ({ id, title: "", items: [] });
+
+/** The visitor's current thread if it's still empty, otherwise a new empty one. */
+function freshThread(s: State): State {
+  const current = typeof s.thread === "number" ? s.threads.find((t) => t.id === s.thread) : undefined;
+  if (current && current.items.length === 0) return s;
+  const id = s.threads.length + 1;
+  return { ...s, threads: [...s.threads, blankThread(id)], thread: id };
+}
+
+/** The thread a run is in, or a new one that starts with it, so questions about it have its context. */
+function threadFor(s: State, key: string, said: string, title = titleFrom(said)): State {
+  const has = s.threads.find((t) => t.items.some((m) => m.kind === "check" && m.key === key));
+  if (has) return { ...s, thread: has.id };
+  const id = s.threads.length + 1;
+  const items: ThreadItem[] = [{ kind: "user", text: said }, { kind: "check", key }];
+  return { ...s, threads: [...s.threads, { id, title, items }], thread: id };
+}
+
+/** What a copy-trade backtest from the form asked, said the way a visitor would. */
+function copySaid(q: CopyRequest) {
+  return `Copy ${q.wallet}: buy ${duration(q.buy_after_s)} after they buy, sell ${duration(q.sell_after_s)} after they sell, ${q.positions} positions, ${q.size_sol} SOL each.`;
 }
 
 /** The mode that matches what a tab shows. */
@@ -244,15 +276,12 @@ function reducer(s: State, a: Action): State {
     }
     case "workTab": {
       if (a.tab === s.workTab) return s;
-      // The example threads follow the mode; threads of your own stay put.
-      s = typeof s.thread === "number" ? s : { ...s, thread: a.tab === "Copy trade" ? "copy" : "rug" };
-      const fits = (id: TabId) => modeOf(id) === a.tab;
-      if (s.active && fits(s.active)) return { ...s, workTab: a.tab };
-      // Show the most recent tab of that kind: in Analyze the example check, in Copy trade the blank form. Nothing
-      // runs or replays on its own.
-      const recent = [...s.openTabs].reverse().find(fits);
-      const target = recent ?? (a.tab === "Copy trade" ? NEW_COPY_TAB : s.checks[HERO_KEY] ? `check:${HERO_KEY}` : null);
-      return target ? { ...withTab(s, target), openSeq: s.openSeq + 1 } : { ...s, workTab: a.tab };
+      // Each switch starts fresh: a new chat, and a new tab. Copy trade opens its form with the chat closed (a
+      // backtest starts from the form; its chat opens when the visitor asks about the result). Analyze starts in
+      // the chat, with nothing open yet.
+      const fresh = freshThread(s);
+      if (a.tab === "Copy trade") return { ...withTab(fresh, NEW_COPY_TAB), panes: { ...s.panes, thread: false }, openSeq: s.openSeq + 1 };
+      return { ...fresh, workTab: a.tab, active: null, panes: { ...s.panes, thread: true } };
     }
     case "split":
       return { ...s, split: !s.split };
@@ -272,8 +301,7 @@ function reducer(s: State, a: Action): State {
           ? { key: HERO_KEY, run: a.hero, mode: "replay", startedAt: Number.NEGATIVE_INFINITY, status: "waiting" }
           : savedCheck(a.hero, HERO_KEY);
       }
-      const next = { ...s, saved: a.saved, checks };
-      return a.hero && !s.tourOpen && !s.active ? withTab(next, `check:${HERO_KEY}`) : next;
+      return { ...s, saved: a.saved, checks };
     }
     case "savedCopies": {
       // The copy-trade example waits until the mode is first opened, then plays.
@@ -288,7 +316,9 @@ function reducer(s: State, a: Action): State {
     }
     case "openSavedCopy": {
       const checks = s.checks[a.key] ? s.checks : { ...s.checks, [a.key]: savedCheck(a.run, a.key) };
-      return { ...withTab({ ...s, checks }, `copy:${a.key}`), openSeq: s.openSeq + 1 };
+      // Its chat comes with it, closed, so a question about it is answered from its result.
+      const next = s.tourOpen ? { ...s, checks } : threadFor({ ...s, checks }, a.key, a.run.message);
+      return { ...withTab(next, `copy:${a.key}`), openSeq: s.openSeq + 1 };
     }
     case "copyStart": {
       const seq = s.seq + 1;
@@ -299,7 +329,9 @@ function reducer(s: State, a: Action): State {
       const same = latestCopy(s, a.request);
       if (same && (same.status === "running" || (same.status === "done" && Date.now() - (same.at ?? 0) < COPY_FRESH_MS)))
         return { ...withTab(s, `copy:${same.key}`), openSeq: s.openSeq + 1 };
-      return { ...withTab({ ...s, seq, checks: { ...s.checks, [key]: c } }, `copy:${key}`), openSeq: s.openSeq + 1 };
+      // A new chat, with what the form asked, so questions about the result have its context.
+      const next = threadFor({ ...s, seq, checks: { ...s.checks, [key]: c } }, key, copySaid(a.request), copyTitle(c));
+      return { ...withTab(next, `copy:${key}`), openSeq: s.openSeq + 1 };
     }
     case "startHero": {
       const hero = s.checks[HERO_KEY];
@@ -323,7 +355,8 @@ function reducer(s: State, a: Action): State {
       if (!c) return s;
       const e = a.event;
       if (e.type === "error") return { ...s, checks: { ...s.checks, [a.key]: { ...c, status: "error", error: e.message } } };
-      if (e.type === "result") return { ...s, checks: { ...s.checks, [a.key]: { ...c, copy: e.copy_trade, at: Date.now() } } };
+      if (e.type === "result")
+        return { ...s, checks: { ...s.checks, [a.key]: { ...c, copy: e.copy_trade, runId: e.run_id ?? undefined, at: Date.now() } } };
       // The backtest's own progress events don't name their tool; the agent's do.
       const event: RunEvent = e.type === "progress" && !e.tool ? { ...e, tool: "copy_trade" } : e;
       const run = { ...c.run, events: [...c.run.events, event] };
@@ -339,11 +372,22 @@ function reducer(s: State, a: Action): State {
       return { ...s, checks: { ...s.checks, [a.key]: { ...c, status: "done" } } };
     }
     case "closeTour": {
-      // Closing the tour, at any step, leaves the example finished on its check.
-      const hero = s.checks[HERO_KEY];
-      const checks = hero ? { ...s.checks, [HERO_KEY]: { ...hero, startedAt: Number.NEGATIVE_INFINITY, status: "done" as const } } : s.checks;
-      const next = { ...s, checks, tourOpen: false };
-      return hero ? withTab(next, `check:${HERO_KEY}`) : next;
+      // Closing the tour, at any step, leaves the IDE blank: an empty chat in Analyze, nothing open, the examples
+      // finished and waiting in their folder.
+      const done = (k: string) => (s.checks[k] ? { [k]: { ...s.checks[k], startedAt: Number.NEGATIVE_INFINITY, status: "done" as const } } : {});
+      const checks = { ...s.checks, ...done(HERO_KEY), ...done(COPY_HERO_KEY) };
+      const id = s.threads.length + 1;
+      return {
+        ...s,
+        checks,
+        tourOpen: false,
+        workTab: "Analyze",
+        openTabs: [],
+        active: null,
+        threads: [...s.threads, blankThread(id)],
+        thread: id,
+        panes: { files: true, thread: true },
+      };
     }
     case "restartTour": {
       const hero = s.checks[HERO_KEY];
@@ -434,6 +478,27 @@ function reducer(s: State, a: Action): State {
       return startReplay(s, a.key);
     case "pane":
       return { ...s, panes: { ...s.panes, [a.pane]: a.open } };
+    case "askAbout": {
+      const c = s.checks[a.key];
+      if (!c) return s;
+      const said = c.request ? copySaid(c.request) : c.run.message;
+      return { ...threadFor(s, a.key, said, isCopyRun(c) ? copyTitle(c) : undefined), panes: { ...s.panes, thread: true } };
+    }
+    case "tourShow": {
+      const panes = { files: true, thread: true };
+      if (a.show === "rug") {
+        const hero = s.checks[HERO_KEY];
+        const next = { ...s, thread: "rug" as ThreadRef, panes };
+        // The check's tab opens once it has started; before that the tour points at the chat.
+        if (!hero || hero.status === "waiting") return { ...next, workTab: "Analyze", active: s.active && modeOf(s.active) === "Analyze" ? s.active : null };
+        return { ...withTab(next, `check:${HERO_KEY}`), openSeq: s.openSeq + 1 };
+      }
+      if (a.show === "form") return { ...withTab({ ...s, thread: "copy", panes }, NEW_COPY_TAB), openSeq: s.openSeq + 1 };
+      const copy = s.checks[COPY_HERO_KEY];
+      if (!copy) return { ...s, workTab: "Copy trade", thread: "copy", panes };
+      const next = { ...s, thread: "copy" as ThreadRef, panes };
+      return copy.status === "waiting" ? startReplay(next, COPY_HERO_KEY) : { ...withTab(next, `copy:${COPY_HERO_KEY}`), openSeq: s.openSeq + 1 };
+    }
   }
 }
 
@@ -456,6 +521,7 @@ export function latestCopy(state: State, q: CopyRequest): CheckRun | undefined {
 function latestContext(items: ThreadItem[], checks: Record<string, CheckRun>): string | undefined {
   for (const m of [...items].reverse()) {
     const c = m.kind === "check" ? checks[m.key] : undefined;
+    if (c?.runId) return c.runId;
     const answer = c && answerOf(c.run);
     if (!c || !answer) continue;
     if (answer.run_id) return answer.run_id;

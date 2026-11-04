@@ -65,7 +65,12 @@ class Fill:
 
     @property
     def mcap(self) -> float:
-        return self.sol / self.tokens * MCAP if self.tokens else math.nan
+        """The fill's price as a market cap; NaN for a fill that moved no SOL (dust, or tokens given away)."""
+        return self.sol / self.tokens * MCAP if self.tokens > 0 and self.sol > 0 else math.nan
+
+    @property
+    def priced(self) -> bool:
+        return not math.isnan(self.mcap)
 
 
 @dataclass
@@ -111,7 +116,7 @@ class Prices:
     """A token's market cap at any moment: the last fill at or before it."""
 
     def __init__(self, fills: list[Fill]):
-        self.fills = [f for f in fills if not math.isnan(f.mcap)]
+        self.fills = [f for f in fills if f.priced]
         self.times = [f.t for f in self.fills]
 
     def at(self, t: float) -> float | None:
@@ -136,11 +141,11 @@ def copy_result(p: Position, prices: Prices, buy_delay: int, sell_delay: int, si
     for f in p.fills:
         if f.is_buy:
             held_by_wallet += f.tokens
-            plan.append((f.t + buy_delay, "buy", size_sol * f.sol / spent_total, f.mcap if buy_delay == 0 else None))
+            plan.append((f.t + buy_delay, "buy", size_sol * f.sol / spent_total, f.mcap if buy_delay == 0 and f.priced else None))
         else:
             share = min(1.0, f.tokens / held_by_wallet) if held_by_wallet > 0 else 1.0
             held_by_wallet = max(0.0, held_by_wallet - f.tokens)
-            plan.append((f.t + sell_delay, "sell", share, f.mcap if sell_delay == 0 else None))
+            plan.append((f.t + sell_delay, "sell", share, f.mcap if sell_delay == 0 and f.priced else None))
     plan.sort(key=lambda x: (x[0], x[1] == "sell"))
     held = spent = got = 0.0
     trades = []
@@ -285,21 +290,27 @@ class CopyTrade:
             return []
         first_buy = next(f for f in p.fills if f.is_buy)
         last_sell = [f for f in p.fills if not f.is_buy][-1]
-        at_buy, after_buy = first_buy.mcap, prices.at(first_buy.t + self.buy_delay)
-        at_sell, after_sell = last_sell.mcap, prices.at(last_sell.t + self.sell_delay)
+        def price(f: Fill) -> float | None:
+            """A fill that moved no SOL has no price of its own: use the market's at that moment."""
+            return f.mcap if f.priced else prices.at(f.t)
+
+        at_buy, at_sell = price(first_buy), price(last_sell)
+        after_buy = prices.at(first_buy.t + self.buy_delay) if at_buy else None
+        after_sell = prices.at(last_sell.t + self.sell_delay) if at_sell else None
+        fills = [(f, price(f)) for f in p.fills]
         return [{
             "mint": p.mint, "name": p.name, "symbol": p.symbol,
             "first_buy_ts": first_buy.t, "last_sell_ts": last_sell.t, "held_s": last_sell.t - first_buy.t,
             "buys": sum(f.is_buy for f in p.fills), "sells": sum(not f.is_buy for f in p.fills),
             "wallet": wallet_result(p),
             "you": copy_result(p, prices, self.buy_delay, self.sell_delay, self.size_sol),
-            "after_buy": {"mcap_at_buy": round(at_buy, 3), "mcap_after": None if after_buy is None else round(after_buy, 3),
+            "after_buy": {"mcap_at_buy": at_buy and round(at_buy, 3), "mcap_after": None if after_buy is None else round(after_buy, 3),
                           "change": None if after_buy is None else round(after_buy / at_buy - 1, 4)},
-            "after_sell": {"mcap_at_sell": round(at_sell, 3), "mcap_after": None if after_sell is None else round(after_sell, 3),
+            "after_sell": {"mcap_at_sell": at_sell and round(at_sell, 3), "mcap_after": None if after_sell is None else round(after_sell, 3),
                            "change": None if after_sell is None else round(after_sell / at_sell - 1, 4)},
             "price_path": [{"t": f.t, "mcap_sol": round(f.mcap, 3)} for f in prices.fills[:: max(1, len(prices.fills) // 120)]],
-            "wallet_fills": [{"t": f.t, "side": "buy" if f.is_buy else "sell", "mcap_sol": round(f.mcap, 3),
-                              "sol": round((f.sol + (f.fee if f.is_buy else -f.fee)) / 1e9, 4)} for f in p.fills],
+            "wallet_fills": [{"t": f.t, "side": "buy" if f.is_buy else "sell", "mcap_sol": round(px, 3),
+                              "sol": round((f.sol + (f.fee if f.is_buy else -f.fee)) / 1e9, 4)} for f, px in fills if px],
         }]
 
     def summary(self, rows: list[dict]) -> dict:

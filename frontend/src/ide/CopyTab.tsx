@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useState, type FormEvent } from "react";
-import { AlertTriangle, ChevronDown, ChevronRight, LoaderCircle, Play, RotateCcw, SquareArrowOutUpRight } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronRight, LoaderCircle, MessageSquare, Play, RotateCcw, SquareArrowOutUpRight } from "lucide-react";
 import { duration, loadRun, pct, shortAddr, signedPct, signedSol, whole, type CopyRequest, type CopyTrade, type Fill, type Position, type Result } from "../demo/runs";
 import { useBackend, useCheckFrame } from "./live";
 import { change, CopySummary } from "../demo/CopyViews";
@@ -32,7 +32,7 @@ const MAX_DELAY = 86_400;
 const WALLET = /(?:pump\.fun\/(?:profile|coin)\/)?([1-9A-HJ-NP-Za-km-z]{32,44})/;
 
 export function CopyTab({ run }: { run: CheckRun }) {
-  const { dispatch } = useIde();
+  const { state, dispatch } = useIde();
   const cf = useCheckFrame(run, () => dispatch({ type: "finishCheck", key: run.key }));
   if (!cf) return null;
   const { frame } = cf;
@@ -93,7 +93,19 @@ export function CopyTab({ run }: { run: CheckRun }) {
             </div>
           </div>
         )}
-        {result && <CopyResult r={result} runKey={run.key} />}
+        {result && (
+          <div data-tour="copy-result">
+            {!state.panes.thread && (
+              <div className="copy__ask">
+                <button className="tool-btn" onClick={() => dispatch({ type: "askAbout", key: run.key })}>
+                  <MessageSquare size={14} aria-hidden />
+                  Ask about this result
+                </button>
+              </div>
+            )}
+            <CopyResult r={result} runKey={run.key} />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -130,7 +142,7 @@ export function NewCopyTab() {
                   <button onClick={() => open(r.id)}>
                     <span className="mono">{shortAddr(r.wallet)}</span>
                     <span>
-                      {r.buy_after_s != null && r.sell_after_s != null ? `${duration(r.buy_after_s)} after its buys, ${duration(r.sell_after_s)} after its sells` : ""}
+                      {r.buy_after_s != null && r.sell_after_s != null ? `${duration(r.buy_after_s)} after they buy, ${duration(r.sell_after_s)} after they sell` : ""}
                       {r.positions != null ? `, ${r.positions} positions` : ""}
                     </span>
                     <span className="copyx__when">{loading === r.id ? "Opening" : `Saved ${ago(r.saved_at * 1000)}`}</span>
@@ -239,11 +251,11 @@ function CopyForm({ runKey, request }: { runKey: string; request?: CopyRequest }
   // The values a run will use, stated beside the button so they're confirmed before it starts.
   const confirm =
     buy != null && sell != null
-      ? `Buy ${duration(buy)} after its buys, sell ${duration(sell)} after its sells, ${positions} positions, ${sizeSol > 0 ? sizeSol : "?"} SOL each`
+      ? `Buy ${duration(buy)} after they buy, sell ${duration(sell)} after they sell, ${positions} positions, ${sizeSol > 0 ? sizeSol : "?"} SOL each`
       : "Set both delays";
 
   return (
-    <form className="copyf" onSubmit={submit} aria-label="What to copy" noValidate>
+    <form className="copyf" onSubmit={submit} aria-label="What to copy" noValidate data-tour="copy-form">
       <fieldset className="copyf__set" disabled={!live}>
         <div className="copyf__row">
           <label className="copyf__field copyf__field--wallet">
@@ -274,8 +286,8 @@ function CopyForm({ runKey, request }: { runKey: string; request?: CopyRequest }
             ))}
           </div>
         </fieldset>
-        <DelayField legend="Buy after its buys" name={`buy-${runKey}`} value={buy} onChange={setBuy} />
-        <DelayField legend="Sell after its sells" name={`sell-${runKey}`} value={sell} onChange={setSell} />
+        <DelayField legend="Buy after they buy" name={`buy-${runKey}`} value={buy} onChange={setBuy} />
+        <DelayField legend="Sell after they sell" name={`sell-${runKey}`} value={sell} onChange={setSell} />
       </fieldset>
       <div className="copyf__foot">
         <div className="copyf__confirm" id={`copy-values-${runKey}`}>
@@ -470,10 +482,10 @@ function CopyResult({ r, runKey }: { r: CopyTrade; runKey: string }) {
                   You
                 </th>
                 <th scope="col" className="num">
-                  {duration(r.buy_after_s)} after its buy
+                  {duration(r.buy_after_s)} after they buy
                 </th>
                 <th scope="col" className="num">
-                  {duration(r.sell_after_s)} after its sell
+                  {duration(r.sell_after_s)} after they sell
                 </th>
               </tr>
             </thead>
@@ -534,7 +546,7 @@ const when = (ts: number) =>
 /** One position opened up: what the price did while you waited, its chart, and every fill. */
 function PositionDetail({ p, r }: { p: Position; r: CopyTrade }) {
   const t0 = p.first_buy_ts;
-  const at = (f: Fill) => (f.t === t0 ? "at its first buy" : `${duration(f.t - t0)} after its first buy`);
+  const at = (f: Fill) => (f.t === t0 ? "at their first buy" : `${duration(f.t - t0)} after their first buy`);
   const line = (f: Fill, who: "It" | "You") =>
     `${f.side === "buy" ? `${who === "It" ? "Bought" : "Buy"} ${f.sol.toFixed(2)} SOL` : `${who === "It" ? "Sold" : `Sell${f.rest ? " the rest" : ""}`} for ${f.sol.toFixed(2)} SOL`} at ${mcap(f.mcap_sol)}, ${at(f)}`;
   const result = (x: Result) =>
@@ -544,11 +556,11 @@ function PositionDetail({ p, r }: { p: Position; r: CopyTrade }) {
     <div className="posd">
       <ul className="posd__moves">
         <li>
-          In the {duration(r.buy_after_s)} after its buy, the price moved <strong>{change(p.after_buy.change)}</strong>
+          In the {duration(r.buy_after_s)} after their buy, the price moved <strong>{change(p.after_buy.change)}</strong>
           {p.after_buy.mcap_after != null && ` (${mcap(p.after_buy.mcap_at_buy)} to ${mcap(p.after_buy.mcap_after)})`}.
         </li>
         <li>
-          In the {duration(r.sell_after_s)} after its last sell, <strong>{change(p.after_sell.change)}</strong>
+          In the {duration(r.sell_after_s)} after their last sell, <strong>{change(p.after_sell.change)}</strong>
           {p.after_sell.mcap_after != null && ` (${mcap(p.after_sell.mcap_at_sell)} to ${mcap(p.after_sell.mcap_after)})`}.
         </li>
       </ul>
@@ -556,7 +568,7 @@ function PositionDetail({ p, r }: { p: Position; r: CopyTrade }) {
       <ul className="pchart__legend">
         <li>
           <MarkKey who="wallet" />
-          Its buys and sells
+          Their buys and sells
         </li>
         <li>
           <MarkKey who="you" />
@@ -566,7 +578,7 @@ function PositionDetail({ p, r }: { p: Position; r: CopyTrade }) {
           <i className="pchart__legend-wait" />
           The price move while you wait
         </li>
-        <li className="pchart__legend-note">Market cap in SOL; time since its first buy, on a log scale</li>
+        <li className="pchart__legend-note">Market cap in SOL; time since their first buy, on a log scale</li>
       </ul>
       <div className="posd__cols">
         <section>

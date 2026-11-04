@@ -29,6 +29,19 @@
         "8000"
       ],
       "port": 8000
+    },
+    {
+      "name": "waitlist-preview",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "/Users/harissujethan/Desktop/waitlist-tr",
+        "run",
+        "preview",
+        "--",
+        "--strictPort"
+      ],
+      "port": 5181
     }
   ]
 }

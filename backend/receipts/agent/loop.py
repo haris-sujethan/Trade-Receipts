@@ -65,7 +65,7 @@ How to work:
 - Get the token's mint. If the user sent a screenshot or clip, call read_address on it. If they gave only a name or ticker, or read_address found a ticker but no address, call find_token. If it finds exactly one pump.fun token, check that one and say it was the only match. If it finds several, list them with what find_token gives and ask which one they mean; never pick one of several for them.
 - When a clip or screenshot made claims (gains, market caps, "dev doxxed"), say what the check shows next to each claim it covers.
 - Call check_token with the mint. Call token_security as a cross-check.
-- If the user gives a pump.fun profile link (pump.fun/profile/...) or asks about copying a wallet, you need three values: how long after its buys they'd buy, how long after its sells they'd sell, and how many of its latest closed positions to copy (25, 50 or 100). If they gave all three, call copy_trade (convert minutes to seconds). If any is missing, don't call it yet: reply with the values you'd use (theirs, otherwise 30 seconds, 30 seconds and 50 positions) and ask them to confirm or change them. Call copy_trade once they confirm.
+- If the user gives a pump.fun profile link (pump.fun/profile/...) or asks about copying a wallet, you need three values: how long after the wallet's buys they'd buy, how long after the wallet's sells they'd sell, and how many of the wallet's latest closed positions to copy (25, 50 or 100). In replies, call the wallet "they" ("5 min after they buy", "their sells"), never "it". If they gave all three, call copy_trade (convert minutes to seconds). If any is missing, don't call it yet: reply with the values you'd use (theirs, otherwise 30 seconds, 30 seconds and 50 positions) and ask them to confirm or change them. Call copy_trade once they confirm.
 - Report the wallet's result and theirs, what it's based on, and what the price did right after the wallet bought and sold. Don't judge the wallet or say why it makes money; give the numbers.
 - Follow-up questions: when earlier results are given, answer from them. Call a tool again only for a different token or wallet, a different timing or number of positions, or if the user asks for fresh data.
 - Then explain in plain, short sentences what the evidence shows: the verdict and rug chance first, then the 2 to 4 signals that matter most, with their numbers. If check_token has a second opinion from Muse Glimmer, give its rug chance and say whether it agrees.
@@ -89,8 +89,8 @@ TOOLS = [
      "parameters": {"type": "object", "properties": {"mint": {"type": "string"}}, "required": ["mint"], "additionalProperties": False}},
     {"type": "function", "name": "copy_trade",
      "description": "Backtest copying a pump.fun wallet: over its latest closed positions, what you'd have made buying "
-                    "buy_after_seconds after each of its buys and selling sell_after_seconds after each of its sells, next "
-                    "to what the wallet made, and how the price moved right after its buys and sells.",
+                    "buy_after_seconds after each of their buys and selling sell_after_seconds after each of their sells, next "
+                    "to what the wallet made, and how the price moved right after they bought and sold.",
      "parameters": {"type": "object", "properties": {
          "wallet": {"type": "string", "description": "the wallet address (from a pump.fun profile link)"},
          "buy_after_seconds": {"type": "integer", "minimum": 0},
@@ -136,6 +136,41 @@ def load_context(context_id: str | None) -> list[dict]:
                 for e in events if e.get("type") == "step" and e.get("status") == "done" and "result" in e]
     path = RUNS / f"{context_id}.json"
     return json.loads(path.read_text())["tool_log"] if path.exists() else []
+
+
+def copy_summary(wallet: str, buy_after_seconds: int, sell_after_seconds: int, r: dict) -> dict:
+    """What the agent reads of a copy-trade backtest: the totals and each position, as text."""
+    if not r["positions"]:
+        return {"error": "No closed pump.fun positions in SOL-priced tokens in this wallet's recent history.", "skipped": r["skipped"]}
+
+    def pct(x):
+        return "n/a" if x is None else f"{100 * x:+.1f}%"
+
+    w, y = r["wallet_total"], r["you_total"]
+    return {
+        "wallet": wallet, "copy": f"buy {prompt._secs(buy_after_seconds)} after each of their buys, sell {prompt._secs(sell_after_seconds)} after each of their sells, {r['size_sol']:g} SOL per position",
+        "positions": r["positions"],
+        "based_on": (f"its latest {r['positions']} closed positions, one per token, from its last "
+                     f"{r['history']['transactions']:,} transactions ({prompt._secs(int(3600 * (r['history']['hours'] or 0)))})"),
+        "wallet_result": f"{w['pnl_sol']:+.2f} SOL on {w['spent_sol']:.2f} SOL spent ({pct(w['pnl_pct'])}); {w['won']} of {r['positions']} positions made money",
+        "your_result": f"{y['pnl_sol']:+.2f} SOL on {y['spent_sol']:.2f} SOL spent ({pct(y['pnl_pct'])}); {y['won']} of {r['positions']} positions made money",
+        "positions_latest_first": [
+            f"{x['symbol'] or x['mint'][:6]}: held {prompt._secs(x['held_s'])}; wallet {pct(x['wallet']['pnl_pct'])}, you {pct(x['you']['pnl_pct'])}; "
+            f"price {pct(x['after_buy']['change'])} in the {prompt._secs(buy_after_seconds)} after their buy, {pct(x['after_sell']['change'])} in the {prompt._secs(sell_after_seconds)} after their sell"
+            for x in r["rows"]],
+        "left_out": [f"{v} {LEFT_OUT[k]}" for k, v in r["skipped"].items() if v],
+        "notes": r["notes"],
+    }
+
+
+def save_copy_run(wallet: str, buy_after_seconds: int, sell_after_seconds: int, positions: int, r: dict) -> str:
+    """Saves a backtest run from its form as a run, so questions about it in the thread can send its id as `context_id`."""
+    run_id = uuid.uuid4().hex[:12]
+    args = {"wallet": wallet, "buy_after_seconds": buy_after_seconds, "sell_after_seconds": sell_after_seconds, "positions": positions}
+    RUNS.mkdir(parents=True, exist_ok=True)
+    (RUNS / f"{run_id}.json").write_text(json.dumps({"at": int(time.time()), "tool_log": [
+        {"tool": "copy_trade", "args": args, "result": copy_summary(wallet, buy_after_seconds, sell_after_seconds, r)}]}, default=str))
+    return run_id
 
 
 def valid_mint(mint: str) -> bool:
@@ -212,27 +247,7 @@ class Run:
         r = copytrade.CopyTrade(wallet, buy_after_seconds, sell_after_seconds, positions=positions,
                                 progress=lambda **kv: self.emit({"type": "progress", "tool": "copy_trade", **kv})).run()
         self.copy = r
-        if not r["positions"]:
-            return {"error": "No closed pump.fun positions in SOL-priced tokens in this wallet's recent history.", "skipped": r["skipped"]}
-
-        def pct(x):
-            return "n/a" if x is None else f"{100 * x:+.1f}%"
-
-        w, y = r["wallet_total"], r["you_total"]
-        return {
-            "wallet": wallet, "copy": f"buy {prompt._secs(buy_after_seconds)} after each of its buys, sell {prompt._secs(sell_after_seconds)} after each of its sells, {r['size_sol']:g} SOL per position",
-            "positions": r["positions"],
-            "based_on": (f"its latest {r['positions']} closed positions, one per token, from its last "
-                         f"{r['history']['transactions']:,} transactions ({prompt._secs(int(3600 * (r['history']['hours'] or 0)))})"),
-            "wallet_result": f"{w['pnl_sol']:+.2f} SOL on {w['spent_sol']:.2f} SOL spent ({pct(w['pnl_pct'])}); {w['won']} of {r['positions']} positions made money",
-            "your_result": f"{y['pnl_sol']:+.2f} SOL on {y['spent_sol']:.2f} SOL spent ({pct(y['pnl_pct'])}); {y['won']} of {r['positions']} positions made money",
-            "positions_latest_first": [
-                f"{x['symbol'] or x['mint'][:6]}: held {prompt._secs(x['held_s'])}; wallet {pct(x['wallet']['pnl_pct'])}, you {pct(x['you']['pnl_pct'])}; "
-                f"price {pct(x['after_buy']['change'])} in the {prompt._secs(buy_after_seconds)} after its buy, {pct(x['after_sell']['change'])} in the {prompt._secs(sell_after_seconds)} after its sell"
-                for x in r["rows"]],
-            "left_out": [f"{v} {LEFT_OUT[k]}" for k, v in r["skipped"].items() if v],
-            "notes": r["notes"],
-        }
+        return copy_summary(wallet, buy_after_seconds, sell_after_seconds, r)
 
     def find_token(self, query: str) -> dict:
         """Tokens by ticker or name: the launch history when it covers the time asked about, otherwise
@@ -388,7 +403,7 @@ class Run:
         delays = [int(float(n) * SECONDS_IN[u.lower()]) for n, u in DELAY_IN_TEXT.findall(message or "")]
         positions = POSITIONS_IN_TEXT.search(message or "")
         if PROFILE_IN_TEXT.search(message or "") and mints and (len(delays) < 2 or not positions):
-            lines.append("Say how long after its buys you'd buy, how long after its sells you'd sell, and how many of its "
+            lines.append("Say how long after they buy you'd buy, how long after they sell you'd sell, and how many of their "
                          "latest closed positions to copy (25, 50 or 100), for example: 5 min after, 5 min after, 50 positions.")
         elif PROFILE_IN_TEXT.search(message or "") and mints:
             out = self.call("copy_trade", {"wallet": mints[0], "buy_after_seconds": delays[0], "sell_after_seconds": delays[1],

@@ -546,3 +546,10 @@
     display: none;
   }
 }
+
+/* Opens the backtest's chat, which stays closed until the visitor has a question. */
+.copy__ask {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}

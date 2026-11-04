@@ -138,14 +138,18 @@ export function CheckTab({ check }: { check: CheckRun }) {
             />
           </div>
         )}
-        {data && scored && view === "chart" && <ChartView check={data} frame={frame} width={900} height={380} />}
+        {data && scored && view === "chart" && (
+          <div data-tour="chart">
+            <ChartView check={data} frame={frame} width={900} height={380} />
+          </div>
+        )}
         {data && scored && view === "holders" && (
           <div data-tour="holders">
             <HoldersView check={data} frame={frame} mapWidth={560} mapHeight={380} rows={12} />
           </div>
         )}
         {data && scored && view === "signals" && (
-          <div className="check__signals">
+          <div className="check__signals" data-tour="signals">
             <CheckCards run={check.run} check={data} />
             <p className="checks__note">
               Each card is one family of signals, with {data.symbol}’s values {Math.round(data.age_s / 60)} minutes after launch. The model card’s picture is an

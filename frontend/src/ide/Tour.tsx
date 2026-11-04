@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import { ArrowRight } from "lucide-react";
-import { HERO_KEY, markTourDone, useIde } from "./state";
+import { COPY_HERO_KEY, HERO_KEY, markTourDone, useIde } from "./state";
 
 type Ide = ReturnType<typeof useIde>;
 
@@ -13,6 +13,7 @@ type Step = {
 };
 
 function startHero(dispatch: Ide["dispatch"], state: Ide["state"]) {
+  dispatch({ type: "tourShow", show: "rug" });
   if (state.checks[HERO_KEY]?.status === "waiting") dispatch({ type: "startHero" });
 }
 
@@ -22,27 +23,66 @@ function finishHero(dispatch: Ide["dispatch"], state: Ide["state"]) {
   dispatch({ type: "finishCheck", key: HERO_KEY });
 }
 
+/** Show one of the example check's views. */
+const heroView = (view: "overview" | "chart" | "holders" | "signals", finish = false) => (dispatch: Ide["dispatch"], state: Ide["state"]) => {
+  (finish ? finishHero : startHero)(dispatch, state);
+  dispatch({ type: "open", id: `check:${HERO_KEY}` });
+  dispatch({ type: "checkView", key: HERO_KEY, view });
+};
+
 const steps: Step[] = [
   {
+    target: "none",
+    title: "Welcome to Trade Receipts",
+    body: "Two tools in one IDE. Analyze checks a pump.fun token for a rug. Copy trade backtests copying a wallet a little late. This tour plays a saved example of each; click through at your own pace.",
+    enter: (dispatch) => dispatch({ type: "tourShow", show: "rug" }),
+  },
+  {
+    target: "worktabs",
+    title: "Two modes",
+    body: "Analyze and Copy trade live up here. Switching mode starts a new chat and a new tab, so results never mix.",
+    enter: (dispatch) => dispatch({ type: "tourShow", show: "rug" }),
+  },
+  {
+    target: "examples",
+    title: "Your files",
+    body: "The examples folder holds saved rug checks and a saved copy-trade backtest. Anything you run shows up above it, in this session.",
+  },
+  {
     target: "ask",
-    title: "Start with a token",
-    body: "Paste a pump.fun link, a ticker or a token’s address. This one is a saved check of a token 15 minutes after it launched.",
+    title: "Analyze: start with a token",
+    body: "Paste a pump.fun link, a ticker or a token’s address into the chat. This one is a saved check of a token 15 minutes after it launched.",
+    enter: (dispatch) => dispatch({ type: "tourShow", show: "rug" }),
   },
   {
     target: "thread",
-    title: "The agent traces every wallet",
-    body: "It reads every trade since launch, traces who funded each wallet, and splits the team, the snipers and the bots from independent buyers.",
+    title: "The agent reads the chain",
+    body: "Each step shows as it runs: it reads every trade since launch, traces who funded each wallet, and splits the team, snipers and bots from independent buyers.",
     enter: startHero,
+  },
+  {
+    target: "chart",
+    title: "The real chart",
+    body: "Every trade since launch, as candles, with the team’s and the snipers’ trades marked on it.",
+    enter: heroView("chart"),
   },
   {
     target: "holders",
     title: "Who really holds it",
     body: "Wallets tied by funding gather around the wallets that paid for them. The team is blue; snipers, bots and everyone else sit apart.",
-    enter: (dispatch, state) => {
-      startHero(dispatch, state);
-      dispatch({ type: "open", id: `check:${HERO_KEY}` });
-      dispatch({ type: "checkView", key: HERO_KEY, view: "holders" });
-    },
+    enter: heroView("holders"),
+  },
+  {
+    target: "signals",
+    title: "Every signal",
+    body: "Each card is one family of signals, from the launch block to the team’s selling, with this token’s own values.",
+    enter: heroView("signals", true),
+  },
+  {
+    target: "results",
+    title: "The rug chance",
+    body: "A model trained on thousands of past pump.fun launches scores the token, with a second opinion and how the most similar launches ended. A low score never means safe.",
+    enter: heroView("overview", true),
   },
   {
     target: "problems",
@@ -54,14 +94,36 @@ const steps: Step[] = [
     },
   },
   {
-    target: "results",
-    title: "The verdict, with a second opinion",
-    body: "The rug chance comes from a model trained on thousands of past pump.fun tokens, with Muse Glimmer’s second opinion and how similar launches ended. Switch to Copy trade at the top to see what copying a wallet a little late would have made.",
-    enter: (dispatch, state) => {
-      finishHero(dispatch, state);
-      dispatch({ type: "open", id: `check:${HERO_KEY}` });
-      dispatch({ type: "checkView", key: HERO_KEY, view: "overview" });
+    target: "composer",
+    title: "Ask follow-ups",
+    body: "Ask about a result in plain English: the agent answers from the data it already pulled. Another token or wallet opens a new chat.",
+    enter: (dispatch, state) => finishHero(dispatch, state),
+  },
+  {
+    target: "thread",
+    title: "Copy trade: pick a wallet",
+    body: "Paste a pump.fun wallet and say how late you’d copy it. This saved backtest copies a wallet from pump.fun’s leaderboard a few minutes after each of its trades.",
+    enter: (dispatch) => dispatch({ type: "tourShow", show: "copy" }),
+  },
+  {
+    target: "copy-result",
+    title: "Their result next to yours",
+    body: "The wallet’s P&L beside yours copying it late, then every position: their trades, yours, and what the price did while you waited.",
+    enter: (dispatch) => {
+      dispatch({ type: "tourShow", show: "copy" });
+      dispatch({ type: "finishCheck", key: COPY_HERO_KEY });
     },
+  },
+  {
+    target: "copy-form",
+    title: "Run your own",
+    body: "Set the wallet, how long after they buy and sell you’d copy, and how many positions. Nothing runs until you press Run backtest. Its chat stays closed until you ask about the result.",
+    enter: (dispatch) => dispatch({ type: "tourShow", show: "form" }),
+  },
+  {
+    target: "none",
+    title: "You’re set",
+    body: "The IDE starts blank: ask about a token in the chat, or switch to Copy trade. The examples stay in the examples folder. Replay this tour from the question mark at the top.",
   },
 ];
 
@@ -125,6 +187,13 @@ function TourCard() {
 
   useEffect(() => {
     step.enter?.(dispatch, state);
+    // Once the step's view has opened, bring a target that sits low in a scrolling pane up to its top.
+    const t = window.setTimeout(() => {
+      const el = document.querySelector(`[data-tour="${step.target}"]`);
+      const r = el?.getBoundingClientRect();
+      if (el && r && r.top > window.innerHeight * 0.45) el.scrollIntoView({ block: "start", behavior: "smooth" });
+    }, 350);
+    return () => window.clearTimeout(t);
     // Run only when the step changes, not on every state update.
   }, [index]);
 
@@ -148,7 +217,7 @@ function TourCard() {
       window.removeEventListener("resize", remeasure);
       window.removeEventListener("scroll", onScroll, true);
     };
-  }, [remeasure, state.openTabs, state.active, state.workTab, state.checkViews, state.checks]);
+  }, [remeasure, state.openTabs, state.active, state.workTab, state.checkViews, state.checks, state.panes, state.thread]);
 
   useLayoutEffect(() => {
     if (cardRef.current) setCardH(cardRef.current.offsetHeight);
@@ -158,8 +227,8 @@ function TourCard() {
   const close = useCallback(() => {
     markTourDone();
     dispatch({ type: "closeTour" });
-    // Hand focus to the report the tour ends on.
-    requestAnimationFrame(() => document.querySelector<HTMLElement>('[data-tour="results"]')?.focus());
+    // The IDE starts blank: hand focus to the chat.
+    requestAnimationFrame(() => document.querySelector<HTMLElement>("#composer-input")?.focus());
   }, [dispatch]);
 
   const next = useCallback(() => (last ? close() : setIndex((i) => i + 1)), [last, close]);

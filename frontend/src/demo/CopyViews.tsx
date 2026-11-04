@@ -28,9 +28,9 @@ function span(hours: number) {
 function basedOn(r: CopyTrade) {
   const n = `${r.positions} closed ${r.positions === 1 ? "position" : "positions"} (one per token)`;
   const h = r.history;
-  if (!h) return `Based on its latest ${n}, newest first.`;
-  const from = `${h.complete ? "its whole history, " : "its last "}${whole(h.transactions)} transactions${h.hours != null ? `, ${span(h.hours)} of trading` : ""}`;
-  const based = r.positions_wanted != null && r.positions < r.positions_wanted ? `Only ${n} in ${from}.` : `Based on its latest ${n}, from ${from}.`;
+  if (!h) return `Based on their latest ${n}, newest first.`;
+  const from = `${h.complete ? "their whole history, " : "their last "}${whole(h.transactions)} transactions${h.hours != null ? `, ${span(h.hours)} of trading` : ""}`;
+  const based = r.positions_wanted != null && r.positions < r.positions_wanted ? `Only ${n} in ${from}.` : `Based on their latest ${n}, from ${from}.`;
   return r.reused_data ? `${based} Reused the data already pulled for this wallet.` : based;
 }
 
@@ -66,27 +66,27 @@ export function CopySummary({ r }: { r: CopyTrade }) {
             Copying <span className="mono">{shortAddr(r.wallet)}</span>
           </h2>
           <p className="copyr__sub">
-            {duration(r.buy_after_s)} after its buys, {duration(r.sell_after_s)} after its sells, {r.size_sol} SOL a position.
+            {duration(r.buy_after_s)} after they buy, {duration(r.sell_after_s)} after they sell, {r.size_sol} SOL a position.
           </p>
           <p className="copyr__sub">{basedOn(r)}</p>
         </div>
         <a className="copyr__link" href={`https://pump.fun/profile/${r.wallet}`} target="_blank" rel="noreferrer">
-          Its pump.fun profile
+          Their pump.fun profile
         </a>
       </header>
 
       <div className="copyr__totals">
         <Total who="The wallet" t={r.wallet_total} n={r.positions} mark="wallet" />
-        <Total who="You, copying it" t={r.you_total} n={r.positions} mark="you" />
-        <section className="total total--after" aria-label="The price after its trades">
-          <p className="total__who">The price after its trades, median</p>
+        <Total who="You, copying them" t={r.you_total} n={r.positions} mark="you" />
+        <section className="total total--after" aria-label="The price after their trades">
+          <p className="total__who">The price after their trades, median</p>
           <dl className="total__moves">
             <div>
-              <dt>In the {duration(r.buy_after_s)} after its buys</dt>
+              <dt>In the {duration(r.buy_after_s)} after they buy</dt>
               <dd>{change(moves.buy)}</dd>
             </div>
             <div>
-              <dt>In the {duration(r.sell_after_s)} after its sells</dt>
+              <dt>In the {duration(r.sell_after_s)} after they sell</dt>
               <dd>{change(moves.sell)}</dd>
             </div>
           </dl>

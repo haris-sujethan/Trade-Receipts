@@ -94,14 +94,14 @@ export function DemoWindow({ run, plan, frame, view, onView }: Props) {
             {copy && shown === "chart" && latest && (
               <div className="copyd">
                 <div className="ws__head">
-                  <p className="ws__h">{latest.symbol || latest.mint.slice(0, 6)}, its latest position: held {latest.held_s} s</p>
+                  <p className="ws__h">{latest.symbol || latest.mint.slice(0, 6)}, their latest position: held {latest.held_s} s</p>
                   <p className="ws__sub">{c.positions ? `${c.positions[0]} of ${c.positions[1]} positions priced` : `${copy.positions} positions priced`}</p>
                 </div>
                 <PositionChart p={latest} buyAfter={copy.buy_after_s} sellAfter={copy.sell_after_s} width={640} height={230} />
                 <ul className="pchart__legend">
                   <li>
                     <MarkKey who="wallet" />
-                    Its buys and sells
+                    Their buys and sells
                   </li>
                   <li>
                     <MarkKey who="you" />
