@@ -244,7 +244,16 @@ function modeOf(id: TabId): WorkTab | null {
 
 function withTab(s: State, id: TabId): State {
   const openTabs = s.openTabs.includes(id) ? s.openTabs : [...s.openTabs, id];
-  return { ...s, openTabs, active: id, workTab: modeOf(id) ?? s.workTab };
+  return { ...s, openTabs, active: id, workTab: modeOf(id) ?? s.workTab, thread: threadOfTab(s, id) ?? s.thread };
+}
+
+/** The chat a tab's run belongs to, so opening the tab brings back its own conversation. */
+function threadOfTab(s: State, id: TabId | null): ThreadRef | undefined {
+  const key = id?.startsWith("check:") ? id.slice(6) : id?.startsWith("copy:") ? id.slice(5) : null;
+  if (!key) return undefined;
+  if (key === HERO_KEY) return "rug";
+  if (key === COPY_HERO_KEY) return "copy";
+  return s.threads.find((t) => t.items.some((m) => m.kind === "check" && m.key === key))?.id;
 }
 
 function titleFrom(text: string) {
@@ -256,6 +265,9 @@ const savedCheck = (run: Run, key: string): CheckRun => ({ key, run, mode: "repl
 
 /** The tab a run opens in. */
 export const tabOf = (c: CheckRun) => `${isCopyRun(c) ? "copy" : "check"}:${c.key}`;
+
+/** Whether a run has a tab of its own: a backtest, or a check of a token (a follow-up's answer lives in the chat). */
+const hasTab = (c: CheckRun) => isCopyRun(c) || c.run.events.some((e) => e.type === "step" && e.tool === "check_token") || !!answerOf(c.run)?.check;
 
 /** Starts an example replay that hasn't played yet, and opens it. */
 function startReplay(s: State, key: string): State {
@@ -272,7 +284,7 @@ function reducer(s: State, a: Action): State {
     case "close": {
       const openTabs = s.openTabs.filter((t) => t !== a.id);
       const active = s.active === a.id ? (openTabs[openTabs.length - 1] ?? null) : s.active;
-      return { ...s, openTabs, active, workTab: (active && modeOf(active)) || s.workTab };
+      return { ...s, openTabs, active, workTab: (active && modeOf(active)) || s.workTab, thread: threadOfTab(s, active) ?? s.thread };
     }
     case "workTab": {
       if (a.tab === s.workTab) return s;
@@ -317,7 +329,7 @@ function reducer(s: State, a: Action): State {
     case "openSavedCopy": {
       const checks = s.checks[a.key] ? s.checks : { ...s.checks, [a.key]: savedCheck(a.run, a.key) };
       // Its chat comes with it, closed, so a question about it is answered from its result.
-      const next = s.tourOpen ? { ...s, checks } : threadFor({ ...s, checks }, a.key, a.run.message);
+      const next = s.tourOpen ? { ...s, checks } : threadFor({ ...s, checks }, a.key, a.run.message, copyTitle(checks[a.key]));
       return { ...withTab(next, `copy:${a.key}`), openSeq: s.openSeq + 1 };
     }
     case "copyStart": {
@@ -341,7 +353,9 @@ function reducer(s: State, a: Action): State {
     }
     case "openSaved": {
       const checks = s.checks[a.key] ? s.checks : { ...s.checks, [a.key]: savedCheck(a.run, a.key) };
-      return { ...withTab({ ...s, checks }, `check:${a.key}`), openSeq: s.openSeq + 1 };
+      // Its chat comes with it, so a question about it is answered from its result.
+      const next = s.tourOpen ? { ...s, checks } : threadFor({ ...s, checks }, a.key, a.run.message);
+      return { ...withTab(next, `check:${a.key}`), openSeq: s.openSeq + 1 };
     }
     case "finishCheck": {
       const c = s.checks[a.key];
@@ -472,8 +486,13 @@ function reducer(s: State, a: Action): State {
       const id = s.threads.length + 1;
       return { ...s, threads: [...s.threads, { id, title: "", items: [] }], thread: id };
     }
-    case "selectThread":
-      return { ...s, thread: a.thread };
+    case "selectThread": {
+      // A chat brings back its latest check or backtest in the editor.
+      const items = typeof a.thread === "number" ? (s.threads.find((t) => t.id === a.thread)?.items ?? []) : [{ kind: "check" as const, key: a.thread === "copy" ? COPY_HERO_KEY : HERO_KEY }];
+      const last = [...items].reverse().find((m) => m.kind === "check" && s.checks[m.key] && hasTab(s.checks[m.key]));
+      const c = last?.kind === "check" ? s.checks[last.key] : undefined;
+      return c && c.status !== "waiting" ? { ...withTab(s, tabOf(c)), thread: a.thread, openSeq: s.openSeq + 1 } : { ...s, thread: a.thread };
+    }
     case "playExample":
       return startReplay(s, a.key);
     case "pane":
@@ -641,15 +660,15 @@ export function checkProblems(c: CheckRun | undefined): Problem[] {
     .split("\n")
     .filter((l) => /^[-*] /.test(l))
     .map((l) => l.replace(/^[-*] /, ""));
-  const verdict: Problem[] = answer.check
-    ? [
+  const verdict: Problem[] = answer.check?.trees_rug_chance == null
+    ? []
+    : [
         {
           severity: answer.check.verdict === "Likely rug" ? "error" : answer.check.verdict === "Possible rug" ? "warning" : "info",
           file: label,
           message: `${answer.check.verdict}, ${Math.round(answer.check.trees_rug_chance * 100)}% rug chance`,
         },
-      ]
-    : [];
+      ];
   return [...verdict, ...lines.map((message) => ({ severity: "warning" as const, file: label, message }))];
 }
 

@@ -22,6 +22,7 @@ import {
   type ThreadRef,
   type WorkTab,
 } from "./state";
+import { CheckHelp, findFailure } from "./CheckHelp";
 import "../demo/demo.css";
 
 const minutesAgo = (ms: number) => {
@@ -327,7 +328,15 @@ function Thinking({ since }: { since: number }) {
   const s = Math.max(0, Math.floor((now - since) / 1000));
   return (
     <p className="thread__tag thread__thinking" role="status">
-      Thinking<span className="num">{s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`}</span>
+      <span>
+        Thinking
+        <span className="thinking-dots" aria-hidden>
+          <i>.</i>
+          <i>.</i>
+          <i>.</i>
+        </span>
+      </span>
+      <span className="num">{s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`}</span>
     </p>
   );
 }
@@ -378,6 +387,7 @@ function ThreadCheck({ checkKey }: { checkKey: string }) {
         <p className="thread__tag">The agent is off, so this answer is the check’s own findings.</p>
       )}
       {check.status === "running" && cf.frame.steps.length === 0 && !cf.answer && <Thinking since={check.startedAt} />}
+      {cf.finished && !hasCheck && findFailure(cf.frame) && <CheckHelp failure={findFailure(cf.frame)!} />}
       {check.status === "error" && (
         <p className="thread__error" role="alert">
           <AlertTriangle size={14} aria-hidden />

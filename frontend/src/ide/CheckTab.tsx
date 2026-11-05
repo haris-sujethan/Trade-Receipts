@@ -1,11 +1,13 @@
+import { useEffect, useState } from "react";
 import { AlertTriangle, LoaderCircle } from "lucide-react";
-import { Answer, ChartView, HoldersView } from "../demo/CheckViews";
+import { Answer, ChartView, HoldersView, RunSteps } from "../demo/CheckViews";
 import { CheckCards } from "../demo/Checks";
 import { ResultPanel } from "../demo/ResultPanel";
 import { shortAddr } from "../demo/runs";
 import { onTablistKeyDown } from "../lib/tabs";
 import { useBackend, useCheckFrame } from "./live";
 import { useIde, type CheckRun } from "./state";
+import { CheckHelp, findFailure } from "./CheckHelp";
 import "../demo/demo.css";
 
 type View = "overview" | "chart" | "holders" | "signals";
@@ -26,17 +28,19 @@ export function CheckTab({ check }: { check: CheckRun }) {
   if (!cf) return null;
   const { frame, words, answer } = cf;
   const data = answer?.check;
-  // A check that ended without a score (too little activity, already rugged) has no chart or holders to show.
-  const scored = !!data?.chart;
+  // A check that ended without a score (already rugged, older than a day) still shows everything it read: its chart,
+  // holders and signals. Only a token with too little activity to build them has none.
+  const hasViews = !!data?.chart;
+  const scored = hasViews && data?.trees_rug_chance != null;
   const fromRun = check.run.events.find((e) => e.type === "step" && e.tool === "check_token" && e.status === "running");
   const auto: View | null = frame.view === "result" ? "overview" : frame.view;
   const picked = state.checkViews[check.key];
   const view: View | null = picked ?? auto;
   const ready: Record<View, boolean> = {
     overview: !!data && frame.answerChars > 0,
-    chart: scored && frame.kindsStarted.includes("token"),
-    holders: scored && frame.kindsStarted.includes("wallets"),
-    signals: scored && frame.finished,
+    chart: hasViews && frame.kindsStarted.includes("token"),
+    holders: hasViews && frame.kindsStarted.includes("wallets"),
+    signals: hasViews && frame.finished,
   };
   const tabs: { id: View; label: string }[] = [
     { id: "overview", label: "Overview" },
@@ -104,21 +108,62 @@ export function CheckTab({ check }: { check: CheckRun }) {
             </div>
           </div>
         )}
-        {check.status !== "error" && !data && (
-          <div className="check__state">
+        {check.status !== "error" && !data && !cf.finished && (
+          <div className="check__state" role="status">
             <LoaderCircle size={18} className="spin" aria-hidden />
             <div>
-              <p className="check__state-title">{frame.steps.length ? "The agent is working" : "Waiting for the agent"}</p>
-              <p>{saved ? "The chart and holders fill in here as the token is read." : "A live check takes about a minute. The chart, holders and signals open here when it’s done."}</p>
+              <p className="check__state-title">
+                {frame.steps.length ? "The agent is working" : "Waiting for the agent"}
+                {!saved && check.status === "running" && <Elapsed since={check.startedAt} />}
+              </p>
+              <p>
+                {saved
+                  ? "The chart and holders fill in here as the token is read."
+                  : "A live check takes one to four minutes; a busy or older token takes longest. The chart, holders and signals open here when it’s done."}
+              </p>
+              {frame.steps.length > 0 && (
+                <div className="check__progress">
+                  <RunSteps frame={{ ...frame, answerChars: 0, audited: false }} words={[]} />
+                </div>
+              )}
             </div>
           </div>
         )}
-        {data && !scored && (
+        {check.status !== "error" && !data && cf.finished && !findFailure(frame) && (
+          <div className="check__state">
+            <AlertTriangle size={18} aria-hidden />
+            <div>
+              <p className="check__state-title">No check came back</p>
+              <Answer text={words.join("")} />
+            </div>
+          </div>
+        )}
+        {!data && cf.finished && findFailure(frame) && (
+          <div className="check__state">
+            <AlertTriangle size={18} aria-hidden />
+            <div>
+              <p className="check__state-title">The token couldn’t be found or read</p>
+              <p>{findFailure(frame)!.said}</p>
+              <CheckHelp failure={findFailure(frame)!} />
+            </div>
+          </div>
+        )}
+        {data && !scored && (view === "overview" || !hasViews) && (
           <div className="check__state">
             <AlertTriangle size={18} aria-hidden />
             <div>
               <p className="check__state-title">{UNSCORED[data.status ?? ""] ?? "No rug chance for this token"}</p>
               <Answer text={words.slice(0, frame.answerChars || words.length).join("")} />
+              {hasViews && (
+                <div className="check__more">
+                  <p>Everything the check read is still here:</p>
+                  {(["chart", "holders", "signals"] as const).map((v) => (
+                    <button key={v} className="tool-btn" onClick={() => dispatch({ type: "checkView", key: check.key, view: v })}>
+                      {v === "chart" ? "Chart" : v === "holders" ? "Holders" : "Signals"}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -138,17 +183,17 @@ export function CheckTab({ check }: { check: CheckRun }) {
             />
           </div>
         )}
-        {data && scored && view === "chart" && (
+        {data && hasViews && view === "chart" && (
           <div data-tour="chart">
             <ChartView check={data} frame={frame} width={900} height={380} />
           </div>
         )}
-        {data && scored && view === "holders" && (
+        {data && hasViews && view === "holders" && (
           <div data-tour="holders">
             <HoldersView check={data} frame={frame} mapWidth={560} mapHeight={380} rows={12} />
           </div>
         )}
-        {data && scored && view === "signals" && (
+        {data && hasViews && view === "signals" && (
           <div className="check__signals" data-tour="signals">
             <CheckCards run={check.run} check={data} />
             <p className="checks__note">
@@ -160,4 +205,15 @@ export function CheckTab({ check }: { check: CheckRun }) {
       </div>
     </div>
   );
+}
+
+/** How long a live check has been running, ticking each second. */
+function Elapsed({ since }: { since: number }) {
+  const [now, setNow] = useState(() => performance.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(performance.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+  const s = Math.max(0, Math.floor((now - since) / 1000));
+  return <span className="check__elapsed num">{s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`}</span>;
 }

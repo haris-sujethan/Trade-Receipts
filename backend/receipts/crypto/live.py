@@ -161,8 +161,12 @@ class Check:
 
     def token(self) -> events.Launch:
         complete = False
-        for txs, complete in self.h.history(self.mint, gte=0, lte=self.T, order="asc", max_pages=TOKEN_PAGES):
+        for page, (txs, complete) in enumerate(self.h.history(self.mint, gte=0, lte=self.T, order="asc", max_pages=TOKEN_PAGES)):
             self._read(txs)
+            # History reads oldest first, so a pump.fun token's create transaction is on the first page. Without it,
+            # this isn't a pump.fun token: say so now instead of reading the rest of its history.
+            if page == 0 and txs and not any(isinstance(r, events.Launch) and r.mint == self.mint for r in self.records):
+                raise NotPumpFun(f"{self.mint}: no pump.fun launch found for this mint")
             self.progress(step="token", transactions=len(self.seen))
         if not complete:
             self.gaps["token_transactions_cut_short"] = 1
@@ -360,12 +364,17 @@ class Check:
         dataset.reputation(b, signals.LABEL_HOURS)
         tok = signals._tokens_for(b, [self.mint])[0]
         age = self.T - tok.launch_ts
-        if not math.isnan(tok.rug_ts) and tok.rug_ts <= self.T:
+        # A token that already rugged gets no score, but everything read for it (chart, holders, signals) is still
+        # built and shown, so the visitor can see what happened.
+        rugged = not math.isnan(tok.rug_ts) and tok.rug_ts <= self.T
+        if rugged:
             result |= {"status": "rugged", "rug_ts": tok.rug_ts, "rug_age_s": tok.rug_ts - tok.launch_ts}
-            return self._finish(result)
-        sig, ctx = signals.snapshot(tok, age, context=True)
+        # Training never takes a snapshot after a rug; to show a rugged token's data, read it as if it hadn't.
+        sig, ctx = signals.snapshot(dataclasses.replace(tok, rug_ts=math.nan) if rugged else tok, age, context=True)
         result["signals"] = {k: (None if isinstance(v, float) and math.isnan(v) else v) for k, v in sig.items()}
-        if age > signals.LABEL_HOURS * 3600:
+        if rugged:
+            pass
+        elif age > signals.LABEL_HOURS * 3600:
             result["status"] = "too_old"
         elif not sig["above_floor"]:
             result["status"] = "below_floor"

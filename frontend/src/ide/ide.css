@@ -1853,3 +1853,87 @@
   color: var(--color-muted);
   font-variant-numeric: tabular-nums;
 }
+
+/* An unscored check (already rugged, older than a day) points to the data it read. */
+.check__more {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.check__more p {
+  margin: 0;
+  color: var(--desk-text-2);
+}
+
+/* Three dots after "Thinking", lighting one after another. */
+.thinking-dots i {
+  font-style: normal;
+  animation: thinking-dot 1.2s infinite both;
+}
+
+.thinking-dots i:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.thinking-dots i:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes thinking-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.2;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thinking-dots i {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+/* A live check's own steps in the editor while it runs, so a long wait shows what's happening. */
+.check__progress {
+  margin-top: 12px;
+}
+
+.check__elapsed {
+  margin-left: 8px;
+  font-weight: 400;
+  color: var(--desk-text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* What to try when a token couldn't be found or read. */
+.check-help {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--desk-line);
+  border-radius: 8px;
+  background: var(--desk-0);
+}
+
+.check-help__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 6px;
+  font-weight: 600;
+  color: var(--desk-text);
+}
+
+.check-help ol {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+  color: var(--desk-text-2);
+}

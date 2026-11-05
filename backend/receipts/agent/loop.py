@@ -36,7 +36,9 @@ HISTORY_TURNS = 8  # earlier messages sent with a follow-up
 RUNS = settings.data_dir / "runs"  # each answer's tool results, by run id (gitignored with data/)
 CONTEXT_CHARS = 60_000  # earlier results given with a follow-up, at most
 CONTEXT_NOTE = ("Results already gathered earlier in this thread, as tool calls and their outputs. Answer from these when "
-                "they cover the question:\n")
+                "they cover the question. Don't call a tool again for a token or wallet that's already here unless the user "
+                "asks for a new run or different settings; a question about a result (why, how many, which) is answered "
+                "from it:\n")
 RUN_ID = re.compile(r"^(demo:)?[A-Za-z0-9_]{1,80}$")
 HISTORY_CHARS = 4000
 MINT_IN_TEXT = re.compile(r"(?<![1-9A-HJ-NP-Za-km-z])[1-9A-HJ-NP-Za-km-z]{32,44}(?![1-9A-HJ-NP-Za-km-z])")
@@ -141,7 +143,12 @@ def load_context(context_id: str | None) -> list[dict]:
 def copy_summary(wallet: str, buy_after_seconds: int, sell_after_seconds: int, r: dict) -> dict:
     """What the agent reads of a copy-trade backtest: the totals and each position, as text."""
     if not r["positions"]:
-        return {"error": "No closed pump.fun positions in SOL-priced tokens in this wallet's recent history.", "skipped": r["skipped"]}
+        h = r["history"]
+        return {"error": "No closed pump.fun positions in SOL-priced tokens in this wallet's recent history.",
+                "history_read": f"{h.get('transactions', 0):,} transactions, " + (
+                    f"about {round((h.get('hours') or 0) / 24)} days of trading" if (h.get("hours") or 0) >= 48
+                    else prompt._secs(int(3600 * (h.get("hours") or 0)))),
+                "left_out": [f"{v} {LEFT_OUT[k]}" for k, v in r["skipped"].items() if v]}
 
     def pct(x):
         return "n/a" if x is None else f"{100 * x:+.1f}%"

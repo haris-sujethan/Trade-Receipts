@@ -178,7 +178,8 @@ def copy_trade(req: CopyTradeRequest, request: Request) -> StreamingResponse:
     def work(emit):
         result = copytrade.copy_trade(wallet, req.buy_after_s, req.sell_after_s, req.size_sol,
                                       progress=lambda **kv: emit({"type": "progress", **kv}), positions=req.positions)
-        run_id = loop.save_copy_run(wallet, req.buy_after_s, req.sell_after_s, req.positions, result) if result["positions"] else None
+        # Saved even with no positions, so "why is it 0?" is answered from what was read.
+        run_id = loop.save_copy_run(wallet, req.buy_after_s, req.sell_after_s, req.positions, result)
         emit({"type": "result", "copy_trade": result, "run_id": run_id})
 
     return stream(work)
