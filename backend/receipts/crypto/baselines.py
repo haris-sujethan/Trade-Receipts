@@ -18,12 +18,10 @@ reference (each age's training rug rate) is reported too.
 
 import datetime as dt
 import json
+import math
 
-import lightgbm as lgb
 import numpy as np
 import pandas as pd
-from sklearn.isotonic import IsotonicRegression
-from sklearn.metrics import brier_score_loss, log_loss, roc_auc_score
 
 from receipts.config import settings
 from receipts.crypto import dataset, signals
@@ -83,6 +81,7 @@ def checklist(df: pd.DataFrame) -> pd.Series:
 
 
 def metrics(y: np.ndarray, p: np.ndarray) -> dict:
+    from sklearn.metrics import brier_score_loss, log_loss, roc_auc_score  # training only: live scoring runs without scikit-learn
     out = {"n": int(len(y)), "rug_rate": round(float(y.mean()), 4)}
     if len(set(y)) < 2:
         return out
@@ -115,6 +114,8 @@ def by_age(df: pd.DataFrame, y: np.ndarray, p: np.ndarray) -> dict:
 
 def by_mode_age(df: pd.DataFrame, y: np.ndarray, p: np.ndarray) -> tuple[list[dict], float | None]:
     """AUC within each mode and age, and their size-weighted mean (cells with both outcomes)."""
+    from sklearn.metrics import roc_auc_score  # training only: live scoring runs without scikit-learn
+
     cells, total, weighted = [], 0, 0.0
     for (mode, age), idx in df.groupby(["mayhem", "age_s"]).indices.items():
         yy, pp = y[idx], p[idx]
@@ -129,6 +130,9 @@ def by_mode_age(df: pd.DataFrame, y: np.ndarray, p: np.ndarray) -> tuple[list[di
 
 
 def run() -> dict:
+    import lightgbm as lgb  # training only: live scoring reads the trees' JSON export
+    from sklearn.isotonic import IsotonicRegression
+
     df = load()
     cols = feature_columns(df)
     split = {k: df[df.launch_day.isin(days) & df[LABEL].notna()] for k, days in SPLITS.items()}
@@ -194,29 +198,84 @@ def run() -> dict:
 CALIBRATION = MODEL_DIR / "lightgbm_calibration.json"
 
 
-def save_calibration(iso: IsotonicRegression) -> None:
+def save_calibration(iso) -> None:
     CALIBRATION.write_text(json.dumps({"x": iso.X_thresholds_.tolist(), "y": iso.y_thresholds_.tolist()}))
+
+
+TREES_JSON = MODEL_DIR / "lightgbm.json"
+
+
+def export_trees() -> None:
+    """Write the trees as JSON (LightGBM's own dump), so live scoring needs neither LightGBM nor SciPy."""
+    import lightgbm as lgb
+
+    booster = lgb.Booster(model_file=str(MODEL_DIR / "lightgbm.txt"))
+    TREES_JSON.write_text(json.dumps(booster.dump_model()))
+
+
+class Trees:
+    """The saved trees, evaluated in plain Python exactly as LightGBM does for these splits: numeric `<=`
+    thresholds; a missing value takes the node's default side when its missing type is NaN, and is
+    read as 0 when it's None."""
+
+    def __init__(self, dump: dict):
+        if dump["objective"].split()[0] != "binary":
+            raise ValueError(f"unexpected objective {dump['objective']}")
+        self.cols = dump["feature_names"]
+        self.trees = [t["tree_structure"] for t in dump["tree_info"]]
+
+    def raw(self, x: list[float]) -> float:
+        total = 0.0
+        for node in self.trees:
+            while "leaf_value" not in node:
+                v = x[node["split_feature"]]
+                if math.isnan(v):
+                    if node["missing_type"] == "NaN":
+                        node = node["left_child"] if node["default_left"] else node["right_child"]
+                        continue
+                    v = 0.0
+                node = node["left_child"] if v <= node["threshold"] else node["right_child"]
+            total += node["leaf_value"]
+        return total
+
+    def predict(self, x: list[float]) -> float:
+        return 1.0 / (1.0 + math.exp(-self.raw(x)))
+
+    def gain(self) -> np.ndarray:
+        """Each signal's total split gain, as LightGBM's feature_importance("gain")."""
+        out = np.zeros(len(self.cols))
+        stack = list(self.trees)
+        while stack:
+            node = stack.pop()
+            if "split_feature" in node:
+                out[node["split_feature"]] += node["split_gain"]
+                stack += [node["left_child"], node["right_child"]]
+        return out
 
 
 def tree_model():
     """The saved trees and their calibration (fit on the tune day), for live scoring.
 
-    Returns (booster, columns, rug_chance), where rug_chance maps a snapshot's signals to the
-    calibrated rug chance. A model saved before the calibration was kept gets it refit here from
-    the same tune-day predictions run() used.
+    Returns (trees, columns, rug_chance), where rug_chance maps a snapshot's signals to the
+    calibrated rug chance. Reads the JSON export (`export_trees`), so it runs without LightGBM.
     """
-    booster = lgb.Booster(model_file=str(MODEL_DIR / "lightgbm.txt"))
-    cols = booster.feature_name()
+    if not TREES_JSON.exists():
+        export_trees()
     if not CALIBRATION.exists():
+        import lightgbm as lgb
+        from sklearn.isotonic import IsotonicRegression  # training only: live scoring runs without scikit-learn
+
+        booster = lgb.Booster(model_file=str(MODEL_DIR / "lightgbm.txt"))
         df = load()
         tune = df[df.launch_day.isin(SPLITS["tune"]) & df[LABEL].notna()]
-        raw = booster.predict(matrix(tune, cols))
+        raw = booster.predict(matrix(tune, booster.feature_name()))
         save_calibration(IsotonicRegression(out_of_bounds="clip", y_min=0.001, y_max=0.999)
                          .fit(raw, (tune[LABEL] == "rugged").to_numpy(int)))
+    trees = Trees(json.loads(TREES_JSON.read_text()))
     cal = json.loads(CALIBRATION.read_text())
 
     def rug_chance(signals: dict) -> float:
-        row = pd.DataFrame([{c: signals.get(c, np.nan) for c in cols}]).astype(float)
-        return float(np.interp(booster.predict(row)[0], cal["x"], cal["y"]))
+        x = [float("nan") if signals.get(c) is None else float(signals[c]) for c in trees.cols]
+        return float(np.interp(trees.predict(x), cal["x"], cal["y"]))
 
-    return booster, cols, rug_chance
+    return trees, trees.cols, rug_chance

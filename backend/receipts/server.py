@@ -1,11 +1,14 @@
 """The backend's HTTP API (SPEC.md 10), streamed as server-sent events (SPEC.md 8.3).
 
-    POST /api/check   {"mint": ..., "as_of": null}            a live rug check, no Meta API
+    POST /api/check     {"mint": ..., "as_of": null}            a live rug check
     POST /api/copytrade {"wallet", "buy_after_s", "sell_after_s", "size_sol", "positions"}  copying a wallet late, backtested
-    POST /api/agent   {"message", "history", "image", "video"}  the agent: tools plus an audited explanation
-    GET  /api/demo    the saved demo runs; GET /api/demo/<id> replays one
-    GET  /api/meta    Meta API spend against the guard's limit
+    POST /api/agent     {"message", "history", "context_id", "image"}  the agent: tools plus an audited explanation
+    GET  /api/demo      the saved demo runs; GET /api/demo/<id> replays one
     GET  /api/health
+
+Live checks, backtests and the agent need a signed-in user (auth.py) when SUPABASE_URL is set. The
+agent runs on the visitor's own model key, sent with each request in the X-AI-Provider, X-AI-Key and
+X-AI-Model headers and used for that request only (llm.py); without one, checks show their findings.
 
 Run from backend/:  uv run uvicorn receipts.server:app --port 8000
 """
@@ -23,16 +26,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from receipts.agent import demo, loop, meta
+from receipts import auth
+from receipts.config import redact
+from receipts.agent import demo, llm, loop
 from receipts.crypto import copytrade, live
 
 app = FastAPI(title="Trade Receipts")
-app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
-                   allow_methods=["GET", "POST"], allow_headers=["Content-Type"])
+ORIGINS = [o.strip() for o in os.environ.get("ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",") if o.strip()]
+app.add_middleware(CORSMiddleware, allow_origins=ORIGINS, allow_methods=["GET", "POST"],
+                   allow_headers=["Content-Type", "Authorization", "X-AI-Provider", "X-AI-Key", "X-AI-Model"])
 
-MAX_IMAGE_BYTES = 8 * 2**20
-# A live check reads a few thousand Helius credits (900,000 a month) and, with the Meta API on, a cent
-# or less of Meta credits. Per visitor and in all, the public site stops well short of either.
+# Vercel takes request bodies up to 4.5 MB, and a screenshot grows a third as base64.
+MAX_IMAGE_BYTES = 3 * 2**20
+# A live check reads a few thousand Helius credits (900,000 a month). Per account and in all, the
+# public site stops well short of that.
 CHECKS_PER_HOUR = int(os.environ.get("CHECKS_PER_HOUR", 6))
 CHECKS_PER_DAY = int(os.environ.get("CHECKS_PER_DAY", 60))
 _checks: dict[str, collections.deque] = collections.defaultdict(collections.deque)
@@ -44,9 +51,10 @@ FOLLOW_UPS_PER_HOUR = int(os.environ.get("FOLLOW_UPS_PER_HOUR", 30))
 
 
 def allow_check(request: Request, follow_up: bool = False) -> None:
-    """Refuse a live check past the visitor's hourly limit or the site's daily one. Follow-up questions
-    about a result (answered from data already pulled) have their own, looser hourly limit."""
-    who = (request.headers.get("x-forwarded-for") or (request.client.host if request.client else "?")).split(",")[0].strip()
+    """Refuse a live check without a signed-in user, or past the user's hourly limit or the site's daily
+    one. Follow-up questions about a result (answered from data already pulled) have their own, looser
+    hourly limit."""
+    who = auth.user_id(request)
     now = time.time()
     with _checks_lock:
         if follow_up:
@@ -68,7 +76,6 @@ def allow_check(request: Request, follow_up: bool = False) -> None:
             raise HTTPException(429, "The site's live checks for today are used up. Saved checks still replay.")
         mine.append(now)
         _all_checks.append(now)
-MAX_VIDEO_BYTES = 25 * 2**20
 
 
 class CheckRequest(BaseModel):
@@ -94,7 +101,6 @@ class AgentRequest(BaseModel):
     history: list[Turn] = []  # the conversation so far, for follow-ups
     context_id: str | None = None  # the thread's latest answer's run_id (or "demo:<id>"): its results are reused
     image: str | None = None  # a data URL
-    video: str | None = None  # an mp4 data URL
     as_of: int | None = None  # check tokens as they stood then (the demo's past tokens)
 
 
@@ -106,12 +112,10 @@ def stream(work) -> StreamingResponse:
     def target():
         try:
             work(events.put)
-        except meta.MetaDisabled as e:
-            events.put({"type": "error", "message": str(e)})
-        except meta.BudgetExceeded as e:
+        except llm.LLMError as e:
             events.put({"type": "error", "message": str(e)})
         except Exception as e:  # reported to the thread rather than dropped
-            events.put({"type": "error", "message": f"{type(e).__name__}: {e}"[:300]})
+            events.put({"type": "error", "message": redact(f"{type(e).__name__}: {e}")[:300]})
         finally:
             events.put(done)
 
@@ -131,7 +135,7 @@ def health() -> dict:
 
 @app.get("/api/demo")
 def demo_runs() -> list[dict]:
-    """The saved demo runs, replayed without the Meta API or Helius."""
+    """The saved demo runs, replayed without a model or Helius."""
     return demo.runs()
 
 
@@ -141,11 +145,6 @@ def demo_run(run_id: str) -> dict:
     if found is None:
         raise HTTPException(404, "No saved run with that id")
     return found
-
-
-@app.get("/api/meta")
-def meta_report() -> dict:
-    return meta.Meta().report()
 
 
 @app.post("/api/check")
@@ -194,18 +193,23 @@ def agent(req: AgentRequest, request: Request) -> StreamingResponse:
             raise HTTPException(400, "image must be a base64 data URL")
         image, image_type = base64.b64decode(data), header[5:].split(";")[0]
         if len(image) > MAX_IMAGE_BYTES:
-            raise HTTPException(413, "image is over 8 MB")
+            raise HTTPException(413, "image is over 3 MB")
 
-    video = None
-    if req.video:
-        header, _, data = req.video.partition(",")
-        if header != "data:video/mp4;base64":
-            raise HTTPException(400, "video must be an mp4 data URL")
-        video = base64.b64decode(data)
-        if len(video) > MAX_VIDEO_BYTES:
-            raise HTTPException(413, "clip is over 25 MB")
+    # Each message counts as a question; a live check or backtest the agent runs counts against the
+    # visitor's live limit when it starts (`allow_live`), whatever the message claimed to be.
+    allow_check(request, follow_up=True)
 
-    allow_check(request, follow_up=bool(req.context_id))
+    def allow_live():
+        try:
+            allow_check(request)
+        except HTTPException as e:
+            raise loop.LimitReached(e.detail) from None
+
     history = [t.model_dump() for t in req.history]
+    try:
+        model = llm.LLM.from_request(request.headers.get("x-ai-provider"), request.headers.get("x-ai-key"),
+                                     request.headers.get("x-ai-model"))
+    except llm.NoModel:
+        model = None
     return stream(lambda emit: loop.run(req.message, image=image, image_type=image_type, emit=emit, as_of=req.as_of,
-                                        video=video, history=history, context_id=req.context_id))
+                                        model=model, history=history, context_id=req.context_id, allow_live=allow_live))

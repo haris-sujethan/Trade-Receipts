@@ -14,6 +14,10 @@ Results download through the Storage Read API in parallel, LZ4-compressed stream
 faster than the REST API for millions of rows and works in the sandbox.
 """
 
+from __future__ import annotations
+
+import typing
+
 import datetime as dt
 import hashlib
 import json
@@ -23,9 +27,11 @@ from zoneinfo import ZoneInfo
 
 import pyarrow as pa
 import pyarrow.parquet as pq
-from google.cloud import bigquery, bigquery_storage
 
 from receipts.config import Settings, settings as default_settings
+
+if typing.TYPE_CHECKING:
+    from google.cloud import bigquery
 
 MIN_BILLED_BYTES = 10 * 2**20  # BigQuery bills at least 10 MB per query
 QUOTA_TZ = ZoneInfo("America/Los_Angeles")
@@ -41,13 +47,17 @@ def _param_repr(params: list) -> list:
 
 
 class GuardedBigQuery:
-    def __init__(self, settings: Settings = default_settings, client: bigquery.Client | None = None):
+    def __init__(self, settings: Settings = default_settings, client: "bigquery.Client | None" = None):
+        from google.cloud import bigquery  # only when pulling history
+
         self.settings = settings
         self.client = client or bigquery.Client(project=settings.require("google_cloud_project"))
         self.ledger_path = settings.data_dir / "ledger" / "bigquery.jsonl"
         self.cache_dir = settings.data_dir / "cache" / "bigquery"
 
-    def _config(self, params: list, **kwargs) -> bigquery.QueryJobConfig:
+    def _config(self, params: list, **kwargs) -> "bigquery.QueryJobConfig":
+        from google.cloud import bigquery  # only when pulling history
+
         return bigquery.QueryJobConfig(query_parameters=params, **{"use_query_cache": True} | kwargs)
 
     def estimate(self, sql: str, params: list = ()) -> int:
@@ -110,8 +120,10 @@ class GuardedBigQuery:
         pq.write_table(table, cache)
         return table
 
-    def download(self, job: bigquery.QueryJob) -> pa.Table:
+    def download(self, job: "bigquery.QueryJob") -> pa.Table:
         """A finished query's rows, read in parallel LZ4-compressed Arrow streams."""
+        from google.cloud import bigquery_storage  # only when pulling history
+
         dest = job.destination
         storage = bigquery_storage.BigQueryReadClient()
         types = bigquery_storage.types

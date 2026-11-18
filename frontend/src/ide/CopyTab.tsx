@@ -246,7 +246,7 @@ function CopyForm({ runKey, request }: { runKey: string; request?: CopyRequest }
     backend === "checking"
       ? "Looking for the backend…"
       : !live
-        ? "Live backtests are coming soon. This preview replays the saved one, so the values are fixed."
+        ? "The live backend isn't reachable right now. The saved backtest still replays, with its own values."
         : `Nothing runs until you press Run backtest. ${positions} positions take ${eta(positions)}, in a new tab.`;
   // The values a run will use, stated beside the button so they're confirmed before it starts.
   const confirm =

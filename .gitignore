@@ -16,3 +16,7 @@ backend/kaggle/jobs/
 
 # demo runs copied from data/demo by frontend/scripts/copy-demo.mjs (derived chain data)
 frontend/public/demo/
+
+# The Vercel package (deploy/package.sh): code plus data that stays out of Git
+backend/.vercel-build/
+.vercel/

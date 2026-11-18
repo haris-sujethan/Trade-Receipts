@@ -198,7 +198,7 @@ export type AnswerEvent = {
   /** The rug check behind the answer, or null when the agent ran something else (a copy-trade backtest). */
   check: Check | null;
   copy_trade?: CopyTrade | null;
-  /** The model that wrote the text, or null when Meta is off and the text is the check's own findings. */
+  /** The model that wrote the text, or null when no model key was set and the text is the check's own findings. */
   explained_by?: string | null;
   /** This answer's id: sent back as `context_id` with a follow-up, so it's answered from these results. */
   run_id?: string;

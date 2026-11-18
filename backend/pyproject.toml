@@ -3,23 +3,17 @@ name = "receipts"
 version = "0.1.0"
 description = "Trade Receipts backend: the pump.fun data pipeline and rug check"
 requires-python = ">=3.13"
+# What the live API needs (it's all Vercel installs). Training and the data pipeline add the `train` group.
 dependencies = [
+    "anthropic>=2.10.0",
     "base58>=2.1.1",
     "duckdb>=2.0.0",
     "fastapi>=0.162.0",
-    "google-cloud-bigquery>=3.47.0",
-    "google-cloud-bigquery-storage>=2.43.0",
     "httpx>=0.28.1",
-    "kaggle>=2.2.5",
-    "lightgbm>=4.7.0",
-    "modal>=1.6.3",
     "numpy>=2.5.4",
     "pandas>=3.1.0",
-    "pillow>=13.0.0",
     "pyarrow>=26.0.0",
     "python-dotenv>=1.2.4",
-    "scikit-learn>=1.9.1",
-    "tokenizers>=0.23.3",
     "uvicorn>=0.54.0",
 ]
 
@@ -27,8 +21,19 @@ dependencies = [
 dev = [
     "pytest>=9.2.0",
 ]
+# Pulling history from BigQuery, training the trees and Glimmer, and Kaggle jobs.
+train = [
+    "google-cloud-bigquery>=3.47.0",
+    "google-cloud-bigquery-storage>=2.43.0",
+    "kaggle>=2.2.5",
+    "lightgbm>=4.7.0",
+    "pillow>=13.0.0",
+    "scikit-learn>=1.9.1",
+    "tokenizers>=0.23.3",
+]
 
 [tool.uv]
+default-groups = ["dev", "train"]
 # Not installed as a package: uv hides .venv files on macOS and Python 3.13 skips hidden .pth
 # files, which breaks editable installs. Run from backend/ with `uv run python -m receipts`.
 package = false

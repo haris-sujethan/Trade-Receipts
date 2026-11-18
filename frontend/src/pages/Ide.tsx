@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import { Navigate, useNavigate } from "react-router-dom";
 import { Group, Panel, Separator, usePanelRef } from "react-resizable-panels";
 import { APP_NAME } from "../config";
-import { HERO_KEY, IdeProvider, problemsFor, useIde, type Panes } from "../ide/state";
+import { HERO_KEY, IdeProvider, problemsFor, readTourDone, useIde, type Panes } from "../ide/state";
 import { TopBar } from "../ide/TopBar";
 import { Explorer } from "../ide/Explorer";
 import { MainArea } from "../ide/MainArea";
@@ -9,15 +10,38 @@ import { BottomPanel } from "../ide/BottomPanel";
 import { Thread } from "../ide/Thread";
 import { StatusBar } from "../ide/StatusBar";
 import { Tour } from "../ide/Tour";
+import { Settings } from "../ide/Settings";
+import { authRequired, tourDoneFor, useSession } from "../lib/auth";
 import { useNarrow, useThemeColor } from "../ide/useNarrow";
 import { onTablistKeyDown } from "../lib/tabs";
 import "../ide/ide.css";
 
 export function Ide() {
   const narrow = useNarrow();
+  const session = useSession();
   useThemeColor("#fcfcfc");
 
-  return <IdeProvider>{narrow ? <NarrowIde /> : <WideIde />}</IdeProvider>;
+  // Without an account, a visitor gets the tour of the examples, then signs up to use the IDE. Locally, without
+  // Supabase, nobody needs an account.
+  if (authRequired && session === undefined) return <div className="ide ide--loading" aria-busy="true" />;
+  const visitor = authRequired && !session;
+  if (visitor && readTourDone()) return <Navigate to="/signup" replace />;
+  return (
+    <IdeProvider tourDone={visitor ? false : tourDoneFor(session)}>
+      {narrow ? <NarrowIde /> : <WideIde />}
+      {visitor ? <SignUpAfterTour /> : <Settings />}
+    </IdeProvider>
+  );
+}
+
+/** For a visitor without an account: once the tour closes, at its end or skipped, on to sign-up. */
+function SignUpAfterTour() {
+  const { state } = useIde();
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (!state.tourOpen) navigate("/signup", { replace: true, state: { afterTour: true } });
+  }, [state.tourOpen, navigate]);
+  return null;
 }
 
 /** A side panel that can be hidden: it follows the IDE's state, and dragging it shut (or open) updates the state. */

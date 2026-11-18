@@ -23,8 +23,8 @@ def _pool() -> tuple[pd.DataFrame, list[str]]:
     df = baselines.load()
     df = df[df[baselines.LABEL].notna()].copy()
     df["launch_ts"] = df.snapshot_ts - df.age_s
-    booster, cols, _ = baselines.tree_model()
-    gain = booster.feature_importance("gain")
+    trees, cols, _ = baselines.tree_model()
+    gain = trees.gain()
     top = [cols[i] for i in np.argsort(-gain) if cols[i] != "age_s"][:SIGNALS]
     return df, top
 

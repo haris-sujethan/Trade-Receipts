@@ -1,11 +1,11 @@
 """The demo's saved runs (SPEC.md 13): the agent run once on each demo token, as it stood at a set
-age after launch, with every event kept so the site can replay it with the Meta API off.
+age after launch, with every event kept so the site can replay it without a model key.
 
 The tokens are past launches from the May 16 test day, which no model trained on: four that
 rugged after the check and two that didn't. Each run starts from what a user would type, a
 pump.fun link or a mint. `about` says only what happened next.
 
-    uv run python -m receipts save-demo        runs the agent (Meta API, guarded) and saves
+    uv run python -m receipts save-demo        runs the agent (OPENAI_API_KEY or ANTHROPIC_API_KEY) and saves
     data/demo/<mint>_<age>.json                 {"events": [...], "after": hindsight: price to 1 hour, rug time}
 """
 
@@ -68,14 +68,14 @@ def after(mint: str, age: int, until: int = 3600, candle_s: int = 60) -> dict:
             "rug_s": None if rug_ts is None or rug_ts != rug_ts else int(rug_ts - launch)}
 
 
-def save(age: int = AGE) -> list[dict]:
+def save(age: int = AGE, model=None) -> list[dict]:
     ROOT.mkdir(parents=True, exist_ok=True)
     saved = []
     for old in ROOT.glob("*_900.json"):  # the token set is exactly TOKENS
         old.unlink()
     for mint, about, message in TOKENS:
         events: list = []
-        answer = loop.run(message, as_of=snapshot_time(mint, age), emit=events.append)
+        answer = loop.run(message, as_of=snapshot_time(mint, age), emit=events.append, model=model)
         path = ROOT / f"{mint}_{age}.json"
         path.write_text(json.dumps({"mint": mint, "age_s": age, "about": about, "message": message, "events": events,
                                     "after": after(mint, age)}, default=str))
@@ -111,14 +111,14 @@ COPY_RUNS = [
 ]
 
 
-def save_copy() -> list[dict]:
+def save_copy(model=None) -> list[dict]:
     import time
 
     ROOT.mkdir(parents=True, exist_ok=True)
     saved = []
     for wallet, message in COPY_RUNS:
         events: list = []
-        answer = loop.run(message, emit=events.append)
+        answer = loop.run(message, emit=events.append, model=model)
         path = ROOT / f"copy_{wallet}.json"
         path.write_text(json.dumps({"kind": "copy_trade", "wallet": wallet, "message": message, "saved_at": int(time.time()),
                                     "events": events}, default=str))

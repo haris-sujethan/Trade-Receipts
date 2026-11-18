@@ -29,6 +29,7 @@ difference on tokens that are in the training data (SPEC.md 11):
 import dataclasses
 import json
 import math
+import os
 import shutil
 import time
 import types
@@ -46,6 +47,9 @@ from receipts.crypto import (baselines, chart, copycats, dataset, events, fundin
 
 ROOT = settings.data_dir / "live"
 TOKEN_PAGES = 300  # up to 30,000 of the token's transactions
+# On a host that stops requests after a few minutes (Vercel's free plan: 300 s), a check stops
+# fetching once it has spent this long and builds from what it has, its gaps marked. 0: no limit.
+TIME_BUDGET_S = float(os.environ.get("LIVE_TIME_BUDGET_S", 0))
 WALLET_PAGES = 5  # up to 500 of an early buyer's transactions before the launch (its sniping habit)
 FIRST_PAGES = 1  # every other traced wallet: its last 100 transactions before the launch
 SINCE_PAGES = 1  # and 100 from the launch to T
@@ -131,6 +135,11 @@ class Check:
         self.gaps: dict[str, int] = {}
         self.credits_start = self.h.spent_this_month()
         self.folder = ROOT / f"{mint}_{self.T}"
+        self.started = time.monotonic()
+
+    def late(self, share: float) -> bool:
+        """Whether the check has used this share of its time budget (never, without one)."""
+        return TIME_BUDGET_S > 0 and time.monotonic() - self.started > share * TIME_BUDGET_S
 
     def _read(self, txs: list[dict]) -> None:
         for tx in txs:
@@ -151,7 +160,8 @@ class Check:
         """Scan (address, gte, lte, pages) jobs WORKERS at a time, reading them in job order, so the
         result is the same as scanning one after another."""
         with ThreadPoolExecutor(WORKERS) as pool:
-            for i, (txs, complete) in enumerate(pool.map(lambda job: self._fetch(*job), jobs)):
+            # Past most of the budget, the remaining scans are skipped and counted as cut short.
+            for i, (txs, complete) in enumerate(pool.map(lambda job: ([], False) if self.late(0.7) else self._fetch(*job), jobs)):
                 self._read(txs)
                 if not complete:
                     self.gaps[gap] = self.gaps.get(gap, 0) + 1
@@ -168,6 +178,9 @@ class Check:
             if page == 0 and txs and not any(isinstance(r, events.Launch) and r.mint == self.mint for r in self.records):
                 raise NotPumpFun(f"{self.mint}: no pump.fun launch found for this mint")
             self.progress(step="token", transactions=len(self.seen))
+            if self.late(0.35):
+                complete = False
+                break
         if not complete:
             self.gaps["token_transactions_cut_short"] = 1
         launch = next((r for r in self.records if isinstance(r, events.Launch) and r.mint == self.mint), None)
@@ -220,7 +233,7 @@ class Check:
             self.gaps["busy_checks_skipped"] = len(unknown) - BUSY_CHECKS
         checked = unknown[:BUSY_CHECKS]
         with ThreadPoolExecutor(WORKERS) as pool:
-            for i, (s, n) in enumerate(zip(checked, pool.map(lambda a: self.h.count_since(a, gte=start, lte=self.T), checked))):
+            for i, (s, n) in enumerate(zip(checked, pool.map(lambda a: 0 if self.late(0.7) else self.h.count_since(a, gte=start, lte=self.T), checked))):
                 if n >= BUSY_TXS:
                     found[s] = n
                 self.progress(step="busy", checked=i + 1, of=len(checked))
@@ -282,6 +295,9 @@ class Check:
             self.progress(step="snipes", lookups=lookups, sniper_bots=sum(n >= roles.SNIPER_HABIT for n in snipes.values()))
 
     def _first_page(self, mint: str, before: int) -> list[dict]:
+        if self.late(0.7):
+            self.gaps["snipe_lookups_capped"] = 1
+            return []
         for txs, _ in self.h.history(mint, gte=0, lte=before, order="asc", max_pages=1):
             return txs
         return []

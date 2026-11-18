@@ -20,7 +20,6 @@ import duckdb
 import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
-from google.cloud import bigquery
 
 from receipts.config import settings
 from receipts.crypto import programs, store
@@ -88,6 +87,7 @@ def wallets(days: list[dt.date]) -> pa.Table:
 
 def upload_wallets(bq: GuardedBigQuery, table: pa.Table) -> str:
     """Load the wallet list into the sandbox project (load jobs are free). Returns the table id."""
+    from google.cloud import bigquery  # pulling history only: live checks run without BigQuery
     client = bq.client
     dataset = bigquery.Dataset(f"{client.project}.{DATASET}")
     dataset.location = "us-central1"  # where the public Solana dataset lives
@@ -133,6 +133,7 @@ SELECT 0, NULL, src, NULL, NULL, receivers FROM busy
 
 def pull_funding(start: dt.date, end: dt.date, launch_days: list[dt.date], *, cap_gib: float = 250) -> dict:
     """Trace funding for the wallets in `launch_days`' tokens over [start, end]; saves Parquet files."""
+    from google.cloud import bigquery  # pulling history only: live checks run without BigQuery
     bq = GuardedBigQuery()
     table = wallets(launch_days)
     print(f"tracing {table.num_rows:,} wallets", flush=True)

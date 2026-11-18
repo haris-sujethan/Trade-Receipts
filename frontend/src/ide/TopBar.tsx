@@ -1,6 +1,9 @@
-import { Link } from "react-router-dom";
-import { CircleHelp } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { ChevronDown, CircleHelp, UserRound } from "lucide-react";
 import { APP_NAME } from "../config";
+import { signOut, useSession } from "../lib/auth";
+import { openSettings } from "./Settings";
 import { clearTourDone, useIde, type WorkTab } from "./state";
 
 const workTabs: WorkTab[] = ["Analyze", "Copy trade"];
@@ -39,10 +42,70 @@ export function TopBar() {
         >
           <CircleHelp size={17} aria-hidden />
         </button>
-        <span className="topbar__guest topbar__wide" title="You're using the preview without an account">
-          Guest
-        </span>
+        <Account />
       </div>
     </header>
+  );
+}
+
+/** The account menu: who's signed in, Settings (the AI key) and signing out. */
+function Account() {
+  const session = useSession();
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const wrap = useRef<HTMLDivElement>(null);
+  const email = session?.user.email;
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    const onPointer = (e: PointerEvent) => !wrap.current?.contains(e.target as Node) && setOpen(false);
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("pointerdown", onPointer);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("pointerdown", onPointer);
+    };
+  }, [open]);
+
+  return (
+    <div className="account" ref={wrap}>
+      <button
+        className="topbar__guest account__btn"
+        aria-expanded={open}
+        aria-controls="account-menu"
+        aria-label="Account and settings"
+        onClick={() => setOpen((v) => !v)}
+      >
+        <UserRound size={14} aria-hidden />
+        {email ? email.split("@")[0] : "Account"}
+        <ChevronDown size={14} aria-hidden />
+      </button>
+      {open && (
+        <div id="account-menu" className="account__menu" role="menu">
+          {email && <p className="account__who">{email}</p>}
+          <button
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              openSettings();
+            }}
+          >
+            Settings and AI key
+          </button>
+          {session && (
+            <button
+              role="menuitem"
+              onClick={async () => {
+                await signOut();
+                navigate("/signup");
+              }}
+            >
+              Sign out
+            </button>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

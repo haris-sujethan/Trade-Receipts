@@ -40,7 +40,10 @@ def _data() -> tuple[duckdb.DuckDBPyConnection, int]:
 
 
 def covered(as_of: int) -> bool:
-    """Whether the launch history reaches this time."""
+    """Whether the launch history reaches this time. A deployment without the launch history (the
+    live site ships only what scoring needs) covers nothing, so name search goes live instead."""
+    if not any((store.ROOT / "launches").glob("*/*.parquet")):
+        return False
     return as_of <= _data()[1] + 86400
 
 

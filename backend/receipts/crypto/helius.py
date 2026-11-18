@@ -91,17 +91,22 @@ class Helius:
                 if wait > 0:
                     time.sleep(wait)
                 self._last_call = time.monotonic()
-            reply = self.http.post(
-                RPC_URL.format(key=self.key),
-                json={"jsonrpc": "2.0", "id": 1, "method": method, "params": params},
-            )
+            try:
+                reply = self.http.post(
+                    RPC_URL.format(key=self.key),
+                    json={"jsonrpc": "2.0", "id": 1, "method": method, "params": params},
+                )
+            except httpx.HTTPError as e:
+                # httpx's messages can carry the request URL, and the key is in it: never pass them on.
+                raise HeliusError(f"{method}: couldn't reach Helius ({type(e).__name__})") from None
             if reply.status_code == 429:
                 # Slow every thread down, then back off this request (Helius may say how long).
                 with self._pace:
                     self._interval = min(MAX_INTERVAL, self._interval * 2)
                 time.sleep(float(reply.headers.get("retry-after") or min(16, 0.5 * 2**attempt)))
                 continue
-            reply.raise_for_status()
+            if reply.status_code != 200:
+                raise HeliusError(f"{method}: Helius answered {reply.status_code}")
             body = reply.json()
             with self._pace:
                 self._interval = max(MIN_INTERVAL, self._interval * 0.95)

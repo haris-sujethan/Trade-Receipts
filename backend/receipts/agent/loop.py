@@ -1,9 +1,7 @@
-"""The rug check agent (SPEC.md 8.1): Muse Spark reads the request (a mint, or a screenshot of
-one), calls the tools, and explains the evidence in plain language. It never computes a number
-itself: every number it writes must pass the numbers audit against this run's tool outputs.
-
-Every Meta call goes through the guarded client (meta.py), so a repeat of the same check is
-served from its cache. To keep repeats identical, tool outputs carry no timings or credit counts.
+"""The rug check agent (SPEC.md 8.1): the visitor's own model (OpenAI or Anthropic, llm.py) reads
+the request (a mint, or a screenshot of one), calls the tools, and explains the evidence in plain
+language. It never computes a number itself: every number it writes must pass the numbers audit
+against this run's tool outputs. Without a key, the check still runs and shows its own findings.
 
     run(message, image=None, emit=print) -> the answer event
 
@@ -14,7 +12,6 @@ Events for the thread (server-sent events, SPEC.md 8.3):
 
 import base64
 import datetime as dt
-import hashlib
 import json
 import math
 import re
@@ -24,14 +21,14 @@ import uuid
 import base58
 import httpx
 
-from receipts.agent import audit, meta
-from receipts.config import settings
+from receipts.agent import audit, llm
+from receipts.config import redact, settings
 from receipts.crypto import copycats, copytrade, live, prompt, search
 from receipts.crypto.goplus import CREDIT as GOPLUS_CREDIT, GoPlus
 
-MODEL = "muse-spark-1.3"
-UPLOADS = settings.data_dir / "uploads"  # clips sent to the agent (gitignored with data/)
 MAX_ROUNDS = 6
+# Tools that read the chain live (Helius credits), so each call counts against the visitor's limit.
+LIVE_TOOLS = ("check_token", "copy_trade")
 HISTORY_TURNS = 8  # earlier messages sent with a follow-up
 RUNS = settings.data_dir / "runs"  # each answer's tool results, by run id (gitignored with data/)
 CONTEXT_CHARS = 60_000  # earlier results given with a follow-up, at most
@@ -180,6 +177,10 @@ def save_copy_run(wallet: str, buy_after_seconds: int, sell_after_seconds: int, 
     return run_id
 
 
+class LimitReached(RuntimeError):
+    """The visitor has used up their live checks for now."""
+
+
 def valid_mint(mint: str) -> bool:
     try:
         return len(base58.b58decode(mint)) == 32
@@ -188,14 +189,15 @@ def valid_mint(mint: str) -> bool:
 
 
 class Run:
-    def __init__(self, client: meta.Meta | None = None, emit=print, image: bytes | None = None, image_type: str = "image/png",
-                 as_of: int | None = None, video: bytes | None = None):
-        self.meta = client or meta.Meta()
+    def __init__(self, model: llm.LLM | None = None, emit=print, image: bytes | None = None, image_type: str = "image/png",
+                 as_of: int | None = None, allow_live=None):
+        self.model = model
+        # Called before each live check or backtest (they spend Helius credits); raises past the visitor's limit.
+        self.allow_live = allow_live or (lambda: None)
         self.as_of = as_of  # check tokens as they stood at this time (the demo's past tokens); default now
         self.emit = emit
         self.image = image
         self.image_type = image_type
-        self.video = video  # an mp4 clip
         self.outputs: list = []  # every tool output, for the numbers audit
         self.check: dict | None = None
         self.copy: dict | None = None  # the copy-trade backtest, when the run made one
@@ -306,30 +308,21 @@ class Run:
         }
 
     def read_address(self) -> dict:
-        if self.video is not None:
-            UPLOADS.mkdir(parents=True, exist_ok=True)
-            path = UPLOADS / f"{hashlib.sha256(self.video).hexdigest()[:16]}.mp4"
-            path.write_bytes(self.video)
-            media = {"type": "input_file", "file_id": self.meta.upload(path)}
-            ask = ("Watch this clip, frames and audio. Read the Solana token mint address shown on screen or said aloud "
-                   "(base58, 32–44 characters), the ticker, and every claim made about the token, with the second it's shown "
-                   "or said. Copy them exactly; use null if not shown.")
-        elif self.image is not None:
+        if self.image is not None:
             media = {"type": "input_image", "image_url": f"data:{self.image_type};base64,{base64.b64encode(self.image).decode()}",
                      "detail": "high"}
             ask = ("Read the Solana token mint address shown (base58, 32–44 characters), the ticker, and any claims made "
                    "about the token. Copy them exactly; use null if not shown.")
         else:
-            return {"error": "The user didn't send a screenshot or clip."}
-        # Reading is transcription: at "low" effort Muse Spark spent its whole output cap reasoning (Nov 2).
-        response = self.meta.respond({
-            "model": MODEL, "max_output_tokens": 2000, "store": False, "reasoning": {"effort": "minimal"},
+            return {"error": "The user didn't send a screenshot."}
+        response = self.model.respond({
+            "max_output_tokens": 2000, "reasoning": {"effort": "minimal"},
             "text": {"format": {"type": "json_schema", "name": "token_address", "schema": ADDRESS_SCHEMA, "strict": True}},
             "input": [{"role": "user", "content": [{"type": "input_text", "text": ask}, media]}],
-        }, purpose="read address")
+        })
         if response.get("status") != "completed":
             return {"error": "Couldn't finish reading the address; ask the user to paste the mint."}
-        found = json.loads(meta.text_of(response) or "{}")
+        found = json.loads(llm.text_of(response) or "{}")
         if found.get("mint") and not valid_mint(found["mint"]):
             found["mint_note"] = "The address read isn't a valid Solana address; ask the user to paste it."
         return found
@@ -338,10 +331,14 @@ class Run:
         started = time.time()
         self.emit({"type": "step", "tool": name, "status": "running", "args": args})
         try:
+            if name in LIVE_TOOLS:
+                self.allow_live()
             result = getattr(self, name)(**args)
             status = "error" if "error" in result else "done"
+        except LimitReached as e:
+            result, status = {"error": str(e)}, "error"
         except Exception as e:  # a tool failure is reported to the model, which can explain it
-            result, status = {"error": f"{type(e).__name__}: {e}"[:300]}, "error"
+            result, status = {"error": redact(f"{type(e).__name__}: {e}")[:300]}, "error"
         self.outputs.append(result)
         self.tool_log.append({"tool": name, "args": args, "result": result})
         self.emit({"type": "step", "tool": name, "status": status, "summary": summary(name, result),
@@ -350,31 +347,28 @@ class Run:
 
     # The loop
 
-    def respond(self, items: list, purpose: str) -> dict:
-        return self.meta.respond({"model": MODEL, "instructions": SYSTEM, "input": items, "tools": TOOLS,
-                                  "max_output_tokens": MAX_OUTPUT, "store": False, "reasoning": {"effort": "low"},
-                                  "parallel_tool_calls": True}, purpose=purpose)
+    def respond(self, items: list) -> dict:
+        return self.model.respond({"instructions": SYSTEM, "input": items, "tools": TOOLS, "max_output_tokens": MAX_OUTPUT,
+                                   "reasoning": {"effort": "low"}, "parallel_tool_calls": True})
 
     def run(self, message: str, history: list[dict] | None = None, context_id: str | None = None) -> dict:
         """`history` is the conversation so far, [{"role": "user" | "assistant", "text"}], so a follow-up
         (which of these tokens?) has its context. `context_id` names the thread's latest result (an
         answer's `run_id`, or "demo:<id>" for a saved demo run): its tool results are given to the model
-        so a follow-up is answered from data already pulled. With the Meta API off, out of budget or
-        past the credit window, the check still runs and its own findings are shown (`without_model`)."""
+        so a follow-up is answered from data already pulled. Without a model key, the check still runs
+        and its own findings are shown (`without_model`)."""
         self.history = [h for h in history or [] if h.get("role") in ("user", "assistant") and h.get("text")][-HISTORY_TURNS:]
         self.context = load_context(context_id)
         self.outputs += [c["result"] for c in self.context]
-        try:
-            return self.with_model(message)
-        except (meta.MetaDisabled, meta.BudgetExceeded) as e:
-            self.emit({"type": "notice", "message": "Written explanations are off right now, so the check shows its own findings."})
-            return self.without_model(message, str(e))
+        if self.model is None:
+            self.emit({"type": "notice", "message": "No AI key is set, so the check shows its own findings. Add one in Settings for a written explanation."})
+            return self.without_model(message, "no key")
+        return self.with_model(message)
 
     def with_model(self, message: str) -> dict:
         content = [{"type": "input_text", "text": message or "Check this token."}]
-        if self.image is not None or self.video is not None:
-            kind = "clip" if self.video is not None else "screenshot"
-            content.append({"type": "input_text", "text": f"(The user attached a {kind}; call read_address to read it.)"})
+        if self.image is not None:
+            content.append({"type": "input_text", "text": "(The user attached a screenshot; call read_address to read it.)"})
         items: list = []
         if self.context:
             items.append({"role": "user", "content": CONTEXT_NOTE + json.dumps(
@@ -383,13 +377,13 @@ class Run:
         items.append({"role": "user", "content": content})
         text = ""
         for _ in range(MAX_ROUNDS):
-            response = self.respond(items, "rug check")
+            response = self.respond(items)
             # Reasoning items aren't replayed: with store off they'd need encrypted content.
             out = [i for i in response.get("output") or [] if i.get("type") in ("function_call", "message")]
             items += out
             calls = [i for i in out if i["type"] == "function_call"]
             if not calls:
-                text = meta.text_of(response)
+                text = llm.text_of(response)
                 break
             for c in calls:
                 result = self.call(c["name"], json.loads(c.get("arguments") or "{}"))
@@ -455,7 +449,7 @@ class Run:
                 + ["", "Paste the mint of the one you mean."])
         else:
             lines.append("Paste the token's mint address or pump.fun link to check it.")
-        lines += ["", "Muse Spark's written explanation isn't available right now, so these are the check's findings as measured."]
+        lines += ["", "These are the check's findings as measured. Add an OpenAI or Anthropic key in Settings for a written explanation."]
         text = "\n".join(lines)
         result = audit.audit(text, self.outputs, CONSTANTS + tuple(audit.values(message or "")))
         return self.finish(text, result, result, model=False)
@@ -472,7 +466,7 @@ class Run:
         event = {"type": "answer", "text": audit.mark(text, final) if not final.passed else text,
                  "audit": {"numbers": len(final.numbers), "passed": final.passed, "first_try_passed": first.passed,
                            "unverified": [n.text for n in final.unverified]},
-                 "check": self.check, "copy_trade": self.copy, "explained_by": MODEL if model else None, "run_id": self.id}
+                 "check": self.check, "copy_trade": self.copy, "explained_by": self.model.name if model and self.model else None, "run_id": self.id}
         self.emit(event)
         return event
 
@@ -483,11 +477,9 @@ class Run:
         first = audit.audit(text, self.outputs, allowed)
         final = first
         if not first.passed:
-            retry = self.meta.respond({"model": MODEL, "instructions": SYSTEM, "store": False, "reasoning": {"effort": "low"},
-                                       "max_output_tokens": MAX_OUTPUT,
-                                       "input": items + [{"role": "user", "content": first.feedback() + " Rewrite your answer."}]},
-                                      purpose="rug check rewrite")
-            rewrite = meta.text_of(retry)
+            retry = self.model.respond({"instructions": SYSTEM, "reasoning": {"effort": "low"}, "max_output_tokens": MAX_OUTPUT,
+                                        "input": items + [{"role": "user", "content": first.feedback() + " Rewrite your answer."}]})
+            rewrite = llm.text_of(retry)
             second = audit.audit(rewrite, self.outputs, allowed)
             if second.passed or len(second.unverified) < len(first.unverified):
                 text, final = rewrite, second
@@ -515,7 +507,7 @@ def summary(name: str, result: dict) -> str:
     return "done"
 
 
-def run(message: str, image: bytes | None = None, image_type: str = "image/png", emit=print, client: meta.Meta | None = None,
-        as_of: int | None = None, video: bytes | None = None, history: list[dict] | None = None,
-        context_id: str | None = None) -> dict:
-    return Run(client=client, emit=emit, image=image, image_type=image_type, as_of=as_of, video=video).run(message, history, context_id)
+def run(message: str, image: bytes | None = None, image_type: str = "image/png", emit=print, model: llm.LLM | None = None,
+        as_of: int | None = None, history: list[dict] | None = None, context_id: str | None = None, allow_live=None) -> dict:
+    return Run(model=model, emit=emit, image=image, image_type=image_type, as_of=as_of,
+               allow_live=allow_live).run(message, history, context_id)

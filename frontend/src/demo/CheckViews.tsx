@@ -219,7 +219,6 @@ export function Composer({ text, typing, wide }: { text: string; typing?: boolea
       </p>
       <div className="composer__foot">
         <Paperclip size={14} aria-hidden />
-        <span className="composer__model">Muse Spark 1.3</span>
         <span className={`composer__send${typing ? " is-ready" : ""}`} aria-hidden>
           <ArrowUp size={14} />
         </span>

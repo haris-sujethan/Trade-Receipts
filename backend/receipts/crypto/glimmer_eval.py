@@ -14,7 +14,6 @@ so is the combination (the mean of Glimmer's and the trees' calibrated chances).
 import json
 import pathlib
 
-import numpy as np
 import pandas as pd
 from sklearn.isotonic import IsotonicRegression
 

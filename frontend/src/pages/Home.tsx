@@ -20,7 +20,7 @@ export function Home() {
           <a href="#demo">Demo</a>
           <a href="#checks">What we check</a>
         </nav>
-        <Link to="/signup" className="hn-btn hn-btn--primary hn-btn--sm">
+        <Link to="/ide" className="hn-btn hn-btn--primary hn-btn--sm">
           Launch IDE
         </Link>
       </header>
@@ -33,7 +33,7 @@ export function Home() {
           </h1>
           <p className="hn-lede">Paste a pump.fun link, a ticker or a token’s address.</p>
           <div className="hn-acts">
-            <Link to="/signup" className="hn-btn hn-btn--primary">
+            <Link to="/ide" className="hn-btn hn-btn--primary">
               Launch IDE
             </Link>
             <a href="#checks" className="hn-btn hn-btn--line">
@@ -49,7 +49,7 @@ export function Home() {
         <section id="checks" className="hn-checks" aria-labelledby="checks-title">
           <div className="hn-checks__head">
             <h2 id="checks-title">Everything we check, on every token</h2>
-            <Link to="/signup" className="hn-link">
+            <Link to="/ide" className="hn-link">
               Check a token
               <ArrowRight size={17} strokeWidth={2} aria-hidden />
             </Link>
@@ -60,7 +60,7 @@ export function Home() {
         <section className="hn-close" aria-labelledby="close-title">
           <h2 id="close-title">See who’s selling before you buy.</h2>
           <p>The same IDE backtests copying a pump.fun wallet: what you’d have made buying and selling a little after it.</p>
-          <Link to="/signup" className="hn-btn hn-btn--primary">
+          <Link to="/ide" className="hn-btn hn-btn--primary">
             Launch IDE
           </Link>
         </section>

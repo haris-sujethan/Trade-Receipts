@@ -49,7 +49,7 @@ Paste a pump.fun link, a ticker or a token's address into the chat. The agent:
 3. **Splits the holders** into the team, likely team, snipers, bots and wash traders, fresh wallets, and independent buyers.
 4. **Checks the token's authorities**: whether new tokens can be minted, whether holders can be frozen, and more, cross-checked with GoPlus.
 5. **Scores the rug chance** from 81 signals, and shows the 5 most similar past launches and how they ended.
-6. **Explains it** in plain English with Muse Spark. Every number in the explanation is audited against the data.
+6. **Explains it** in plain English with the AI model you choose (your own OpenAI or Anthropic key). Every number in the explanation is audited against the data.
 
 The result opens as a file in the editor, with four views:
 
@@ -81,7 +81,7 @@ Example, from the saved run: a wallet from pump.fun's leaderboard made **+43.0%*
 | Model | Role |
 |---|---|
 | **Muse Glimmer** (Meta's open-weight 30B model, Apache 2.0, reads text and images) | Trained by us on past pump.fun launches: fine-tuned, then trained with reinforcement learning against real outcomes. It reads each token's signals, its holders, its trades over time and a bubble-map image, and answers with a rug chance and its reasons. Its rug chance is shown on every check as a second opinion. |
-| **Muse Spark 1.3** (Meta Model API) | Runs the agent. It reads the user's message, decides which tools to call (find the token, check it, read token authorities, run a backtest, read an address from a screenshot or clip), and writes the explanation. Every number it writes passes the numbers audit. |
+| **Muse Spark 1.3** (Meta Model API) | Ran the agent during the hackathon: it read the user's message, decided which tools to call and wrote the explanation, with every number audited. The hosted app now runs the same agent on each visitor's own OpenAI or Anthropic key. |
 
 ---
 
@@ -222,7 +222,7 @@ Code: `backend/receipts/crypto/live.py`, `helius.py`, `transactions.py`.
 
 ## The agent and the numbers audit
 
-**The agent** (`backend/receipts/agent/loop.py`) runs on Muse Spark with these tools:
+**The agent** (`backend/receipts/agent/loop.py`) runs on the visitor's own model, OpenAI or Anthropic (`backend/receipts/agent/llm.py`), with these tools:
 
 | Tool | What it does |
 |---|---|
@@ -236,11 +236,9 @@ Each step streams to the chat as it runs, with its progress (transactions read, 
 
 **The numbers audit** (`backend/receipts/agent/audit.py`): numbers come from tools, never from the model. Every number in the agent's explanation is matched against the tool outputs before it's shown. The answer says how many numbers it checked, for example "19 numbers checked against the data."
 
-**The Meta spend guard** (`backend/receipts/agent/meta.py`): every Meta call goes through one client.
-- It prices each call before sending it, and refuses once the local ledger would pass $100, or $10 in a day.
-- It logs each call's real usage, and caches by input.
-- It stays off unless `META_API_ENABLED` is set.
-- `uv run python -m receipts meta-report` shows spend.
+**Your own AI key** (`backend/receipts/agent/llm.py`): visitors add an OpenAI or Anthropic key in Settings.
+- It stays in their browser and goes only with their own requests, as headers; the server uses it for that request and never stores or logs it.
+- Without a key, checks and backtests still run and show their own findings.
 
 ---
 
@@ -268,7 +266,7 @@ Browser (React + Vite + TypeScript)
     │  /api (server-sent events)
     ▼
 FastAPI backend (Python 3.13)
-  /api/agent      Muse Spark agent ─┬─ check_token ── live.py ── Helius
+  /api/agent      the agent (your key) ┬─ check_token ── live.py ── Helius
   /api/check      live rug check    ├─ token_security ── GoPlus
   /api/copytrade  backtest          ├─ copy_trade ── copytrade.py ── Helius
   /api/demo       saved runs        └─ numbers audit
@@ -299,7 +297,8 @@ Training: BigQuery public Solana data ─► decode ─► labels ─► snapsho
 | `HELIUS_API_KEY` | Live checks and copy-trade backtests |
 | `GOOGLE_CLOUD_PROJECT` | Pulling history from BigQuery (only to rebuild the dataset) |
 | `HF_TOKEN`, `KAGGLE_API_TOKEN` | Training Glimmer on Kaggle |
-| `MODEL_API_KEY`, `META_API_ENABLED` | The Muse Spark agent. Without them, checks still run and show their own findings |
+| `SUPABASE_URL`, `SUPABASE_ANON_KEY` | Sign-in on a hosted backend. Unset locally, so nobody needs to sign in |
+| `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` | The agent from the command line only; in the app, each visitor adds their own key in Settings |
 
 **2. Backend**
 
@@ -349,7 +348,6 @@ From `backend/`, run `uv run python -m receipts <command>`:
 | `copy-trade <wallet> --buy-after 300 --sell-after 600` | A copy-trade backtest of a wallet |
 | `agent "<message>"` | The agent on one message |
 | `goplus <mint>` | GoPlus token security |
-| `meta-report` | Meta API spend so far |
 
 ---
 
@@ -361,7 +359,7 @@ From `backend/`, run `uv run python -m receipts <command>`:
 | `frontend/src/demo/` | Charts, the bubble map, result views, saved-run replays |
 | `frontend/src/pages/` | Home, sign-up and IDE pages |
 | `backend/receipts/server.py` | The HTTP API |
-| `backend/receipts/agent/` | The agent loop, the numbers audit, the Meta client and its guard |
+| `backend/receipts/agent/` | The agent loop, the numbers audit, and the client for each visitor's own model |
 | `backend/receipts/crypto/` | Data pipeline, labels, signals, models, live checks, copy trade |
 | `backend/kaggle/` | Glimmer's training and scoring job, and the script that pushes it to Kaggle |
 | `backend/tests/` | Tests, including the leakage test |
@@ -380,7 +378,7 @@ From `backend/`, run `uv run python -m receipts <command>`:
 | GoPlus | Token authorities | Free, credited as "Powered by GoPlus" |
 | pump.fun public IDL | Decoding pump.fun events | Public |
 | Muse Glimmer | The trained rug model | Apache 2.0 |
-| Muse Spark (Meta Model API) | The agent and explanations | Meta Model API terms |
+| OpenAI or Anthropic | The agent and explanations, on each visitor's own key | The visitor's own account terms |
 
 Raw third-party data stays out of the repository: `data/` is gitignored. The examples in `frontend/public/demo` are saved runs of real tokens. MELT's rug definitions informed the labels, but its data isn't trained on (non-commercial license). Full notes: `notes/data-sources.md`.
 

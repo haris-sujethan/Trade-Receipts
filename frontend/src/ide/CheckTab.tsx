@@ -72,7 +72,7 @@ export function CheckTab({ check }: { check: CheckRun }) {
           {saved
             ? backend === "online"
               ? "Saved check, replayed. Ask in the thread to check another token live."
-              : "Saved check, replayed. Live checks are coming soon."
+              : "Saved check, replayed. The live backend isn't reachable right now."
             : check.status === "running"
               ? "Live check, running"
               : check.status === "error"

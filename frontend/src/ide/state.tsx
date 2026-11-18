@@ -16,6 +16,7 @@ import {
   type RunSummary,
 } from "../demo/runs";
 import { streamAgent, streamCopyTrade, type Streamed } from "./live";
+import { markTourDoneOnAccount } from "../lib/auth";
 
 /** The rug check, and the copy-trade backtest. Strategy backtests (files, results) are unplugged for now. */
 export type WorkTab = "Analyze" | "Copy trade";
@@ -137,19 +138,20 @@ type Action =
 export type Reply = { kind: "replay"; run: Run } | { kind: "live"; attachment?: Attachment } | { kind: "text"; text: string };
 
 export const FOLLOW_UP_SOON =
-  "Questions about a result need the live agent, which is coming soon. To check another token or wallet, paste it here: it opens in a new thread.";
+  "The live backend isn't reachable right now, so questions about a result can't be answered. Try again in a minute.";
 
 export const LIVE_SOON =
-  "Live checks are coming soon. This preview replays six saved checks: paste one of their pump.fun links, tickers or addresses, or open one from the checks folder.";
+  "The live backend isn't reachable right now, so only the saved checks replay: open one from the examples folder, or try again in a minute.";
 
 export function copySoon(saved: CopySummary[]) {
   const one = saved[0];
   return one
-    ? `Live copy-trade backtests are coming soon. This preview replays a saved one: paste its wallet, ${one.wallet}, or open it from the copy trades folder.`
-    : "Live copy-trade backtests are coming soon.";
+    ? `The live backend isn't reachable right now, so only the saved backtest replays: paste its wallet, ${one.wallet}, or try again in a minute.`
+    : "The live backend isn't reachable right now. Try again in a minute.";
 }
 
-function readDone(): boolean {
+/** Whether the tour was finished in this browser. */
+export function readTourDone(): boolean {
   try {
     return localStorage.getItem(TOUR_DONE_KEY) === "1";
   } catch {
@@ -203,8 +205,8 @@ function savePanes(p: Panes) {
 /** The Copy trade mode's blank form, for a backtest of your own. */
 export const NEW_COPY_TAB = "copy:new";
 
-function initialState(): State {
-  const tourOpen = !readDone();
+function initialState(accountTourDone: boolean): State {
+  const tourOpen = !accountTourDone && !readTourDone();
   // The tour points at the thread, so it opens with both panels. After it, the IDE starts blank: an empty thread,
   // nothing open, the examples in their folder.
   if (tourOpen) return { ...demoState(), tourOpen, panes: { files: true, thread: true } };
@@ -773,8 +775,8 @@ export function savedCopyMatch(text: string, saved: CopySummary[]): CopySummary 
 type Ctx = { state: State; dispatch: (a: Action) => void };
 const IdeContext = createContext<Ctx | null>(null);
 
-export function IdeProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, undefined, initialState);
+export function IdeProvider({ children, tourDone = false }: { children: ReactNode; tourDone?: boolean }) {
+  const [state, dispatch] = useReducer(reducer, tourDone, initialState);
 
   // The saved checks, and the lead one in full for the example thread.
   useEffect(() => {
@@ -837,11 +839,13 @@ export function useIde() {
   return ctx;
 }
 
+/** The tour is done: remembered on the account, so it shows once per person, and in this browser. */
 export function markTourDone() {
+  void markTourDoneOnAccount();
   try {
     localStorage.setItem(TOUR_DONE_KEY, "1");
   } catch {
-    // Without storage the tour simply shows again next visit.
+    // Without storage the account still remembers.
   }
 }
 

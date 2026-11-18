@@ -18,7 +18,6 @@ against this text.
 import math
 
 import numpy as np
-from PIL import Image, ImageDraw
 
 from receipts.crypto import programs, signals
 
@@ -225,8 +224,9 @@ def text(tok: "signals.Token", sig: dict, ctx: dict) -> str:
     return "\n".join(parts)
 
 
-def bubble_map(tok: "signals.Token", ctx: dict) -> Image.Image:
+def bubble_map(tok: "signals.Token", ctx: dict):
     """The 50 biggest holders and the first 50 buyers, grouped by cluster and colored by group."""
+    from PIL import Image, ImageDraw  # Glimmer's image only: live checks run without Pillow
     groups = group_of(ctx)
     held, first_buy = ctx["held"], ctx["first_buy"]
     holders = [i for i in np.argsort(-held, kind="stable") if held[i] > 0][:MAP_HOLDERS]

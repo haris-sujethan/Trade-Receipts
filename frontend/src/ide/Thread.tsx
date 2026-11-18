@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
-import { AlertTriangle, ArrowUp, ImagePlus, PanelRightClose, Paperclip, Play, Plus, History, X } from "lucide-react";
+import { AlertTriangle, ArrowUp, ImagePlus, KeyRound, PanelRightClose, Paperclip, Play, Plus, History, X } from "lucide-react";
 import { RunSteps } from "../demo/CheckViews";
 import { answerOf, loadRun } from "../demo/runs";
 import { useBackend, useCheckFrame } from "./live";
@@ -23,6 +23,8 @@ import {
   type WorkTab,
 } from "./state";
 import { CheckHelp, findFailure } from "./CheckHelp";
+import { DEFAULT_MODEL, readAiKey } from "../lib/aiKey";
+import { openSettings } from "./Settings";
 import "../demo/demo.css";
 
 const minutesAgo = (ms: number) => {
@@ -33,8 +35,8 @@ const minutesAgo = (ms: number) => {
 /** A Solana address in a message: a token's mint or a wallet. */
 const ADDRESS = /[1-9A-HJ-NP-Za-km-z]{32,44}/g;
 
-// What the backend accepts (receipts/server.py): mp4 clips up to 25 MB, images up to 8 MB.
-const LIMITS = { video: 25 * 2 ** 20, image: 8 * 2 ** 20 };
+// What the backend accepts (receipts/server.py): screenshots up to 3 MB.
+const IMAGE_LIMIT = 3 * 2 ** 20;
 
 function readAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -62,7 +64,6 @@ export function Thread() {
   const [sending, setSending] = useState(false);
   const [attachment, setAttachment] = useState<Attachment | null>(null);
   const [attachError, setAttachError] = useState<string | null>(null);
-  const clipInput = useRef<HTMLInputElement>(null);
   const imageInput = useRef<HTMLInputElement>(null);
   const canAttach = backend === "online" && state.workTab === "Analyze";
   const user = typeof state.thread === "number" ? state.threads.find((t) => t.id === state.thread) : undefined;
@@ -112,9 +113,8 @@ export function Thread() {
   async function attach(kind: Attachment["kind"], file: File | undefined) {
     setAttachError(null);
     if (!file) return;
-    if (kind === "video" && file.type !== "video/mp4") return setAttachError("Clips must be mp4.");
     if (kind === "image" && !file.type.startsWith("image/")) return setAttachError("That isn't an image.");
-    if (file.size > LIMITS[kind]) return setAttachError(kind === "video" ? "Clips can be up to 25 MB." : "Screenshots can be up to 8 MB.");
+    if (file.size > IMAGE_LIMIT) return setAttachError("Screenshots can be up to 3 MB.");
     setAttachment({ kind, name: file.name, dataUrl: await readAsDataUrl(file) });
   }
 
@@ -233,6 +233,7 @@ export function Thread() {
         )}
       </div>
 
+      <KeyPrompt />
       <form className="composer" onSubmit={send} data-tour="composer">
         <label htmlFor="composer-input" className="sr-only">
           Message the agent
@@ -262,32 +263,19 @@ export function Thread() {
             {attachError}
           </p>
         )}
-        <input ref={clipInput} type="file" accept="video/mp4" hidden onChange={(e) => void attach("video", e.target.files?.[0])} />
         <input ref={imageInput} type="file" accept="image/*" hidden onChange={(e) => void attach("image", e.target.files?.[0])} />
         <div className="composer__bar">
           <button
             type="button"
             className="icon-btn icon-btn--sm"
-            title={canAttach ? "Attach a clip (mp4, up to 25 MB)" : "Attach a clip (needs the live backend)"}
-            aria-label={canAttach ? "Attach a clip" : "Attach a clip (needs the live backend)"}
-            disabled={!canAttach}
-            onClick={() => clipInput.current?.click()}
-          >
-            <Paperclip size={15} aria-hidden />
-          </button>
-          <button
-            type="button"
-            className="icon-btn icon-btn--sm"
-            title={canAttach ? "Add a screenshot (up to 8 MB)" : "Add a screenshot (needs the live backend)"}
+            title={canAttach ? "Add a screenshot (up to 3 MB)" : "Add a screenshot (needs the live backend)"}
             aria-label={canAttach ? "Add a screenshot" : "Add a screenshot (needs the live backend)"}
             disabled={!canAttach}
             onClick={() => imageInput.current?.click()}
           >
             <ImagePlus size={15} aria-hidden />
           </button>
-          <span className="composer__model" title="The model that runs the agent">
-            Muse Spark 1.3
-          </span>
+          <ModelChip />
           <button
             type="submit"
             className="send"
@@ -305,14 +293,14 @@ export function Thread() {
           : hasResult
             ? backend === "online"
               ? "Ask about this result; the agent answers from the data already pulled. Another token or wallet opens a new thread."
-              : "Questions about a result need the live agent, coming soon. Another token or wallet opens a new thread."
+              : "The live backend isn't reachable right now; questions about a result need it. Another token or wallet opens a new thread."
             : state.workTab === "Copy trade"
             ? backend === "online"
               ? "Live: any pump.fun wallet is backtested from the chain now. The saved one replays."
-              : "Live backtests are coming soon. The saved one replays."
+              : "The live backend isn't reachable right now. The saved backtest still replays."
             : backend === "online"
               ? "Live: any pump.fun token is checked from the chain now. Saved checks replay."
-              : "Live checks are coming soon. Saved checks replay."}
+              : "The live backend isn't reachable right now. Saved checks still replay."}
       </p>
     </aside>
   );
@@ -505,5 +493,49 @@ function ThreadHistory() {
         </div>
       )}
     </div>
+  );
+}
+
+/** Whether the visitor has added their own AI key, kept current when Settings changes it. */
+function useAiKey() {
+  const [key, setKey] = useState(readAiKey);
+  useEffect(() => {
+    const update = () => setKey(readAiKey());
+    window.addEventListener("ai-key", update);
+    return () => window.removeEventListener("ai-key", update);
+  }, []);
+  return key;
+}
+
+/** Above the message box until a key is added: what a key adds, and the button that adds one. */
+function KeyPrompt() {
+  const key = useAiKey();
+  if (key) return null;
+  return (
+    <div className="key-prompt" role="note">
+      <KeyRound size={16} aria-hidden className="key-prompt__icon" />
+      <div className="key-prompt__text">
+        <p className="key-prompt__title">Add your AI key</p>
+        <p>Checks run without one. With your own OpenAI or Anthropic key, the agent explains each result and answers your questions.</p>
+      </div>
+      <button type="button" className="run-btn key-prompt__btn" onClick={openSettings}>
+        Add key
+      </button>
+    </div>
+  );
+}
+
+/** The model that writes explanations: the visitor's own, or a prompt to add a key. Opens Settings. */
+function ModelChip() {
+  const key = useAiKey();
+  return (
+    <button
+      type="button"
+      className={`composer__model${key ? "" : " composer__model--empty"}`}
+      title={key ? "Change the AI model in Settings" : "Add your own OpenAI or Anthropic key for written explanations"}
+      onClick={openSettings}
+    >
+      {key ? key.model || DEFAULT_MODEL[key.provider] : "Add an AI key"}
+    </button>
   );
 }

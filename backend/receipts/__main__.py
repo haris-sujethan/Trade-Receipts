@@ -151,6 +151,17 @@ def live_parity(args) -> None:
     print(json.dumps({k: v for k, v in report.items() if k not in ("checks", "signals_matching_share")}, indent=2, default=str))
 
 
+def env_model():
+    """The agent's model for command-line runs: your own ANTHROPIC_API_KEY or OPENAI_API_KEY, or none."""
+    import os
+
+    from receipts.agent import llm
+
+    provider = "anthropic" if os.environ.get("ANTHROPIC_API_KEY") else "openai"
+    key = os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("OPENAI_API_KEY")
+    return llm.LLM(provider, key, llm.DEFAULT_MODEL[provider]) if key else None
+
+
 def agent(args) -> None:
     from receipts.agent import loop
 
@@ -160,14 +171,14 @@ def agent(args) -> None:
         elif event["type"] == "answer":
             print("\n" + event["text"] + "\n\naudit:", json.dumps(event["audit"]), flush=True)
 
-    loop.run(args.message, emit=emit, as_of=args.as_of)
+    loop.run(args.message, emit=emit, as_of=args.as_of, model=env_model())
 
 
 def save_demo(args) -> None:
     from receipts.agent import demo
 
-    demo.save()
-    print(demo.save_copy())
+    demo.save(model=env_model())
+    print(demo.save_copy(model=env_model()))
 
 
 def copy_trade(args) -> None:
@@ -179,12 +190,6 @@ def copy_trade(args) -> None:
     for row in r["rows"]:
         print(f'{(row["symbol"] or row["mint"][:6]):>12}  held {row["held_s"]:>6}s  wallet {row["wallet"]["pnl_pct"]:+.0%}  '
               f'you {row["you"]["pnl_pct"]:+.0%}  after its buy {row["after_buy"]["change"]}  after its sell {row["after_sell"]["change"]}')
-
-
-def meta_report(args) -> None:
-    from receipts.agent.meta import Meta
-
-    print(json.dumps(Meta().report(), indent=2))
 
 
 def main() -> None:
@@ -215,26 +220,25 @@ def main() -> None:
     p.add_argument("folders", nargs="+", help="the downloaded job outputs (each holds predictions.jsonl)")
     p.add_argument("--name", default="glimmer")
     p.set_defaults(run=glimmer_eval)
-    p = sub.add_parser("live-check", help="a live rug check of one token from Helius (no Meta API)")
+    p = sub.add_parser("live-check", help="a live rug check of one token from Helius")
     p.add_argument("mint")
     p.add_argument("--as-of", type=int, help="unix seconds (default now)")
     p.set_defaults(run=live_check)
     p = sub.add_parser("live-parity", help="live checks of May 16 test tokens compared with their training snapshots")
     p.add_argument("-n", type=int, default=8)
     p.set_defaults(run=live_parity)
-    p = sub.add_parser("agent", help="the rug check agent on one message (Meta API, guarded)")
+    p = sub.add_parser("agent", help="the rug check agent on one message (your OPENAI_API_KEY or ANTHROPIC_API_KEY)")
     p.add_argument("message")
     p.add_argument("--as-of", type=int, help="check tokens as they stood at this unix time")
     p.set_defaults(run=agent)
-    sub.add_parser("save-demo", help="run the agent on the demo tokens and save the runs (Meta API, guarded)").set_defaults(run=save_demo)
-    p = sub.add_parser("copy-trade", help="what copying a pump.fun wallet a little late would have made (Helius, no Meta)")
+    sub.add_parser("save-demo", help="run the agent on the demo tokens and save the runs (your model key)").set_defaults(run=save_demo)
+    p = sub.add_parser("copy-trade", help="what copying a pump.fun wallet a little late would have made (Helius)")
     p.add_argument("wallet", help="a pump.fun profile link or wallet address")
     p.add_argument("--buy-after", type=int, default=300, help="seconds after each of its buys")
     p.add_argument("--sell-after", type=int, default=600, help="seconds after each of its sells")
     p.add_argument("--size", type=float, default=1.0, help="SOL per position")
     p.add_argument("--positions", type=int, default=50, help="its latest closed positions to copy (up to 100)")
     p.set_defaults(run=copy_trade)
-    sub.add_parser("meta-report", help="Meta Model API spend so far against the guard's limit").set_defaults(run=meta_report)
     p = sub.add_parser("goplus", help="GoPlus token security for a mint")
     p.add_argument("mint")
     p.set_defaults(run=goplus)

@@ -16,7 +16,6 @@ import json
 
 import base58
 import pyarrow as pa
-from google.cloud import bigquery
 
 from receipts.crypto import events, idl, programs
 from receipts.crypto.bq import GuardedBigQuery
@@ -206,6 +205,8 @@ def pull_day(
     include_new_launches: bool = True,
 ) -> pa.Table:
     """One day's kept events for the given mints and pools, plus that day's own launches."""
+    from google.cloud import bigquery  # only when pulling history
+
     params = [
         bigquery.ScalarQueryParameter("day", "DATE", day),
         bigquery.ArrayQueryParameter("programs", "STRING", [programs.PUMP, programs.PUMP_AMM]),

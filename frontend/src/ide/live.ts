@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import type { AnswerEvent, CopyRequest, CopyTrade, RunEvent } from "../demo/runs";
 import { frameAt, frameFromEvents, plan as makePlan, type Frame, type Plan } from "../demo/timeline";
 import type { Attachment, CheckRun, Turn } from "./state";
+import { accessToken } from "../lib/auth";
+import { aiHeaders } from "../lib/aiKey";
 
 /**
  * The backend, when there is one. Locally, Vite proxies /api to `uv run uvicorn receipts.server:app --port 8000`;
@@ -80,15 +82,21 @@ export function streamAgent(
   return stream("/api/agent", { message, history, ...media, ...(contextId ? { context_id: contextId } : {}) }, onEvent, signal);
 }
 
-/** Runs a copy-trade backtest without the agent: progress events, then `{type: "result", copy_trade}`. No Meta call. */
+/** Runs a copy-trade backtest without the agent: progress events, then `{type: "result", copy_trade}`. No model call. */
 export function streamCopyTrade(request: CopyRequest, onEvent: (e: Streamed) => void, signal?: AbortSignal) {
   return stream("/api/copytrade", request, onEvent, signal);
 }
 
+/** A streamed request, signed in as the visitor, with their own AI key on agent requests. */
 async function stream(path: string, body: unknown, onEvent: (e: Streamed) => void, signal?: AbortSignal) {
+  const token = await accessToken();
   const res = await fetch(`${API}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(path === "/api/agent" ? aiHeaders() : {}),
+    },
     body: JSON.stringify(body),
     signal,
   });
