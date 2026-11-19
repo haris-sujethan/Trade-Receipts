@@ -99,8 +99,8 @@ const steps: Step[] = [
   },
   {
     target: "problems",
-    title: "Flags, like errors in code",
-    body: "The verdict and the signals the agent called out show up here, the way an editor lists problems.",
+    title: "Flags",
+    body: "The verdict and every warning sign the agent found, listed in one place.",
     enter: (dispatch, state) => {
       finishHero(dispatch, state);
       dispatch({ type: "bottomTab", tab: "problems" });

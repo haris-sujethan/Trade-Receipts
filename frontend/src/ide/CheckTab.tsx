@@ -6,6 +6,7 @@ import { ResultPanel } from "../demo/ResultPanel";
 import { shortAddr } from "../demo/runs";
 import { onTablistKeyDown } from "../lib/tabs";
 import { useBackend, useCheckFrame } from "./live";
+import { useNarrow } from "./useNarrow";
 import { useIde, type CheckRun } from "./state";
 import { CheckHelp, findFailure } from "./CheckHelp";
 import "../demo/demo.css";
@@ -24,6 +25,7 @@ const UNSCORED: Record<string, string> = {
 export function CheckTab({ check }: { check: CheckRun }) {
   const { state, dispatch } = useIde();
   const backend = useBackend();
+  const narrow = useNarrow();
   const cf = useCheckFrame(check, () => dispatch({ type: "finishCheck", key: check.key }));
   if (!cf) return null;
   const { frame, words, answer } = cf;
@@ -185,7 +187,8 @@ export function CheckTab({ check }: { check: CheckRun }) {
         )}
         {data && hasViews && view === "chart" && (
           <div data-tour="chart">
-            <ChartView check={data} frame={frame} width={900} height={380} />
+            {/* A phone draws the chart from a smaller design, so its labels stay readable at a third of the width. */}
+            <ChartView check={data} frame={frame} width={narrow ? 460 : 900} height={narrow ? 340 : 380} />
           </div>
         )}
         {data && hasViews && view === "holders" && (

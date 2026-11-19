@@ -317,3 +317,41 @@
   color: var(--color-muted);
 }
 
+
+/* Phones: compact cards, so a scroll shows two or more at a time instead of one. */
+@media (max-width: 640px) {
+  .checks__grid {
+    gap: 12px;
+  }
+
+  .check-card__viz {
+    height: 84px;
+    padding: 10px 14px;
+  }
+
+  .check-card__viz .bmap,
+  .check-card__viz .mchart,
+  .check-card__viz .bmap svg,
+  .check-card__viz .viz-svg {
+    height: 64px;
+  }
+
+  .check-card h3 {
+    margin: 14px 16px 0;
+    font-size: 21px;
+  }
+
+  .check-card__sub {
+    margin: 0 16px 10px;
+    font-size: 13px;
+  }
+
+  .check-card dl {
+    margin: auto 16px 14px;
+    font-size: 13px;
+  }
+
+  .check-card dl div {
+    padding: 6px 0;
+  }
+}

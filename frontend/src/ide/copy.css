@@ -553,3 +553,30 @@
   justify-content: flex-end;
   margin-bottom: 12px;
 }
+
+/* On a phone the form and the result scroll as one page, so the result isn't left a strip under a pinned form. */
+.ide--narrow .copy {
+  display: block;
+  height: auto;
+  min-height: 100%;
+}
+
+.ide--narrow .copy__body {
+  overflow: visible;
+  padding: 16px 14px 28px;
+}
+
+.ide--narrow .main__content:has(> .copy) {
+  overflow-y: auto;
+}
+
+/* The positions table on a phone: token, held, the wallet's result and yours. The price moves after their trades
+   stay in each position's detail, which says them in full. */
+.ide--narrow .pos thead tr:first-child th:nth-child(2),
+.ide--narrow .pos thead tr:first-child th:nth-child(5),
+.ide--narrow .pos thead tr:first-child th:nth-child(6),
+.ide--narrow .pos thead tr:nth-child(2) th:nth-child(n + 3),
+.ide--narrow .pos tbody tr:not(.pos__detail) td:nth-child(2),
+.ide--narrow .pos tbody tr:not(.pos__detail) td:nth-child(n + 6) {
+  display: none;
+}

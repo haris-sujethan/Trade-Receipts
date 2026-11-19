@@ -961,14 +961,38 @@
     scrollbar-width: none;
   }
 
+  /* Stacked, the result and the chat are two cards with the wallpaper between them, not one crowded window. */
+  .win {
+    overflow: visible;
+    background: none;
+    box-shadow: none;
+  }
+
+  .win__bar {
+    border-radius: 12px 12px 0 0;
+  }
+
   .win__body {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: minmax(0, 1fr) 260px;
+    gap: 12px;
+  }
+
+  .ws,
+  .win .thread {
+    overflow: hidden;
+    background: var(--color-win);
+    box-shadow: 0 0 0 0.5px var(--color-win-edge), 0 18px 36px -14px var(--color-shadow);
+  }
+
+  .ws {
+    border-radius: 0 0 12px 12px;
   }
 
   .win .thread {
     border-left: 0;
-    border-top: 1px solid var(--color-win-line);
+    border-radius: 12px;
+    background: var(--color-win-side);
   }
 
   .holdv,
@@ -987,6 +1011,12 @@
   .mac__window {
     margin: 60px 8px 8px;
     height: 640px;
+  }
+
+  /* The example tabs line up with the window's edges. */
+  .mac__tabs {
+    left: 8px;
+    right: 8px;
   }
 
   .win__mode {

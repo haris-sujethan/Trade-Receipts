@@ -123,7 +123,7 @@ pre,
 }
 
 .theme-glass ::selection {
-  background: var(--color-accent);
+  background: var(--color-accent-ink);
   color: var(--color-paper);
 }
 

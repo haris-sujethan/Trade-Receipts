@@ -1285,7 +1285,7 @@
 }
 
 .tour__card ::selection {
-  background: var(--color-accent);
+  background: var(--color-accent-ink);
   color: var(--color-paper);
 }
 
@@ -2078,4 +2078,22 @@ button.topbar__guest {
 /* Phones zoom into any text field under 16px when it's tapped. */
 .ide--narrow .settings__field input {
   font-size: 16px;
+}
+
+/* A check's summary bar on a phone: the facts wrap onto lines, the note under them. */
+.ide--narrow .runbar {
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  padding: 8px 14px;
+  overflow-x: visible;
+}
+
+.ide--narrow .runbar__settings {
+  flex-wrap: wrap;
+  row-gap: 4px;
+}
+
+.ide--narrow .runbar__note {
+  flex-basis: 100%;
+  margin: 0;
 }

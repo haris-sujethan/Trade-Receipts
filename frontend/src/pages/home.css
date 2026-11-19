@@ -26,7 +26,7 @@ body:has(.theme-glass) {
 }
 
 .hn ::selection {
-  background: var(--color-ink);
+  background: var(--color-accent-ink);
   color: var(--color-paper);
 }
 
@@ -286,8 +286,16 @@ body:has(.theme-glass) {
 }
 
 @media (max-width: 640px) {
+  /* The links are hidden here, so the name and the button sit at the two ends of the bar. */
   .hn-nav {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
     padding: 0 16px;
+  }
+
+  .hn-mark {
+    white-space: nowrap;
   }
 
   .hn-links {

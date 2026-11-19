@@ -62,7 +62,7 @@ export function SignUp() {
             {mode === "signin"
               ? "Welcome back."
               : afterTour
-                ? "That was the tour. Create a free account to check any token, backtest any wallet, and add your own AI key."
+                ? "That was the tour. Create a free account to check any token, backtest any creator, and add your own AI key."
                 : "Free. An account keeps live checks fair for everyone."}
           </p>
 

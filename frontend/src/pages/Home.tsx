@@ -31,7 +31,7 @@ export function Home() {
             Check the token
             <span>before you buy it.</span>
           </h1>
-          <p className="hn-lede">Paste a pump.fun link, a ticker or a token’s address.</p>
+          <p className="hn-lede">Check a token for signs of a rug, or backtest an influencer. Paste a pump.fun token or wallet.</p>
           <div className="hn-acts">
             <Link to="/ide" className="hn-btn hn-btn--primary">
               Launch IDE
@@ -59,7 +59,7 @@ export function Home() {
 
         <section className="hn-close" aria-labelledby="close-title">
           <h2 id="close-title">See who’s selling before you buy.</h2>
-          <p>The same IDE backtests copying a pump.fun wallet: what you’d have made buying and selling a little after it.</p>
+          <p>Check a token for signs of a rug, or backtest an influencer to see what copying their trades would have made you.</p>
           <Link to="/ide" className="hn-btn hn-btn--primary">
             Launch IDE
           </Link>
