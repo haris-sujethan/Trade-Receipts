@@ -78,7 +78,7 @@ function Account() {
         onClick={() => setOpen((v) => !v)}
       >
         <UserRound size={14} aria-hidden />
-        {email ? email.split("@")[0] : "Account"}
+        <span className="account__name">{email ? email.split("@")[0] : "Account"}</span>
         <ChevronDown size={14} aria-hidden />
       </button>
       {open && (

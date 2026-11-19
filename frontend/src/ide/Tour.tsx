@@ -12,6 +12,19 @@ type Step = {
   enter?: (dispatch: Ide["dispatch"], state: Ide["state"]) => void;
 };
 
+/** On a phone the IDE shows one pane at a time: the pane each step's target is in. */
+export type TourPane = "thread" | "files" | "main" | "problems";
+const PANE: Record<string, TourPane> = {
+  none: "thread",
+  worktabs: "main",
+  examples: "files",
+  ask: "thread",
+  thread: "thread",
+  composer: "thread",
+  problems: "problems",
+};
+const paneOf = (target: string): TourPane => PANE[target] ?? "main";
+
 function startHero(dispatch: Ide["dispatch"], state: Ide["state"]) {
   dispatch({ type: "tourShow", show: "rug" });
   if (state.checks[HERO_KEY]?.status === "waiting") dispatch({ type: "startHero" });
@@ -122,8 +135,8 @@ const steps: Step[] = [
   },
   {
     target: "none",
-    title: "You’re set",
-    body: "The IDE starts blank: ask about a token in the chat, or switch to Copy trade. The examples stay in the examples folder. Replay this tour from the question mark at the top.",
+    title: "Bring your own AI",
+    body: "Add your own OpenAI or Anthropic key in Settings. You pay your provider for what you use, so Trade Receipts stays free.",
   },
 ];
 
@@ -169,14 +182,19 @@ function place(rect: Rect | null, cardH: number) {
   return { top: clampTop(rect.top), left: roomRight >= rect.left ? vw - CARD_W - 16 : 16 };
 }
 
-export function Tour() {
+export function Tour({ narrow = false }: { narrow?: boolean }) {
   const { state } = useIde();
   if (!state.tourOpen) return null;
   // A new key on every start, so a replayed tour begins at step one with fresh state.
-  return <TourCard key={state.tourRun} />;
+  return <TourCard key={state.tourRun} narrow={narrow} />;
 }
 
-function TourCard() {
+/** Shows a step's pane on a phone (the narrow IDE listens). */
+function showPane(pane: TourPane) {
+  window.dispatchEvent(new CustomEvent<TourPane>("tour-pane", { detail: pane }));
+}
+
+function TourCard({ narrow }: { narrow: boolean }) {
   const { state, dispatch } = useIde();
   const [index, setIndex] = useState(0);
   const [rect, setRect] = useState<Rect | null>(null);
@@ -187,6 +205,7 @@ function TourCard() {
 
   useEffect(() => {
     step.enter?.(dispatch, state);
+    if (narrow) showPane(paneOf(step.target));
     // Once the step's view has opened, bring a target that sits low in a scrolling pane up to its top.
     const t = window.setTimeout(() => {
       const el = document.querySelector(`[data-tour="${step.target}"]`);
@@ -197,7 +216,8 @@ function TourCard() {
     // Run only when the step changes, not on every state update.
   }, [index]);
 
-  const remeasure = useCallback(() => setRect(measure(step.target)), [step.target]);
+  // On a phone the card sits along the bottom over the step's pane, so there's nothing to spotlight.
+  const remeasure = useCallback(() => setRect(narrow ? null : measure(step.target)), [step.target, narrow]);
 
   useLayoutEffect(() => {
     remeasure();
@@ -262,7 +282,7 @@ function TourCard() {
   const pos = place(rect, cardH);
 
   return (
-    <div className="tour">
+    <div className={`tour${narrow ? " tour--narrow" : ""}`}>
       <div className="tour__block" onClick={() => cardRef.current?.focus()} />
       <div
         className={`tour__spot ${rect ? "" : "is-none"}`}

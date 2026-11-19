@@ -114,31 +114,33 @@ const panes: { id: Pane; label: string }[] = [
   { id: "problems", label: "Problems" },
 ];
 
-/** Phones and small tablets: the same IDE, one pane at a time. The tour needs the full layout, so the agent's
- * steps simply play in the thread instead. */
+/** Phones and small tablets: the same IDE, one pane at a time. The tour runs as a card along the bottom, turning to
+ * the pane each step is about. */
 function NarrowIde() {
-  const { state, dispatch } = useIde();
+  const { state } = useIde();
   const hero = state.checks[HERO_KEY];
   const [pane, setPane] = useState<Pane>(() => (hero?.status === "done" ? "main" : "thread"));
   const problems = problemsFor(state).length;
 
-  // The tour needs the full layout, so here the example simply plays in the thread once it has loaded.
+  // During the tour, each step turns to its own pane.
   useEffect(() => {
-    if (hero?.status === "waiting") dispatch({ type: "startHero" });
-  }, [hero?.status, state.tourRun]);
+    const onPane = (e: Event) => setPane((e as CustomEvent<Pane>).detail);
+    window.addEventListener("tour-pane", onPane);
+    return () => window.removeEventListener("tour-pane", onPane);
+  }, []);
 
-  // Whatever the visitor opens, or the replay finishes on, comes to the front.
+  // Outside the tour, whatever the visitor opens, or the replay finishes on, comes to the front.
   const seen = useRef(state.openSeq);
   useEffect(() => {
-    if (state.openSeq !== seen.current) setPane("main");
+    if (state.openSeq !== seen.current && !state.tourOpen) setPane("main");
     seen.current = state.openSeq;
-  }, [state.openSeq]);
+  }, [state.openSeq, state.tourOpen]);
   const finished = useRef(hero?.status === "done");
   useEffect(() => {
     const done = hero?.status === "done";
-    if (done && !finished.current) setPane("main");
+    if (done && !finished.current && !state.tourOpen) setPane("main");
     finished.current = done;
-  }, [hero?.status]);
+  }, [hero?.status, state.tourOpen]);
 
   return (
     <div className="theme-glass ide ide--narrow">
@@ -170,6 +172,7 @@ function NarrowIde() {
         </div>
       </main>
       <StatusBar />
+      <Tour narrow />
     </div>
   );
 }

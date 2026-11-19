@@ -1376,9 +1376,6 @@
   gap: 18px;
 }
 
-.ide--narrow .topbar__wide,
-.ide--narrow .status__wide,
-
 .panes {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -2018,4 +2015,67 @@ button.topbar__guest {
   display: inline-flex;
   align-items: center;
   gap: 5px;
+}
+
+/* The tour on a phone: one card along the bottom, over whichever pane the step shows. */
+.tour--narrow .tour__spot {
+  display: none;
+}
+
+.tour--narrow .tour__block {
+  background: oklch(20% 0.02 250 / 0.18);
+}
+
+.tour--narrow .tour__card {
+  position: fixed;
+  left: 10px !important;
+  right: 10px;
+  top: auto !important;
+  bottom: calc(10px + env(safe-area-inset-bottom));
+  width: auto !important;
+  max-height: 46dvh;
+  overflow-y: auto;
+}
+
+.tour--narrow .tour__title {
+  font-size: 20px;
+}
+
+.tour--narrow .tour__actions button {
+  min-height: 40px;
+}
+
+/* The top bar on a phone: one line, the account as its icon. */
+.ide--narrow .topbar__mark {
+  font-size: 16px;
+  white-space: nowrap;
+}
+
+.ide--narrow .topbar__tabs button {
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.ide--narrow .topbar__tools {
+  gap: 2px;
+}
+
+.ide--narrow .account__name,
+.ide--narrow .account__btn > svg:last-child {
+  display: none;
+}
+
+.ide--narrow .account__btn {
+  margin-left: 4px;
+  padding: 6px;
+}
+
+/* Long example messages (a full pump.fun link) wrap instead of running off the pane. */
+.suggest button {
+  overflow-wrap: anywhere;
+}
+
+/* Phones zoom into any text field under 16px when it's tapped. */
+.ide--narrow .settings__field input {
+  font-size: 16px;
 }
