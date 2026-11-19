@@ -6,8 +6,6 @@ Paste a pump.fun token and Trade Receipts reads every trade since launch, traces
 
 Live at [tradereceipts.io](https://tradereceipts.io). For research and education. Not financial advice.
 
-![A rug check in the IDE: the rug chance, the verdict and the signals behind it](docs/images/check.png)
-
 ## Contents
 
 - [What a check finds](#what-a-check-finds)
