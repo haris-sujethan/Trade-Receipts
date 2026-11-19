@@ -25,7 +25,6 @@ class Settings:
     bq_query_cap_bytes: int
     # Helius free plan: 1M credits a month.
     helius_monthly_budget_credits: int
-    # Meta Model API (SPEC.md 12): off unless META_API_ENABLED is true; see receipts/agent/meta.py.
 
     def require(self, name: str) -> str:
         value = getattr(self, name)

@@ -19,7 +19,7 @@ export const GROUP_LABEL: Record<Group, string> = {
   independent: "Independent buyers",
 };
 
-// The wallet palette, in this order everywhere (styles/tokens.css mirrors it as --g-*). The team is Meta blue.
+// The wallet palette, in this order everywhere (styles/tokens.css mirrors it as --g-*). The team is blue.
 // Validated with the dataviz palette checks on #fcfcfb: CVD worst adjacent 9.1, normal-vision worst 17.0; the
 // grey fails the chroma floor by design. Snipers, fresh wallets and the grey sit under 3:1, so charts carry a legend.
 // Independent buyers are deliberately neutral: color marks the wallets worth worrying about.

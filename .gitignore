@@ -5,7 +5,6 @@ dist/
 !.env.example
 /data/
 .DS_Store
-.impeccable/config.local.json
 *.tsbuildinfo
 .venv/
 __pycache__/
@@ -20,3 +19,15 @@ frontend/public/demo/
 # The Vercel package (deploy/package.sh): code plus data that stays out of Git
 backend/.vercel-build/
 .vercel/
+
+# Working notes and design-tool folders used while building; not part of the project
+/CLAUDE.md
+/DESIGN.md
+/PRODUCT.md
+/SPEC.md
+/GLOSSARY.md
+/notes/
+/docs/adr/
+/.claude/
+/.hallmark/
+/.impeccable/

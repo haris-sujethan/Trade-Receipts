@@ -1,4 +1,4 @@
-"""Rugged, faded or survived: each token's outcome (SPEC.md 7.6, ADR 0001).
+"""Rugged, faded or survived: each token's outcome.
 
 A token is rugged when its team sold at least half of its peak holdings and the price gave back
 at least 90% of its rise since launch, both within the label window. On the bonding curve the
@@ -66,7 +66,7 @@ def build(name: str | dataset.Block) -> pd.DataFrame:
     """Labels for every token in the block, at each window in WINDOW_HOURS."""
     b = name if isinstance(name, dataset.Block) else dataset.block(name)
     con = dataset.connect(b)
-    con.execute(f"""
+    con.execute("""
         CREATE TEMP TABLE tt AS
         SELECT t.mint, t.wallet, t.is_buy, t.token_amount, t.mcap, t.slot, t.ix_index, t.in_create_tx, t.block_time,
                m.role, m.grp
@@ -86,7 +86,7 @@ def build(name: str | dataset.Block) -> pd.DataFrame:
                  WHERE block_time - before <= {ALONGSIDE_SECONDS} OR after - block_time <= {ALONGSIDE_SECONDS})
                >= {ALONGSIDE_SHARE} * sum(CAST(token_amount AS DOUBLE))
     """)
-    con.execute(f"""
+    con.execute("""
         CREATE TEMP TABLE seq AS
         WITH x AS (
           SELECT tt.*, k.launch_ts, k.start_mcap,

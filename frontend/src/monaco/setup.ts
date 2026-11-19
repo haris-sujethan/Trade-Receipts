@@ -47,7 +47,7 @@ monaco.languages.setMonarchTokensProvider("pine", {
 } as monaco.languages.IMonarchLanguage);
 
 // The editor's light theme, named "desk" for the editor component. Ink from the site tokens; strings and numbers
-// stay quiet so problems (amber, red) and the Meta blue cursor stand out.
+// stay quiet so problems (amber, red) and the blue cursor stand out.
 monaco.editor.defineTheme("desk", {
   base: "vs",
   inherit: true,

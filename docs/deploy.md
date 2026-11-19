@@ -2,7 +2,7 @@
 
 | Piece | Host | URL |
 |---|---|---|
-| Home page + IDE | Cloudflare Pages (the `trade-receipts` project that served the waitlist) | https://tradereceipts.io |
+| Home page + IDE | Cloudflare Pages | https://tradereceipts.io |
 | API (FastAPI) | Vercel, free Hobby plan | https://api.tradereceipts.io |
 | Sign-in | Supabase Auth, free plan | your Supabase project URL |
 
@@ -62,7 +62,7 @@ To deploy a later change, run `sh deploy/package.sh --deploy` again.
    npm run build
    ```
 
-3. **Cloudflare → Workers & Pages → trade-receipts → Create deployment**: drag in `frontend/dist`. This replaces the waitlist on tradereceipts.io.
+3. **Cloudflare → Workers & Pages → trade-receipts → Create deployment**: drag in `frontend/dist`.
 4. Open https://tradereceipts.io, create an account, and check that the tour plays once and a live check runs.
 
 ## Limits to know

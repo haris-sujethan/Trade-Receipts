@@ -1,13 +1,3 @@
-/* Hallmark · v2.0.0 · theme: custom (the category standard the user picked, direction 5, played straight) · genre: modern-minimal · shape: Settled, centred head over the product on a desktop · hero: head and actions centred, the live demo below on a Mac desktop at 1240px · signature: a saved rug check replayed from the user's message to the result, on a Mac screen · nav: edge-aligned wordmark, two links, one action · footer: the name and the disclaimer, centred · photo: Moraine Lake (Gorgo, public domain, Wikimedia Commons) */
-/* Hallmark · pre-emit critique: P5 H4 E4 S4 R5 V5 · weakest: H, the centred head over a product band is the category's opener; kept because the user asked for it by reference */
-/* waive 47a: the user asked for the demo to sit on a Mac screen, so the window chrome is drawn on purpose (no menu bar, per the user) */
-/* waive 29: liquid glass is the brief; it is used for the token pills on the photograph only */
-/* waive 38iii: the muted second line of the head is the reference look the user picked (direction 5) */
-/* waive 58: the words on the demo screen are the product's own UI, replayed */
-/* waive 59: the demo belongs to the hero, so it sits 36px under the actions, as the user asked */
-/* waive 72: the thread and the result scroll inside the window; their overflow is not crowding */
-/* waive 73: the flagged text is scrolled out of view inside the window's own scrollers, so the hero only covers its hit point */
-/* waive 62: result parts hide only while a replay prints them (.result--live); the finished result is visible */
 
 
 html:has(.theme-glass),

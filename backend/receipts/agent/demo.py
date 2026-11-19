@@ -1,4 +1,4 @@
-"""The demo's saved runs (SPEC.md 13): the agent run once on each demo token, as it stood at a set
+"""The demo's saved runs: the agent run once on each demo token, as it stood at a set
 age after launch, with every event kept so the site can replay it without a model key.
 
 The tokens are past launches from the May 16 test day, which no model trained on: four that
@@ -18,7 +18,7 @@ from receipts.config import settings
 from receipts.crypto import dataset
 
 ROOT = settings.data_dir / "demo"
-AGE = 900  # 15 minutes after launch (SPEC.md 13)
+AGE = 900  # 15 minutes after launch
 TOKENS = [
     # mint, what happened next, what the user types (a pump.fun link, as people paste them)
     ("8ieFgzKCkQj1eTLjpfSpXGS6vqkxDmYpu3avzWMhpump", "rugged 31 minutes later; 26 team wallets tied by funding",

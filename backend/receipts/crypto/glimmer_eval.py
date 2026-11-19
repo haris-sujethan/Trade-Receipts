@@ -1,4 +1,4 @@
-"""The model's receipt for Glimmer (SPEC.md 7.9): its rug chances against the real outcomes.
+"""The model's receipt for Glimmer: its rug chances against the real outcomes.
 
 Reads Kaggle scoring jobs' predictions (rug chances for the calibration, test and later-check
 files, from one job or split across several), fits isotonic calibration on the calibration file (May 15), and scores the test (May 16)

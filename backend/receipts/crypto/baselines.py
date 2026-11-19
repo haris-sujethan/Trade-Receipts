@@ -1,4 +1,4 @@
-"""The baselines the rug model has to beat (SPEC.md 7.8, 7.9): a checklist score and LightGBM.
+"""The baselines the rug model has to beat: a checklist score and LightGBM.
 
 Data: snapshots above the activity floor. Target: the team rugged within the label window.
 Split by launch date, never by token: train on May 11–14, tune on May 15 (early stopping and
@@ -34,7 +34,7 @@ SPLITS = {
     "test": [dt.date(2026, 5, 16)],
 }
 LATER = {"aug": dt.date(2026, 8, 12), "sep": dt.date(2026, 9, 15)}
-VERDICTS = (0.25, 0.60)  # Unlikely below, Possible between, Likely at or above (SPEC.md 7.2)
+VERDICTS = (0.25, 0.60)  # Unlikely below, Possible between, Likely at or above
 HIGH = 0.80
 NOT_FEATURES = {"mint", "snapshot_ts", "above_floor", "rug_after_s", "block", "launch_day"}
 MODEL_DIR = settings.data_dir / "models" / "baselines"

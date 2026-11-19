@@ -1,4 +1,4 @@
-"""The rug check's signals at each snapshot age (SPEC.md 7.3, 7.7).
+"""The rug check's signals at each snapshot age.
 
 A snapshot rebuilds a token as it stood at a fixed age after launch, from what had happened by
 then: its trades, the wallet links visible by then, and wallet history from before the launch.

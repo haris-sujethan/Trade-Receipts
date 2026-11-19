@@ -1,4 +1,4 @@
-"""The numbers audit (SPEC.md 8.4): every number in model-written text must come from this run's
+"""The numbers audit: every number in model-written text must come from this run's
 tool outputs, so the explanation can't invent a figure.
 
 A number in the text passes when some value in the tool outputs rounds to it at the precision

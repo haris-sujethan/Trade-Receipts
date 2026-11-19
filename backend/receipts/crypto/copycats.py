@@ -1,4 +1,4 @@
-"""Copycats and name search (SPEC.md 7.1): other pump.fun tokens launched with the same ticker or
+"""Copycats and name search: other pump.fun tokens launched with the same ticker or
 name, listed by how active they were, so the user can tell which one a shill meant. The agent
 lists them and asks; it never picks one silently.
 

@@ -1,4 +1,4 @@
-"""The rug check's training data, built per block of pulled days (SPEC.md 7.4–7.7).
+"""The rug check's training data, built per block of pulled days.
 
     data/pump/dataset/<block>/
         tokens.parquet     launches on the block's launch days that reached the starting floor
@@ -32,7 +32,7 @@ from receipts.crypto import chain, funding, programs, sample, store
 ROOT = settings.data_dir / "pump" / "dataset"
 
 DAY = 86400
-# Wallet links (7.4). Transfers under 0.01 SOL are dust and address poisoning, not funding.
+# Wallet links. Transfers under 0.01 SOL are dust and address poisoning, not funding.
 MIN_LINK_LAMPORTS = 10_000_000
 # A wallet that received SOL from this many senders is a hub (a trading bot's fee wallet, a
 # deposit address); links never pass through it. Senders that paid 200+ wallets are busy too.
@@ -184,7 +184,7 @@ def _trades(con, b: Block) -> int:
     staged = settings.data_dir / "tmp" / f"trades_{b.name}"
     shutil.rmtree(staged, ignore_errors=True)
     (staged / "parts").mkdir(parents=True)
-    _copy(con, f"""
+    _copy(con, """
         WITH pool_mint AS (
           SELECT pool, any_value(mint) AS mint, bool_or(canonical) AS canonical FROM (
             SELECT pool, mint, true AS canonical FROM migrations
@@ -275,7 +275,7 @@ def _funding_graph(con) -> None:
 
 
 def _edges(con, b: Block) -> int:
-    """Links between each token's wallets in its first day, from SOL transfers (7.4).
+    """Links between each token's wallets in its first day, from SOL transfers.
 
     - funded: w2 sent SOL to w1, directly or through one other wallet;
     - shared_funder: one wallet funded both, directly for at least one of them and within two
@@ -371,7 +371,7 @@ def _wallets(con, b: Block) -> int:
         WHERE t.block_time < k.launch_ts + {DAY}
         GROUP BY t.mint, t.wallet
     """)
-    con.execute(f"""
+    con.execute("""
         CREATE OR REPLACE TABLE w0 AS
         SELECT coalesce(f.mint, k.mint) AS mint, coalesce(f.wallet, k.creator) AS wallet,
                coalesce(f.launch_ts, k.launch_ts) AS launch_ts,
@@ -413,7 +413,7 @@ def _wallets(con, b: Block) -> int:
 
 
 def reputation(name: str | Block, label_hours: int) -> dict[str, int]:
-    """Past rugs as of each launch: team wallets and creators whose earlier tokens rugged (7.3).
+    """Past rugs as of each launch: team wallets and creators whose earlier tokens rugged.
 
     Needs labels. Only rugs that had happened before the launch count, within HISTORY_LOOKBACK,
     and a wallet counts as team in an earlier token only from when it became visible as team.

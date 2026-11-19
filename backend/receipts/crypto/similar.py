@@ -1,4 +1,4 @@
-"""Similar past tokens (SPEC.md 7.11): the 5 launches nearest to a token in signal space at the
+"""Similar past tokens: the 5 launches nearest to a token in signal space at the
 same age, with how each one ended.
 
 Nearness is measured on the signals the trees lean on most, each turned into its percentile

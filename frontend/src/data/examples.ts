@@ -397,7 +397,7 @@ export const rsiThread: ThreadMessage[] = [
     kind: "steps",
     steps: [
       { id: "s1", text: "Transcribed the audio", meta: "Muse Voice Transcribe · 3.1s" },
-      { id: "s2", text: "Watched the clip", detail: "RSI(14) panel on a BTC 4-hour chart", meta: "Muse Spark 1.3 · 6.4s" },
+      { id: "s2", text: "Watched the clip", detail: "RSI(14) panel on a BTC 4-hour chart", meta: "Agent · 6.4s" },
       {
         id: "s3",
         text: "Found 2 rules and 1 claim",
@@ -512,7 +512,7 @@ export const rugThread: ThreadMessage[] = [
     kind: "steps",
     steps: [
       { id: "m1", text: "Transcribed the clip", meta: "Muse Voice Transcribe · 2.8s" },
-      { id: "m2", text: "Read the token off the screen", detail: "Mint shown at 0:21: 7xKX…gAsU", meta: "Muse Spark 1.3 · 5.1s" },
+      { id: "m2", text: "Read the token off the screen", detail: "Mint shown at 0:21: 7xKX…gAsU", meta: "Agent · 5.1s" },
       { id: "m3", text: "Found 3 tokens named MOON", detail: "The clip shows the mint, so it's this one. The other two are copycats" },
       {
         id: "m4",

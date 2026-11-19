@@ -1,6 +1,3 @@
-/* Hallmark · v2.0.0 · theme: custom (the home page's system, carried into the app) · genre: modern-minimal · scope: app · the IDE is the light app window from the home demo, full size: Literata wordmark and heads, Hanken Grotesk, Meta blue accent · tokens: styles/tokens.css and base.css */
-/* Hallmark · pre-emit critique: P4 H4 E4 S4 R4 V4 · weakest: E, an IDE is a familiar layout; kept because people know where things are */
-/* waive 40: disabled view tabs (exempt as inactive controls) and controls under the tour's scrim */
 
 .ide {
   height: 100vh;

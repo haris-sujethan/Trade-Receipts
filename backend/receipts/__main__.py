@@ -86,7 +86,7 @@ DATASET_STAGES = ("tokens", "trades", "edges", "wallets", "team", "labels", "rep
 
 
 def build_dataset(args) -> None:
-    """The rug check's dataset for a block: tokens through snapshots (SPEC.md 7.4–7.7)."""
+    """The rug check's dataset for a block: tokens through snapshots."""
     import time
 
     from receipts.crypto import dataset, labels, signals

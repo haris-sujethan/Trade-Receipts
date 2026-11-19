@@ -1,4 +1,4 @@
-"""Who's who in a token: the team, likely team, snipers, and clusters of linked wallets (SPEC.md 7.4).
+"""Who's who in a token: the team, likely team, snipers, and clusters of linked wallets.
 
 Built from a token's links (dataset.edges) and its early wallets (dataset.wallets):
 - the team is the creator, its launch bundle, and the wallets directly linked to them by funding;

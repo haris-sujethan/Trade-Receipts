@@ -1,4 +1,4 @@
-"""Glimmer's training and test files (SPEC.md 7.8): prompts, bubble maps and fine-tuning answers.
+"""Glimmer's training and test files: prompts, bubble maps and fine-tuning answers.
 
 One record per snapshot above the activity floor, in the same splits as the baselines (train May
 11–14, tune May 15, test May 16, later checks Aug 12 and Sep 15 before 6 hours).

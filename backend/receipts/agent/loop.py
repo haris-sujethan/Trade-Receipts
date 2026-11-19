@@ -1,11 +1,11 @@
-"""The rug check agent (SPEC.md 8.1): the visitor's own model (OpenAI or Anthropic, llm.py) reads
+"""The rug check agent: the visitor's own model (OpenAI or Anthropic, llm.py) reads
 the request (a mint, or a screenshot of one), calls the tools, and explains the evidence in plain
 language. It never computes a number itself: every number it writes must pass the numbers audit
 against this run's tool outputs. Without a key, the check still runs and shows its own findings.
 
     run(message, image=None, emit=print) -> the answer event
 
-Events for the thread (server-sent events, SPEC.md 8.3):
+Events for the thread (server-sent events):
     {"type": "step", "tool": ..., "status": "running" | "done" | "error", "summary": ..., "ms": ..., "result": ...}
     {"type": "answer", "text": ..., "audit": {...}, "check": {...}}
 """
@@ -397,7 +397,7 @@ class Run:
         return bool(PROFILE_IN_TEXT.search(said)) or any(c["tool"] == "copy_trade" for c in self.context + self.tool_log)
 
     def without_model(self, message: str, reason: str) -> dict:
-        """The check with no Meta call: find the mint in the message, run the tools, and show their
+        """The check with no model: find the mint in the message, run the tools, and show their
         findings as written, so every number comes straight from a tool."""
         mints = [m for m in MINT_IN_TEXT.findall(message or "") if valid_mint(m)]
         lines: list[str] = []

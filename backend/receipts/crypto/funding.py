@@ -1,4 +1,4 @@
-"""Where wallets got their SOL: System program transfers, up to two hops back (SPEC.md 7.4).
+"""Where wallets got their SOL: System program transfers, up to two hops back.
 
 The wallets traced are each sampled token's creator, its first buyers and its biggest holders.
 Their list is uploaded to a table in the sandbox project (free), and one query scans the System

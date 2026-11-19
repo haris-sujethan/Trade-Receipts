@@ -1,4 +1,4 @@
-"""Muse Glimmer on Kaggle's free 2× T4: fine-tuning, reinforcement learning and scoring (SPEC.md 7.8).
+"""Muse Glimmer on Kaggle's free 2× T4: fine-tuning, reinforcement learning and scoring.
 
 One script, four modes, pushed as separate Kaggle jobs by `backend/kaggle/push.py`:
 - smoke: time one scoring pass, one fine-tuning step and one RL step on real examples;
@@ -242,7 +242,7 @@ def train(model, processor, rows, mode: str) -> None:
             if skipped == 1:
                 note(stage="first out of memory", error=str(e)[:400],
                      peak_gib=[round(torch.cuda.max_memory_allocated(d) / 2**30, 2) for d in range(torch.cuda.device_count())])
-            loss = None
+            loss = None  # noqa: F841  (drops the graph so the memory can be freed)
             opt.zero_grad(set_to_none=True)
             gc.collect()
             torch.cuda.empty_cache()

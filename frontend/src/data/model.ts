@@ -1,5 +1,5 @@
 /**
- * The rug model's own numbers, as the backend measured them (SPEC.md 7.8, and the backend session's Nov 2 results).
+ * The rug model's own numbers, as the backend measured them.
  * Fair AUC ranks rugs above non-rugs within the same mode and age; 0.5 is a coin flip.
  */
 export const modelFacts = {

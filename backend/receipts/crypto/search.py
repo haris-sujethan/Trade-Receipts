@@ -1,4 +1,4 @@
-"""Live token search by name or ticker (SPEC.md 7.1), for tokens newer than the launch history
+"""Live token search by name or ticker, for tokens newer than the launch history
 (copycats.py covers launches through mid-September 2026).
 
 DEX Screener's public search: free, no key or card. Its API terms allow commercial use; they bar

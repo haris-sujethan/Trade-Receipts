@@ -1,4 +1,4 @@
-"""Muse Glimmer's precomputed rug chances for the demo tokens (SPEC.md 7.10).
+"""Muse Glimmer's precomputed rug chances for the demo tokens.
 
 Glimmer has no free GPU to serve it live, so the fine-tuned model scores the demo tokens' snapshots
 on Kaggle ahead of time (`kaggle/push.py score --ids ... --generate`), writing each rug chance and

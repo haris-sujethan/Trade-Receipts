@@ -1,1 +1,1 @@
-"""The agent (SPEC.md 8): the Meta Model API client, tools, numbers audit and orchestrator."""
+"""The agent: the model client (the visitor's own key), tools, numbers audit and orchestrator."""

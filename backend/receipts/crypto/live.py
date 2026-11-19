@@ -1,4 +1,4 @@
-"""Live scoring's token data (SPEC.md 7.10): one token's history from Helius, written as the raw
+"""Live scoring's token data: one token's history from Helius, written as the raw
 tables the BigQuery pull makes and run through the same dataset, label and signal code as
 training, so a live snapshot is built exactly like the ones the models learned from.
 
@@ -16,7 +16,7 @@ For a token as of time T (now, or a past moment for the parity check):
    and stopping once each wallet reaches 10.
 
 Live data can be thinner than training's; `gaps` says where, and `parity` measures the
-difference on tokens that are in the training data (SPEC.md 11):
+difference on tokens that are in the training data:
 - wallet and funder scans stop after a few pages (busy traders);
 - funding counts from two days before the launch (training's pull reached back to two days
   before the block's first day);
@@ -439,7 +439,7 @@ def check(mint: str, as_of: int | None = None, progress=None) -> dict:
 
 
 def parity(n: int = 8, seed: int = 7) -> dict:
-    """Live checks of May 16 test tokens, compared with their training snapshots (SPEC.md 11):
+    """Live checks of May 16 test tokens, compared with their training snapshots:
     how often each signal matches, and how far the trees' rug chance moves.
 
         data/reports/live_parity.json

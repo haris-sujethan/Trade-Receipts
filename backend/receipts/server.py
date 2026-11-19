@@ -1,4 +1,4 @@
-"""The backend's HTTP API (SPEC.md 10), streamed as server-sent events (SPEC.md 8.3).
+"""The backend's HTTP API, streamed as server-sent events.
 
     POST /api/check     {"mint": ..., "as_of": null}            a live rug check
     POST /api/copytrade {"wallet", "buy_after_s", "sell_after_s", "size_sol", "positions"}  copying a wallet late, backtested

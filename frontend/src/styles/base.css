@@ -114,7 +114,7 @@ pre,
   border: 0;
 }
 
-/* The site's one theme: light, Meta blue accent (tokens.css). */
+/* The site's one theme: light, blue accent (tokens.css). */
 .theme-glass {
   background: var(--color-paper);
   color: var(--color-ink);

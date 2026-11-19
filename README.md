@@ -2,227 +2,169 @@
 
 **Check a pump.fun token before you buy it.**
 
-Trade Receipts is an agent-native IDE for crypto research. It has two modes:
+Paste a pump.fun token and Trade Receipts reads every trade since launch, traces where the early wallets got their SOL, works out who the team is, and scores the chance the team rugs. Paste a wallet instead and it backtests copying that trader a few minutes late.
 
-- **Analyze** reads a new pump.fun token straight from the chain, shows who really holds it, and scores its **rug chance** with a model trained on past pump.fun launches.
-- **Copy trade** backtests copying a pump.fun wallet a little late: what the wallet made, and what you'd have made buying and selling a few minutes after it.
+Live at [tradereceipts.io](https://tradereceipts.io). For research and education. Not financial advice.
 
-Every number on screen comes from on-chain data and is checked before you see it. Results are facts and flags, never advice.
-
-Built solo for the **Meta Global AI Developer Hackathon 2026 (Indie track)**. Everything in this repository was built during the hackathon.
-
-- Waitlist: [tradereceipts.io](https://tradereceipts.io)
-- Demo video: _link_
-
-> For research and education. Not financial advice.
-
----
+![A rug check in the IDE: the rug chance, the verdict and the signals behind it](docs/images/check.png)
 
 ## Contents
 
-1. [What it does](#what-it-does)
-2. [How Meta's models are used](#how-metas-models-are-used)
-3. [The data](#the-data)
-4. [Labels: what counts as a rug](#labels-what-counts-as-a-rug)
-5. [Signals and snapshots](#signals-and-snapshots)
-6. [Training Muse Glimmer on Kaggle](#training-muse-glimmer-on-kaggle)
-7. [Results](#results)
-8. [Live checks](#live-checks)
-9. [The agent and the numbers audit](#the-agent-and-the-numbers-audit)
-10. [Copy-trade backtests](#copy-trade-backtests)
-11. [Architecture](#architecture)
-12. [Run it locally](#run-it-locally)
-13. [Command line](#command-line)
-14. [Repository map](#repository-map)
-15. [Data sources and licenses](#data-sources-and-licenses)
+- [What a check finds](#what-a-check-finds)
+- [Why we build the holder map ourselves](#why-we-build-the-holder-map-ourselves)
+- [What counts as a rug](#what-counts-as-a-rug)
+- [The model](#the-model)
+- [Copy-trade backtests](#copy-trade-backtests)
+- [The agent and the numbers audit](#the-agent-and-the-numbers-audit)
+- [Architecture](#architecture)
+- [Security](#security)
+- [Run it locally](#run-it-locally)
+- [Repository map](#repository-map)
+- [Data sources](#data-sources)
 
----
+## What a check finds
 
-## What it does
+A pump.fun token launches on a bonding curve: anyone can buy from the first block, and the price rises with every buy. The people who launch a token can buy too, from as many wallets as they like. The usual rug isn't pulled liquidity, since pump.fun burns the pool's LP tokens when a token graduates. It's the team quietly buying a big share at launch, spread across wallets so no single wallet looks large, then selling it into the buyers who arrive later.
 
-### Analyze: the rug check
+So a check mostly answers one question: **which wallets are really the same person?**
 
-Paste a pump.fun link, a ticker or a token's address into the chat. The agent:
+### The steps
 
-1. **Reads every trade** since launch, from the bonding curve to PumpSwap.
-2. **Traces the wallets**: the creator, the first 50 buyers and the 50 biggest holders, and who funded each of them, two hops back.
-3. **Splits the holders** into the team, likely team, snipers, bots and wash traders, fresh wallets, and independent buyers.
-4. **Checks the token's authorities**: whether new tokens can be minted, whether holders can be frozen, and more, cross-checked with GoPlus.
-5. **Scores the rug chance** from 81 signals, and shows the 5 most similar past launches and how they ended.
-6. **Explains it** in plain English with the AI model you choose (your own OpenAI or Anthropic key). Every number in the explanation is audited against the data.
+1. **Read every trade** that touched the token, from the bonding curve through to PumpSwap after graduation, using Helius.
+2. **Trace the funding** of the creator, the first 50 buyers and the 50 biggest holders: who sent each one SOL, and who funded those senders, two hops back.
+3. **Link wallets** that share money, and group them into the team, snipers and everyone else.
+4. **Measure 81 signals** on the token as it stands right now.
+5. **Score the rug chance** with a model trained on 41,956 past pump.fun launches, and show the five most similar past launches and how they ended.
+6. **Cross-check the token's authorities** with GoPlus: whether new tokens can be minted, or holders' accounts frozen.
 
-The result opens as a file in the editor, with four views:
+A check takes one to four minutes and about 3,000 Helius credits.
 
-| View | What it shows |
+### The terms
+
+| Term | What it means here | How we detect it |
+|---|---|---|
+| **Bundle** | Several wallets the creator controls buying in the same block the token is created, so the creator's real share is split across addresses | Wallets that bought in the creation slot, minus known sniper bots |
+| **Team** | The creator, its bundle, and every wallet linked to them by funding | A `funded` link (one wallet sent the other SOL, directly or through one wallet in between) or a `shared_funder` link (one wallet paid both) |
+| **Likely team** | Wallets funded in a way that hides the link: withdrawn from the same exchange, for the same amount, minutes apart | Same busy sender, same amount within 1%, within 10 minutes, in the two days before their first trade. They count as team for the rug label only if they sell alongside it |
+| **Sniper** | A wallet that buys in the first 10 seconds | First buy within 10 s of launch. A wallet that has bought that early into 10 or more other tokens is a **sniper bot** |
+| **Wash trader** | A wallet that buys and sells back and forth to fake volume | 3+ buys and 3+ sells, with SOL in and out within 10% of each other |
+| **Linked round trip** | Two wallets in one cluster trading against each other | A buy within 60 s of a sell by another wallet in the same cluster |
+| **Fresh wallet** | A wallet set up just to buy this token | Funded within a day before its first trade here, with no other token trades that day |
+| **Selling into buys** | The team selling right after real buyers arrive, so each buy absorbs a sell | A team sell within 10 s of an outside buy |
+| **Independent buyer** | Everyone left | Not team, likely team, sniper, wash trader or fresh wallet |
+
+Exchange hot wallets and other busy senders (wallets that paid 200 or more different wallets in the window) never link two wallets; otherwise everyone who withdrew from the same exchange would look like one team. Transfers under 0.01 SOL are ignored as dust and address poisoning.
+
+### The four views
+
+| | |
 |---|---|
-| Overview | The rug chance, the verdict (Likely, Possible or Unlikely rug), what happened after similar launches, and the key signals |
-| Chart | The real market-cap chart in candles, with the team's and snipers' trades marked |
-| Holders | A bubble map of the biggest holders and first buyers, sized by share, colored by group and linked by funding |
-| Signals | Every signal family, with this token's values |
+| **Chart.** Market cap in 15-second candles, with volume colored by who traded: team, snipers, bots and wash traders, everyone else. Team sells are marked. | **Holders.** Left: the team, laid out around the creator, with a line for each funding link. Right: every traced holder, sized by share and colored by group. |
+| ![Chart view](docs/images/chart.png) | ![Holders view](docs/images/holders.png) |
 
-The flags the agent calls out also show in a **Problems** panel, the way an editor lists errors in code. Follow-up questions are answered from the data already pulled, without fetching it again.
+**Overview** (top of this page) has the rug chance, the verdict (Likely, Possible or Unlikely rug), the signals that matter, the second opinion and similar past launches. **Signals** lists every signal family with this token's values. The flags also show in a **Problems** panel, the way an editor lists errors in code.
 
-### Copy trade: the copy-trade backtest
+### Signal families
 
-Paste a pump.fun wallet. Choose how long after they buy you'd buy, how long after they sell you'd sell, and how many of their latest closed positions to copy (25, 50 or 100). The backtest replays every position:
+Each check measures 81 signals (`backend/receipts/crypto/signals.py`):
 
-- what the wallet made;
-- what you'd have made, copying it late;
-- how the price moved while you waited.
+- **Launch:** the share bought in the launch block and in the first 3 blocks.
+- **Team:** its share now and at peak, how much it has sold, and how much of that went into outside buys.
+- **Snipers:** how many, how many are known bots, and what they bought, hold and sold.
+- **Holders:** the biggest clusters' share, wallets and clusters over 4%, holders with near-identical balances, and supply sold by wallets that never bought it (tokens moved in from elsewhere).
+- **Trading:** same-size and round-size buys, wash trading, linked round trips, fresh wallets, and independent buyers' share of buying.
+- **Chart:** candle count, share of green candles, how steady the climb was, and the deepest dip.
+- **Reputation:** the creator's and team's past launches and rugs, counted only from before this launch.
 
-It opens with a chart for each position: their buys and sells, yours, and the move in between. The chat stays closed until you have a question, and then answers from that backtest's own numbers.
+## Why we build the holder map ourselves
 
-Example, from the saved run: a wallet from pump.fun's leaderboard made **+43.0%** across 50 positions. Copying it 5 minutes after each buy and 10 minutes after each sell made **−3.6%**.
+Holder-map services draw clusters with their own wallet-linking, which you can't inspect. You see the picture, not the rules behind it, so you can't tell whether a cluster is missing because the wallets aren't linked or because the service didn't link them. In November 2026, one of the best-known holder-map services was publicly accused of taking money from a tool that helps launches hide their bundles. The service denies it and nothing has been proven, but the dispute shows the problem: when the clustering is a black box, all users can do is trust it.
 
----
+Trade Receipts doesn't take clusters from any outside service. Every link comes from SOL transfers we read ourselves, under the rules in the table above, and the code is in this repository:
 
-## How Meta's models are used
+- **Links:** `backend/receipts/crypto/dataset.py` (`_edges`) for training data, `backend/receipts/crypto/live.py` for live checks.
+- **Groups:** `backend/receipts/crypto/roles.py`.
+- **Training and live checks share the same code.** On 8 test tokens, a live check gave the same verdict as the training snapshot on all 8, and the rug chance moved 0.007 on average (`uv run python -m receipts live-parity`).
 
-| Model | Role |
-|---|---|
-| **Muse Glimmer** (Meta's open-weight 30B model, Apache 2.0, reads text and images) | Trained by us on past pump.fun launches: fine-tuned, then trained with reinforcement learning against real outcomes. It reads each token's signals, its holders, its trades over time and a bubble-map image, and answers with a rug chance and its reasons. Its rug chance is shown on every check as a second opinion. |
-| **Muse Spark 1.3** (Meta Model API) | Ran the agent during the hackathon: it read the user's message, decided which tools to call and wrote the explanation, with every number audited. The hosted app now runs the same agent on each visitor's own OpenAI or Anthropic key. |
+If you think a link is wrong, you can read the rule that made it.
 
----
+## What counts as a rug
 
-## The data
+**Only the team can rug.** A token is labeled **rugged** when, within 24 hours of launch:
 
-There was no rug dataset we could use, so we built one from raw chain data.
+- the team sold at least half of its peak holdings, and
+- the price gave back at least 90% of its rise since launch.
 
-- **Source:** Google BigQuery's public Solana dataset (`bigquery-public-data.crypto_solana_mainnet_us`), queried from the free BigQuery sandbox (1 TiB of queries a month, no card).
-- **Decoding:** pump.fun's events (launches, bonding-curve trades, graduations and PumpSwap trades) are decoded from the transactions' inner instructions with pump.fun's public program interface (IDL).
-- **Launches:** **41,956** pump.fun launches pulled for May 11–16, 2026, plus Aug 12 and Sep 15 for a check months later.
-- **Activity pulled:**
-  - every trade of each token on the bonding curve and PumpSwap;
-  - the SOL funding into each token's creator, first 50 buyers and 50 biggest holders, and into their funders, two hops back;
-  - a wallet history table: every wallet's past launches, trades and outcomes.
-- **Failed transactions** are dropped by chaining each bonding-curve trade's reserves to the next, so only trades that really happened count.
+On the bonding curve the price can't fall below the launch price, so the fall is measured above it: a token that ran from 28 SOL to 100 SOL and back to 30 has fallen 97%.
 
-Pipeline: `backend/receipts/crypto/` (`bq.py`, `pull.py`, `events.py`, `funding.py`, `history.py`, `dataset.py`).
+A collapse caused by snipers who aren't linked to the team is labeled **faded**, not rugged. Snipers are on almost every launch; if their dumps counted, the model would learn to spot bots instead of a team selling into its own buyers. Sniper activity stays as a signal. A token **survived** when at least 5 wallets are still trading in its last hour and it hasn't fallen 90%.
 
----
+The 24-hour window comes from the data: 99.2% of rugs in the May launches happened within a day. Code: `backend/receipts/crypto/labels.py`.
 
-## Labels: what counts as a rug
+## The model
 
-Labels are computed from raw chain data, so the data and the model are ours to use. The definition is recorded in [ADR 0001](docs/adr/0001-only-the-team-can-rug.md).
+### Training data
 
-| Label | Meaning |
-|---|---|
-| **Rugged** | Within 24 hours of launch, the **team** sold at least half of its peak holdings into buyers and the price fell at least 90% from its peak |
-| **Faded** | Trading died out without a rug, including collapses caused by unlinked snipers |
-| **Survived** | Still trading after 24 hours with no 90% collapse |
+There was no usable rug dataset, so we built one from raw chain data.
 
-**Only the team can rug.** The team is the creator plus every wallet linked to it by funding, transfers or the launch bundle. Sniper dumps stay a signal, not a rug, so the model learns the scam the rug check exists to catch: a team selling into its own buyers.
-
-The 24-hour window comes from the data: 99.2% of rugs in the May launches landed within a day. Terms are defined in [GLOSSARY.md](GLOSSARY.md).
-
----
-
-## Signals and snapshots
-
-- **Snapshots:** each token is rebuilt at **1, 5, 15 and 30 minutes, 1 hour and 6 hours** after launch, using only what had happened by then. A token checked 10 minutes after launch is compared with other tokens at 10 minutes.
-- **No look-ahead:** snapshots taken after a token rugged are never trained on. A leakage test (`backend/tests/test_leakage.py`) rebuilds snapshots with everything after them deleted and requires identical signals.
-- **81 signals per snapshot**, in families (`backend/receipts/crypto/signals.py`):
-  - **Launch:** how much was bought in the launch block and the first 3 blocks.
-  - **Team:** its share now and at peak, how much it sold, and when.
-  - **Snipers:** how many, how many are known bots, and how much they bought, hold and sold.
-  - **Holders:** concentration, clusters, hidden supply, and wallets funded in the last hour.
-  - **Trading:** same-size and round-size buys, wash trading, and independent buyers.
-  - **Chart:** curve progress, green candles, and the fall from peak.
-  - **Reputation:** the wallets' past launches and rugs, counted only from before the token's launch.
-- **Activity floor:** a snapshot enters the dataset once the token has real activity: 20 independent buyers or a 60 SOL market cap.
-- **Split by date**, so the model is always tested on days it never saw:
+- **Source:** Google BigQuery's public Solana dataset, queried from the free sandbox. pump.fun's launches, trades and graduations are decoded from the transactions' inner instructions with pump.fun's public IDL.
+- **Launches:** 41,956, from May 11–16, 2026, plus Aug 12 and Sep 15 to test months later.
+- **Failed transactions** are removed by chaining each bonding-curve trade's reserves to the next, so only trades that really happened count.
+- **Snapshots:** each token is rebuilt at 1, 5, 15 and 30 minutes, 1 hour and 6 hours after launch, from only what had happened by then. A token checked at 10 minutes is compared with others at 10 minutes.
+- **No look-ahead:** snapshots after a token already rugged are never used. `backend/tests/test_leakage.py` rebuilds snapshots with everything after them deleted and requires identical signals.
+- **Split by date,** so the model is always tested on days it never saw:
 
 | Split | Days | Tokens | Snapshots |
 |---|---|---|---|
-| Train | May 11–14, 2026 | 7,849 | 20,848 |
+| Train | May 11–14 | 7,849 | 20,848 |
 | Tune | May 15 | 2,001 | 5,011 |
 | Test | May 16 | 854 | 2,210 |
-| Later check | Aug 12 and Sep 15 | | 8,408 |
+| Later check | Aug 12, Sep 15 | | 8,408 |
 
----
+### Results
 
-## Training Muse Glimmer on Kaggle
-
-Glimmer is trained on **Kaggle's free GPUs** (2× NVIDIA T4, 30 GPU hours a week).
-
-**Setup**
-- **Base weights:** [unsloth/Muse-Glimmer-30B-unsloth-bnb-4bit](https://huggingface.co/unsloth/Muse-Glimmer-30B-unsloth-bnb-4bit) on Hugging Face (4-bit, 20.7 GB), split across both T4s and computed in float16.
-- **LoRA:** rank 8 (alpha 16) on the language model's projections, 52M trainable parameters. The image encoder is frozen.
-- **Optimizer:** 8-bit AdamW, gradients accumulated over 8 examples.
-- **Prompts:** about 1,700 tokens plus one 448×448 bubble-map image per snapshot, built by `backend/receipts/crypto/prompt.py`.
-
-**What Glimmer reads for one token at one snapshot**
-- **The signals**, written as lines by family.
-- **The 20 biggest holders:** share, group, when each first bought, how much it sold, and how it was funded.
-- **The price line** from launch to the snapshot.
-- **Trades over time:** SOL bought and sold by each group, in time buckets. The order is the giveaway: small identical buys, then independent buyers, then the team selling into every buy.
-- **The bubble map** as an image.
-
-**How it answers:** "Rug chance: N%" first, then the signals that raise and lower it. Every N from 1 to 99 is a single token, so one forward pass gives Glimmer's whole distribution over N, and the rug chance is its expected value.
-
-**Stage 1: supervised fine-tuning** (learning rate 1e-4)
-- 900 snapshots from the training days.
-- Answers are taught by our gradient-boosted trees: their calibrated rug chance, made without seeing that day, and the signals that moved it most (SHAP).
-- Every number in an answer is copied from its prompt, so answers pass the numbers audit by construction.
-
-**Stage 2: reinforcement learning with GRPO** (learning rate 2e-5)
-- About 900 more snapshots from the training days.
-- For each snapshot, Glimmer samples **8 rug chances** from its distribution.
-- Each is rewarded by the Brier score against what really happened, 1 − (N/100 − y)², and pushed up or down relative to the group's mean. This rewards being right and being honestly confident.
-
-**Running it**
-- The job is `backend/kaggle/glimmer_job.py`, pushed to Kaggle with `backend/kaggle/push.py`.
-- Modes: `sft`, `rl`, and `score` for writing predictions.
-- Each run's folder is in `backend/kaggle/jobs/`: `glimmer-sft`, `glimmer-rl`, `glimmer-score-*`, `glimmer-demo`.
-- Predictions are scored locally with `uv run python -m receipts glimmer-eval`.
-
-**Measured speed:** 23 seconds per training example and 8 seconds to score a snapshot. Scoring the demo tokens at every age took 20 GPU minutes.
-
----
-
-## Results
-
-Measured on **May 16**, the held-out test day. The headline number is the **fair AUC**: how well a model ranks rugs above non-rugs within the same mode and age, averaged. Pooled AUC is mostly a measure of age and mode (rug rates fall from 77% at 1 minute to 13% at 6 hours), so we don't lead with it. 0.5 is a coin flip.
+Measured on May 16, the held-out day. The number is the **fair AUC**: how well a model ranks rugs above non-rugs within the same age and pool type, averaged. A pooled AUC mostly measures age (rug rates fall from 77% at 1 minute to 13% at 6 hours), so we don't lead with it. 0.5 is a coin flip.
 
 | Model | Fair AUC |
 |---|---|
-| **Gradient-boosted trees** (LightGBM, the 81 signals), every test snapshot | **0.71** |
-| **Muse Glimmer, fine-tuned**, 300 test snapshots | **0.74** |
-| Muse Glimmer before training, same 300 snapshots | 0.62 |
-| A typical red-flag checklist (10 rules, thresholds fixed in advance) | 0.44 |
+| **Gradient-boosted trees** (LightGBM on the 81 signals), every test snapshot | **0.71** |
+| **Muse Glimmer, fine-tuned by us**, 300 test snapshots | **0.74** |
+| Muse Glimmer before training, same 300 | 0.62 |
+| A typical red-flag checklist (10 rules, fixed in advance) | 0.44 |
 
-- The trees hold up months later: 0.72 on Aug 12 and 0.70 on Sep 15.
-- Fine-tuned Glimmer scores 0.76 on Aug 12.
-- **Live checks score with the trees, with Glimmer's rug chance shown beside them as a second opinion.**
-- Reports: `data/reports/baselines.json` and `data/reports/glimmer_*.json`. Code: `backend/receipts/crypto/baselines.py` and `glimmer_eval.py`.
+The trees hold up months later: 0.72 on Aug 12 and 0.70 on Sep 15. **Live checks score with the trees.** The server evaluates the exported trees in plain Python, so it doesn't need LightGBM installed; the scores match LightGBM exactly on 3,000 test rows.
 
----
+### Muse Glimmer, the second opinion
 
-## Live checks
+Muse Glimmer is an open-weight 30B model that reads text and images. We fine-tuned it on Kaggle's free GPUs (2× T4) to read a token the way an analyst would: its signals, its 20 biggest holders and how each was funded, the price line, SOL bought and sold by each group over time, and the holder map as an image. The order of events is often the tell: small identical buys, then outside buyers, then the team selling into every buy.
 
-A live check rebuilds the token from **Helius** and runs **the same dataset, label and signal code that built the training data**, so live scores match the evaluated model.
+- **Stage 1, fine-tuning:** 900 snapshots, with answers taught by the trees' calibrated rug chance and the signals that moved it most.
+- **Stage 2, reinforcement learning (GRPO):** 900 more. For each snapshot Glimmer samples 8 rug chances, each rewarded by its Brier score against what really happened. That rewards being right and being honestly confident.
+- **LoRA** rank 8 on the 4-bit base, 52M trainable parameters, 8-bit AdamW.
 
-1. Every transaction that touched the mint, from launch to now.
-2. Each traced wallet's transactions in the two days before the launch and since.
-3. Their funders' incoming transfers.
-4. For the early buyers, the tokens they bought in the day before, to tell sniper bots from the creator's bundle.
+Saved checks show its rug chance next to the trees'. Code: `backend/kaggle/glimmer_job.py`, `backend/receipts/crypto/prompt.py`, `glimmer_eval.py`.
 
-Then the trees score it and GoPlus cross-checks the token's authorities.
+## Copy-trade backtests
 
-- **Parity:** on 8 May 16 test tokens, live checks gave the same verdict as their training snapshots on all 8. The rug chance moved 0.007 on average (`uv run python -m receipts live-parity`).
-- **Cost:** about 3,000 Helius credits and one to four minutes per token.
-- **Pace:** requests run 8 at a time, spaced to Helius's limits.
-- **Limits:** 6 live checks per visitor per hour and 60 a day in all, so the free plan's 900,000 monthly credits last.
-- **Unscored tokens:** a token that already rugged, is older than a day, or is priced in another token isn't scored. It still shows its chart, holders and signals, with the reason.
+Influencers and leaderboard traders post their wins. You only see a trade after they make it, so the useful question is what you'd have made following them a little late.
 
-Code: `backend/receipts/crypto/live.py`, `helius.py`, `transactions.py`.
+![Copy-trade backtest: the wallet made +43.0%, copying it 5 minutes late made −3.6%](docs/images/copy-trade.png)
 
----
+Paste a pump.fun wallet, pick how long after their buy you'd buy, how long after their sell you'd sell, and how many of their latest closed positions to copy (25, 50 or 100). `backend/receipts/crypto/copytrade.py`:
+
+1. Reads the wallet's latest transactions and finds its closed pump.fun positions, one per token.
+2. Prices every fill as a market cap in SOL, from the token's own trades.
+3. Buys that long after each of their buys, at the price then, and sells the same share that long after each of their sells.
+4. Charges the fees each token's trades actually paid.
+5. Reports their result, yours, how many positions made money, and the median price move while you waited.
+
+In the saved example the wallet made **+43.0%** over 50 positions. Copying it 5 minutes after each buy and 10 minutes after each sell made **−3.6%**: by the time you'd have bought, the price had already moved a median −8.8%.
+
+Not modeled: your own price impact. Left out: tokens priced in something other than SOL, and positions opened before the history read.
 
 ## The agent and the numbers audit
 
-**The agent** (`backend/receipts/agent/loop.py`) runs on the visitor's own model, OpenAI or Anthropic (`backend/receipts/agent/llm.py`), with these tools:
+The chat runs an agent on the visitor's own OpenAI or Anthropic key (`backend/receipts/agent/`). Its tools:
 
 | Tool | What it does |
 |---|---|
@@ -230,92 +172,65 @@ Code: `backend/receipts/crypto/live.py`, `helius.py`, `transactions.py`.
 | `check_token` | The live rug check |
 | `token_security` | GoPlus token authorities |
 | `copy_trade` | The copy-trade backtest |
-| `read_address` | Reads a token's address from a screenshot or clip |
+| `read_address` | Reads a token's address from a screenshot |
 
-Each step streams to the chat as it runs, with its progress (transactions read, wallets traced, funders traced). Follow-ups reuse the results already gathered in the thread.
+**Numbers come from tools, never from the model.** Before an answer is shown, `audit.py` matches every number in it against the tool outputs, and the answer says how many it checked ("20 numbers checked against the data"). Follow-up questions are answered from the data already pulled.
 
-**The numbers audit** (`backend/receipts/agent/audit.py`): numbers come from tools, never from the model. Every number in the agent's explanation is matched against the tool outputs before it's shown. The answer says how many numbers it checked, for example "19 numbers checked against the data."
-
-**Your own AI key** (`backend/receipts/agent/llm.py`): visitors add an OpenAI or Anthropic key in Settings.
-- It stays in their browser and goes only with their own requests, as headers; the server uses it for that request and never stores or logs it.
-- Without a key, checks and backtests still run and show their own findings.
-
----
-
-## Copy-trade backtests
-
-`backend/receipts/crypto/copytrade.py`:
-
-1. Reads the wallet's latest transactions from Helius and finds its closed pump.fun positions, one per token.
-2. Prices every fill as a market cap in SOL, from the token's own trades.
-3. Copies each position at the chosen delays:
-   - each buy happens that long after the wallet's buy, at the market price then;
-   - each sell copies the same share of holdings that long after the wallet's sell.
-4. Uses the fees each token's trades actually paid.
-5. Reports the wallet's result, yours, how many positions made money, and the median price move in each wait.
-
-Every backtest run from the form is saved, so questions about it in the chat are answered from its own numbers.
-
----
+Without a key, checks and backtests still run and show their findings; there's just no written explanation.
 
 ## Architecture
 
 ```
-Browser (React + Vite + TypeScript)
-  IDE: files · editor tabs (check, backtest) · Problems/Output · chat
-    │  /api (server-sent events)
+Browser: React, Vite, TypeScript             tradereceipts.io (Cloudflare Pages)
+  IDE: files · check and backtest tabs · Problems · chat
+    │  HTTPS, server-sent events, Supabase access token
     ▼
-FastAPI backend (Python 3.13)
-  /api/agent      the agent (your key) ┬─ check_token ── live.py ── Helius
-  /api/check      live rug check    ├─ token_security ── GoPlus
-  /api/copytrade  backtest          ├─ copy_trade ── copytrade.py ── Helius
-  /api/demo       saved runs        └─ numbers audit
+FastAPI, Python 3.13                          api.tradereceipts.io (Vercel)
+  /api/agent       agent (visitor's key) ─┬─ check_token ──── live.py ──────── Helius
+  /api/check       live rug check         ├─ token_security ───────────────── GoPlus
+  /api/copytrade   backtest               ├─ copy_trade ───── copytrade.py ── Helius
+  /api/demo        saved runs             └─ numbers audit
     │
     └─ the same dataset, label and signal code as training
-         ▲
-Training: BigQuery public Solana data ─► decode ─► labels ─► snapshots
-          ─► LightGBM trees, and Muse Glimmer (LoRA SFT, then GRPO) on Kaggle T4s
+
+Training (offline): BigQuery Solana ─► decode ─► labels ─► snapshots
+                    ─► LightGBM trees · Muse Glimmer (LoRA SFT, then GRPO) on Kaggle T4s
 ```
 
-- **Frontend:** React, Vite, TypeScript, react-resizable-panels, Monaco (code views) and a custom Plotly bundle (charts).
-- **Backend:** FastAPI, DuckDB, PyArrow, LightGBM, httpx.
-- **Training:** Unsloth, PEFT (LoRA), bitsandbytes, PyTorch on Kaggle.
+- **Frontend:** React 19, Vite, TypeScript, react-resizable-panels, a custom Plotly bundle for charts, Supabase Auth.
+- **Backend:** FastAPI, DuckDB, PyArrow, httpx. Training-only libraries (LightGBM, scikit-learn, BigQuery, Pillow) sit in a separate `train` dependency group, so the deployed API stays small.
 
----
+## Security
+
+- **Your AI key** stays in your browser and goes only with your own requests, as a header. The server uses it for that request and never stores or logs it.
+- **Server keys** (Helius) live only in the host's environment settings. `.env` is gitignored, and error text passes through a redactor so a key in a failed request URL never reaches a response or a log.
+- **Sign-in:** the API checks each Supabase access token with Supabase and caches the result for 5 minutes.
+- **Rate limits:** 6 live checks an hour per account, 60 a day across the site, 30 follow-ups an hour. Live tools the agent calls count against the same limits.
+- **Headers:** the built site sends a strict Content-Security-Policy (scripts only from its own origin; network calls only to itself, the API and Supabase), plus HSTS, `X-Frame-Options: DENY`, `nosniff` and a locked-down Permissions-Policy (`frontend/vite.config.ts`).
+- **CORS:** the API accepts only the origins in `ALLOWED_ORIGINS`.
+
+Found a security problem? Please report it through a private security advisory on GitHub, not a public issue.
 
 ## Run it locally
 
-**You need:**
-- Node 22+
-- Python 3.13 with [uv](https://docs.astral.sh/uv/)
-- A free [Helius](https://dashboard.helius.dev) key, for live checks and backtests
+You need Node 22+, Python 3.13 with [uv](https://docs.astral.sh/uv/), and a free [Helius](https://dashboard.helius.dev) key for live checks.
 
-**1. Keys.** Copy `.env.example` to `.env` at the repo root and fill in what you use. `.env` is gitignored.
+1. Copy `.env.example` to `.env` in the repo root and add your `HELIUS_API_KEY`. Leave the Supabase variables unset and nobody needs to sign in.
+2. Backend:
 
-| Variable | For |
-|---|---|
-| `HELIUS_API_KEY` | Live checks and copy-trade backtests |
-| `GOOGLE_CLOUD_PROJECT` | Pulling history from BigQuery (only to rebuild the dataset) |
-| `HF_TOKEN`, `KAGGLE_API_TOKEN` | Training Glimmer on Kaggle |
-| `SUPABASE_URL`, `SUPABASE_ANON_KEY` | Sign-in on a hosted backend. Unset locally, so nobody needs to sign in |
-| `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` | The agent from the command line only; in the app, each visitor adds their own key in Settings |
+   ```bash
+   cd backend && uv sync && uv run uvicorn receipts.server:app --port 8000
+   ```
 
-**2. Backend**
+3. Frontend, in another terminal:
 
-```bash
-cd backend && uv sync && uv run uvicorn receipts.server:app --port 8000
-```
+   ```bash
+   cd frontend && npm install && npm run dev
+   ```
 
-**3. Frontend** (in another terminal)
+4. Open http://localhost:5173. The IDE reaches the backend through Vite's `/api` proxy.
 
-```bash
-cd frontend && npm install && npm run dev
-```
-
-Open http://localhost:5173. The IDE talks to the backend through Vite's `/api` proxy.
-- **First visit:** a guided tour plays a saved rug check and a saved backtest.
-- **After the tour:** the IDE starts blank, with the examples in the `examples` folder.
-- **Without the backend:** the IDE replays the saved examples.
+The saved example checks are derived chain data, so they aren't in the repo; without them the IDE starts empty, and live checks work the same. Rebuilding the training data needs `GOOGLE_CLOUD_PROJECT` (a free BigQuery sandbox). Training Glimmer needs `HF_TOKEN` and `KAGGLE_API_TOKEN`.
 
 **Tests**
 
@@ -327,61 +242,52 @@ cd backend && uv run pytest
 cd frontend && npm run typecheck
 ```
 
----
-
-## Command line
-
-From `backend/`, run `uv run python -m receipts <command>`:
+**Command line** (from `backend/`: `uv run python -m receipts <command>`):
 
 | Command | What it does |
 |---|---|
-| `bq-check` | BigQuery Solana tables, coverage and cost |
-| `pull-block` | Pull and decode a block of days from BigQuery |
-| `pull-funding` | Trace SOL funding for a block's wallets, two hops back |
-| `wallet-history` | Build the wallet history table |
-| `build-dataset may aug sep` | Build tokens, wallet links, labels and snapshots |
-| `train-baselines` | Train and test the checklist and LightGBM |
-| `glimmer-data` | Write Glimmer's prompts, bubble maps and fine-tuning answers |
-| `glimmer-eval` | Score a Kaggle job's predictions against the outcomes |
-| `live-check <mint>` | A live rug check from Helius |
-| `live-parity` | Live checks of test tokens compared with their training snapshots |
-| `copy-trade <wallet> --buy-after 300 --sell-after 600` | A copy-trade backtest of a wallet |
+| `live-check <mint>` | A live rug check |
+| `copy-trade <wallet> --buy-after 300 --sell-after 600` | A copy-trade backtest |
 | `agent "<message>"` | The agent on one message |
-| `goplus <mint>` | GoPlus token security |
+| `goplus <mint>` | GoPlus token authorities |
+| `pull-block`, `pull-funding`, `wallet-history` | Pull launches, funding and wallet history from BigQuery |
+| `build-dataset may aug sep` | Build tokens, links, labels and snapshots |
+| `train-baselines` | Train and test the checklist and the trees |
+| `glimmer-data`, `glimmer-eval` | Write Glimmer's prompts; score its predictions |
+| `live-parity` | Compare live checks with their training snapshots |
 
----
+To deploy your own copy, see [docs/deploy.md](docs/deploy.md).
 
 ## Repository map
 
 | Path | What's there |
 |---|---|
-| `frontend/src/ide/` | The IDE: chat, check and backtest tabs, files, tour, state |
-| `frontend/src/demo/` | Charts, the bubble map, result views, saved-run replays |
 | `frontend/src/pages/` | Home, sign-up and IDE pages |
+| `frontend/src/ide/` | The IDE: chat, check and backtest tabs, files, tour, settings |
+| `frontend/src/demo/` | Charts, the holder map, result views, saved-run replays |
 | `backend/receipts/server.py` | The HTTP API |
-| `backend/receipts/agent/` | The agent loop, the numbers audit, and the client for each visitor's own model |
-| `backend/receipts/crypto/` | Data pipeline, labels, signals, models, live checks, copy trade |
-| `backend/kaggle/` | Glimmer's training and scoring job, and the script that pushes it to Kaggle |
+| `backend/receipts/auth.py` | Sign-in check and per-account limits |
+| `backend/receipts/agent/` | Agent loop, numbers audit, the client for the visitor's model |
+| `backend/receipts/crypto/` | Data pipeline, links, roles, labels, signals, models, live checks, copy trade |
+| `backend/kaggle/` | Glimmer's training and scoring job |
+| `backend/deploy/` | Packaging for Vercel |
 | `backend/tests/` | Tests, including the leakage test |
-| `docs/adr/` | Decisions: only the team can rug; Glimmer as the rug model |
-| `SPEC.md` | The full spec and decisions log |
-| `GLOSSARY.md` | Terms: token, team, rug, snapshot, rug chance |
 
----
+The repo also holds the start of a stock-strategy backtester (the code-editor views and their examples). It isn't on the site yet.
 
-## Data sources and licenses
+## Data sources
 
 | Source | Used for | Terms |
 |---|---|---|
 | Google BigQuery public Solana dataset | Training history | Public dataset, free sandbox |
 | Helius | Live checks and backtests | Free plan |
 | GoPlus | Token authorities | Free, credited as "Powered by GoPlus" |
-| pump.fun public IDL | Decoding pump.fun events | Public |
-| Muse Glimmer | The trained rug model | Apache 2.0 |
-| OpenAI or Anthropic | The agent and explanations, on each visitor's own key | The visitor's own account terms |
+| DEX Screener | Finding a token by name or ticker | Free public API |
+| pump.fun IDL | Decoding pump.fun events | Public |
+| Muse Glimmer | The second-opinion model | Open weights |
 
-Raw third-party data stays out of the repository: `data/` is gitignored. The examples in `frontend/public/demo` are saved runs of real tokens. MELT's rug definitions informed the labels, but its data isn't trained on (non-commercial license). Full notes: `notes/data-sources.md`.
+Raw third-party data stays out of the repository (`data/` is gitignored). The MELT dataset's rug definitions informed our labels; its data isn't trained on, because its license is non-commercial.
 
 ---
 
-**For research and education. Not financial advice.** A low rug chance never means a token is safe.
+**For research and education. Not financial advice.** A low rug chance doesn't mean a token is safe to buy.

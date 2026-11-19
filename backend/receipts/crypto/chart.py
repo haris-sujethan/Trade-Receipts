@@ -1,4 +1,4 @@
-"""The real chart and the bubble map as data for the report (SPEC.md 7.4, 7.5).
+"""The real chart and the bubble map as data for the report.
 
 Both come from the same snapshot view as the signals (signals.snapshot with context), so every
 wallet is in the same group the rug check put it in.

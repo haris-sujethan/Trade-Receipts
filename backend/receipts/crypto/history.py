@@ -1,4 +1,4 @@
-"""Wallet history: every wallet's launches and trades across the pulled data (SPEC.md 7.7).
+"""Wallet history: every wallet's launches and trades across the pulled data.
 
 One row per wallet and token, with when the wallet first and last touched it and what it
 bought and sold. Step 3 joins token outcomes onto it for reputation signals ("team in 3 past

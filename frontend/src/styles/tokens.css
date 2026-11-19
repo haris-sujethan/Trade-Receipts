@@ -1,4 +1,4 @@
-/* The site's tokens: home, sign-up and the IDE share them. Meta blue is the accent; the wallet palette follows data/tokens.ts. */
+/* The site's tokens: home, sign-up and the IDE share them. blue is the accent; the wallet palette follows data/tokens.ts. */
 
 :root {
   /* Home (theme-glass) tokens */
@@ -11,7 +11,7 @@
   --color-faint: oklch(72% 0.006 250);
   --color-rule: oklch(91.5% 0.004 250);
   --color-focus: #0064e0;
-  /* Meta blue: #0081fb for fills, marks and large text; #0064e0 (5.4:1 on white) for small text and buttons */
+  /* blue: #0081fb for fills, marks and large text; #0064e0 (5.4:1 on white) for small text and buttons */
   --color-accent: #0081fb;
   --color-accent-ink: #0064e0;
   --color-accent-deep: #0050b8;
@@ -47,7 +47,7 @@
   --color-up: oklch(64% 0.15 152);
   --color-down: oklch(57% 0.21 27);
 
-  /* The wallet palette in data/tokens.ts order, the team in Meta blue. Validated light on #fcfcfb: CVD worst 9.1, normal-vision worst 17.0; the grey fails the chroma floor by design */
+  /* The wallet palette in data/tokens.ts order, the team in blue. Validated light on #fcfcfb: CVD worst 9.1, normal-vision worst 17.0; the grey fails the chroma floor by design */
   --g-team: #0081fb;
   --g-likely: #c03fa8;
   --g-sniper: #1baf7a;

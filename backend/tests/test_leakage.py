@@ -1,4 +1,4 @@
-"""The leakage test (SPEC.md 7.8): a snapshot's signals never read anything after its time.
+"""The leakage test: a snapshot's signals never read anything after its time.
 
 For real tokens from the pulled data, each snapshot is computed twice: from everything in the
 dataset, and from a copy with every trade and wallet link after the snapshot removed. The signals

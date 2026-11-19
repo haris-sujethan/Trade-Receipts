@@ -1,4 +1,4 @@
-"""Glimmer's input for one snapshot: the token as text, plus the bubble map as an image (SPEC.md 7.8).
+"""Glimmer's input for one snapshot: the token as text, plus the bubble map as an image.
 
 Built from the same view of the token as its signals (signals.snapshot with context), so it reads
 nothing after the snapshot either. The text has five parts:
